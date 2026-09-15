@@ -5,43 +5,45 @@
 
 **模块**：question（题库）
 **所属包**：`backend/app/question/`
-**上游 PRD**：[2026-09-15-ai-interview-assistant-mvp.md](../plans/2026-09-15-ai-interview-assistant-mvp.md)
-**设计规格**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
-**对应 PRD 任务**：Task 3
+**上游 PRD**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
+**对应 PRD 章节**：§4.3（题库管理）、§5.2（`question` 实体）、§8（question API）
 **前置依赖**：core（[module-00](./2026-09-15-module-00-core-plan.md)）、auth（[module-01](./2026-09-15-module-01-auth-plan.md)）、position（[module-02](./2026-09-15-module-02-position-plan.md)）
 
 ---
 
-## Global Constraints（全局约束）
+## Global Constraints（全局约束，摘自 PRD）
 
-- 后端严格分层：`router → service → repository → MySQL`，只允许自上而下依赖，不跨层调用、不反向依赖。
-- 每个模块独立 Python package（`backend/app/<module>/`）。
-- 数据隔离：普通 HR 仅见自己创建的数据，admin 见全部。
-- 仅 PC 端，不做移动端响应式。
-- 统一错误响应格式 `{code, message, detail}`。
+- 后端分层：**router → service → repository → MySQL，严格单向依赖**（§2、§3.2）
+- 每个模块独立 Python package（§2、§3.3）
+- 统一响应格式：**`{code, message, detail}`**（§7）
+- 统一前缀 `/api`，**除登录外均需 JWT**（§8）
+- **数据隔离：普通 HR 只能访问自己创建的数据；admin 可访问全部**（§4.1）
+- 仅 PC 端（§2）
 
 ---
 
 ## 1. 模块职责与边界
 
-### 1.1 职责
+### 1.1 职责（对应 PRD §4.3）
 
 | 子职责 | 内容 |
 |---|---|
-| 题目实体 | Question 表的定义与迁移 |
-| 题库管理 | 题目的增、查、改、删 |
-| 多维筛选 | 按岗位 / 分类 / 维度 / 来源 / 关键词筛选 |
-| 出题供给 | 为 interview 的出题组装提供候选题目查询 |
+| 题目实体 | `question` 表的定义与迁移 |
+| 题库管理 | 题目的增、查、改、删（PRD §4.3） |
+| 多维筛选 | 按岗位 / 分类 / 维度筛选（PRD §4.3） |
+| 出题供给 | 为 interview 的出题组装提供候选题目查询（PRD §4.3「可被面试抽取复用」、§5.3 ①） |
 
 ### 1.2 边界（明确不做）
 
-- **不做抽取与组装**：从题库抽 N 题、与 AI 题目合并、生成快照，全部属于 interview 模块。question 只提供「给定岗位，返回候选题目」的查询能力。
-- **不做题目去重 / 相似度检测**：不在 MVP 范围。
-- **不做题目导入导出**：不在 MVP 范围。
-- **不做岗位维度的级联同步**：岗位维度变更后，历史题目的 `dimension` 不做强制迁移（见 §5.5）。
-- **不反向依赖 interview**：question 不查询面试数据。「题目是否被面试引用」由数据库外键约束判定，处理方式与 position §5.3 一致。
+| 不做 | 理由 |
+|---|---|
+| **抽取与组装** | 从题库抽 N 题、与 AI 题目合并、生成快照，全部属于 interview 模块（PRD §5.3 ①）。question 只提供「给定岗位，返回候选题目」的查询能力 |
+| **题目去重 / 相似度检测** | 不在 PRD 范围 |
+| **题目导入导出** | 不在 PRD 范围 |
+| **岗位维度的级联同步** | 岗位维度变更后，历史题目的 `dimension` 不做强制迁移（见 §5.5） |
+| **反向查询面试** | 「题目是否被面试引用」由数据库外键约束判定，处理方式与 position §5.3 一致 |
 
-### 1.3 依赖方向
+### 1.3 依赖方向（对应 PRD §3.3）
 
 ```
 question.router ──→ question.service ──→ question.repository ──→ question 表
@@ -64,71 +66,81 @@ question ✗→ interview（不反向依赖）
 | `backend/app/question/__init__.py` | 包标识 |
 | `backend/app/question/models.py` | `Question` 模型定义 |
 | `backend/app/question/schemas.py` | 请求 / 响应 Pydantic 模型 + 字段校验 |
-| `backend/app/question/repository.py` | Question 表数据访问（含 `owner_id` 过滤与筛选） |
+| `backend/app/question/repository.py` | `question` 表数据访问（含 `owner_id` 过滤与多维筛选） |
 | `backend/app/question/service.py` | 业务逻辑：CRUD、岗位与维度校验、候选查询 |
 | `backend/app/question/router.py` | `/api/questions/*` 端点 |
 
 **测试文件**：`backend/tests/test_question.py`
 
-**本模块需修改的上游文件**：
+**本模块需修改的上游文件**
 
 | 文件 | 修改内容 |
 |---|---|
 | `backend/app/main.py` | 注册 question router |
-| `backend/alembic/versions/` | 新增 Question 表迁移 |
+| `backend/alembic/versions/` | 新增 `question` 表迁移 |
 
 ---
 
 ## 3. 数据模型设计
 
-### 3.1 表 `question`
+### 3.1 表 `question`（对应 PRD §5.2 的 `question` 实体）
 
-| 字段 | 类型 | 约束 | 说明 |
-|---|---|---|---|
-| `id` | BIGINT | PK, AUTO_INCREMENT | 主键 |
-| `position_id` | BIGINT | NOT NULL, FK → `position.id` RESTRICT, INDEX | 所属岗位 |
-| `category` | VARCHAR(50) | NOT NULL, DEFAULT `'通用'` | 题目分类（如 技术 / 行为 / 场景 / 通用） |
-| `dimension` | VARCHAR(50) | NOT NULL, INDEX | 考察维度，取值应属于所属岗位的 `evaluation_dimensions` |
-| `content` | TEXT | NOT NULL | 题干 |
-| `difficulty` | ENUM('easy','medium','hard') | NOT NULL, DEFAULT `'medium'` | 难度 |
-| `tags` | JSON | NOT NULL, DEFAULT `[]` | 标签列表 |
-| `source` | ENUM('bank','ai') | NOT NULL, DEFAULT `'bank'`, INDEX | 来源 |
-| `created_by` | BIGINT | NOT NULL, FK → `user.id`, INDEX | 创建人，数据隔离依据 |
-| `created_at` | DATETIME | NOT NULL, DEFAULT NOW | — |
+PRD §5.2 列出字段：`id, position_id, category, dimension, content, difficulty, tags, source`。本设计补充 `created_by` 与 `created_at`：
 
-**索引**：
+| 字段 | 类型 | 约束 | 说明 | 来源 |
+|---|---|---|---|---|
+| `id` | BIGINT | PK, AUTO_INCREMENT | 主键 | PRD §5.2 |
+| `position_id` | BIGINT | NOT NULL, FK → `position.id` **RESTRICT**, INDEX | 所属岗位 | PRD §5.2 |
+| `category` | VARCHAR(50) | NOT NULL, DEFAULT `'通用'` | 题目分类（如 技术 / 行为 / 场景 / 通用） | PRD §5.2 |
+| `dimension` | VARCHAR(50) | NOT NULL, INDEX | 对应评估维度 | PRD §5.2 |
+| `content` | TEXT | NOT NULL | 题干 | PRD §5.2 |
+| `difficulty` | ENUM('easy','medium','hard') | NOT NULL, DEFAULT `'medium'` | 难度 | PRD §5.2 |
+| `tags` | JSON | NOT NULL, DEFAULT `[]` | 标签列表 | PRD §5.2 |
+| `source` | ENUM('bank','ai') | NOT NULL, DEFAULT `'bank'`, INDEX | 来源 | PRD §5.2 |
+| `created_by` | BIGINT | NOT NULL, FK → `user.id`, INDEX | **创建人，数据隔离依据** | **本设计新增** |
+| `created_at` | DATETIME | NOT NULL, DEFAULT NOW | — | **本设计新增** |
+
+**为何必须新增 `created_by`**：PRD §4.1 要求「普通 HR 只能访问自己创建的数据」。`question` 若要参与数据隔离，就必须有归属字段。`created_at` 则为其余所有实体一致的审计字段。
+
+**索引**
 
 | 索引 | 字段 | 类型 | 目的 |
 |---|---|---|---|
-| `ix_question_position_owner` | (`position_id`, `created_by`) | INDEX | 出题取数的主查询路径 |
-| `ix_question_dimension` | (`dimension`) | INDEX | 按维度筛选 |
+| `ix_question_position_owner` | (`position_id`, `created_by`) | INDEX | **出题取数的主查询路径**（PRD §5.3 ①） |
+| `ix_question_dimension` | (`dimension`) | INDEX | 按维度筛选（PRD §4.3） |
 | `ix_question_source` | (`source`) | INDEX | 按来源筛选 |
-| `ix_question_created_by` | (`created_by`) | INDEX | 数据隔离过滤 |
+| `ix_question_created_by` | (`created_by`) | INDEX | 数据隔离过滤（PRD §4.1） |
 
 ### 3.2 设计要点
 
-- **`position_id` 外键 `ON DELETE RESTRICT`**：题目必须挂在岗位上；岗位被引用时不可删除（见 position §5.3）。
-- **`dimension` 存字符串而非 ID**：与 `evaluation.dimension_score.dimension` 保持同一命名空间，评估打分时可直接按维度名归集，无需联表。
-- **`created_by` 与岗位的 `created_by` 可能不同**：MVP 中数据隔离以**题目自身的 `created_by`** 为准；由于创建题目时会校验岗位可见性，正常情况下二者一致（admin 可为他人岗位建题，此时以建题人为准）。
-- **`tags` 用 JSON 数组**：标签是弱结构属性，不需要独立标签表与多对多关联（YAGNI）。
-- **`difficulty` 用枚举**：限定取值，避免脏数据；AI 生成时也映射到这三档。
-- **无唯一约束**：允许同岗位存在内容相同的题目（AI 可能生成近似题目，强制唯一会造成入库失败而非可解释的报错）。
+| 要点 | 理由 |
+|---|---|
+| **`position_id` 外键 `ON DELETE RESTRICT`** | 题目必须挂在岗位上；岗位被题目引用时不可删除（position §5.3） |
+| **`dimension` 存字符串而非 ID** | 与 `evaluation.dimension_score.dimension` 保持同一命名空间，评估打分时可直接按维度名归集，无需联表（PRD §5.2） |
+| **`created_by` 与岗位的 `created_by` 可能不同** | 数据隔离以**题目自身的 `created_by`** 为准；正常情况下二者一致（创建题目时会校验岗位可见性）。admin 可为他人岗位建题，此时以建题人为准 |
+| **`tags` 用 JSON 数组** | 标签是弱结构属性，不需要独立标签表与多对多关联（YAGNI） |
+| **`difficulty` 用枚举** | 限定取值，避免脏数据；AI 生成时也映射到这三档 |
+| **无内容唯一约束** | 允许同岗位存在内容相近的题目。AI 可能生成近似题目，强制唯一会造成**入库失败而非可解释的报错** |
 
 ### 3.3 字段校验规则
 
+PRD §4.3 未定义字段边界，本设计补齐：
+
 | 字段 | 规则 | 失败 |
 |---|---|---|
-| `position_id` | 必填；岗位必须存在且对当前用户可见 | 404 / 403 |
+| `position_id` | 必填；岗位必须存在且对当前用户**可见** | 404 / 403 |
 | `dimension` | 必填，1–50 字符；**必须属于所属岗位的 `evaluation_dimensions`**（strip 后精确匹配） | 400 `VALIDATION_ERROR` |
 | `category` | 可选；缺省 `"通用"`；1–50 字符 | 400 |
 | `content` | 必填，**5–2000 字符** | 400 |
 | `difficulty` | 可选；缺省 `medium`；取值 `easy`/`medium`/`hard` | 400 |
 | `tags` | 可选；缺省 `[]`；**≤ 10 个**；单个 1–20 字符；strip 后去重 | 400 |
-| `source` | 客户端**不可指定**，由服务端决定（见 §5.4） | — |
+| `source` | **客户端不可指定**，由服务端决定（见 §5.4） | — |
+
+> **`dimension` 必须属于岗位维度**这一校验是本模块最重要的数据质量防线：它保证「题目 → 岗位 → 维度」三者自洽，是后续「多维评分」能正确归集数据的前提（PRD §4.5）。
 
 ---
 
-## 4. 接口契约
+## 4. 接口契约（对应 PRD §8）
 
 ### 4.1 对外 REST API
 
@@ -138,7 +150,7 @@ question ✗→ interview（不反向依赖）
 | GET | `/api/questions` | 题目列表（支持多维筛选） | 登录 | 200 |
 | GET | `/api/questions/{id}` | 题目详情 | 登录 + 可见 | 200 |
 | PUT | `/api/questions/{id}` | 更新题目 | 登录 + 可见 | 200 |
-| DELETE | `/api/questions/{id}` | 删除题目 | 登录 + 可见 | 204 |
+| DELETE | `/api/questions/{id}` | 删除题目 | 登录 + 可见 | **204** |
 
 ### 4.2 请求 / 响应结构
 
@@ -168,21 +180,23 @@ question ✗→ interview（不反向依赖）
 | 请求 | `difficulty` | str \| 可选 | 缺省 `medium` |
 | 请求 | `tags` | list[str] \| 可选 | 缺省 `[]` |
 
-**GET `/api/questions` 查询参数**
+**GET `/api/questions` 查询参数**（PRD §4.3 要求支持按岗位 / 分类 / 维度筛选）
 
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `position_id` | int \| 可选 | 按岗位过滤 |
-| `category` | str \| 可选 | 精确匹配 |
-| `dimension` | str \| 可选 | 精确匹配 |
-| `source` | str \| 可选 | `bank` \| `ai` |
-| `keyword` | str \| 可选 | 按 `content` 模糊匹配 |
+| 参数 | 类型 | 说明 | 来源 |
+|---|---|---|---|
+| `position_id` | int \| 可选 | 按岗位过滤 | PRD §4.3 |
+| `category` | str \| 可选 | 精确匹配 | PRD §4.3 |
+| `dimension` | str \| 可选 | 精确匹配 | PRD §4.3 |
+| `source` | str \| 可选 | `bank` \| `ai` | 本设计补充 |
+| `keyword` | str \| 可选 | 按 `content` 模糊匹配 | 本设计补充 |
 
 多个参数为 **AND** 关系。MVP 不分页。
 
+> **为何补充 `source` 筛选**：PRD §5.2 定义了 `source` 字段区分「题库题」与「AI 题」。若不能按其筛选，HR 无从分辨与清理 AI 生成的题目——该筛选是 `source` 字段有用的前提。
+
 **PUT `/api/questions/{id}`**：请求字段与 POST 一致，**全量替换**（`tags` 整体替换）。
 
-> **`position_id` 是否可改**：允许。改岗位时必须重新校验新岗位的可见性与 `dimension` 合法性（`dimension` 若不属于新岗位则报 400）。
+> **`position_id` 是否可改**：允许。改岗位时必须**重新校验**新岗位的可见性与 `dimension` 合法性（`dimension` 若不属于新岗位则报 400）。
 
 ### 4.3 service 层方法签名
 
@@ -192,11 +206,11 @@ question ✗→ interview（不反向依赖）
 | `list_questions(db, user: User, filters: QuestionFilters) -> list[Question]` | 列表 | `scope_owner_id` 过滤 + 多维筛选 |
 | `get_question(db, user: User, question_id: int) -> Question` | Question | 不存在 → 404；不可见 → 403 |
 | `update_question(db, user: User, question_id: int, data: QuestionUpdate) -> Question` | Question | 同上校验 |
-| `delete_question(db, user: User, question_id: int) -> None` | — | 被面试引用时由 FK 拒绝 → `BusinessError` |
-| `list_candidates_for_position(db, owner_id: int \| None, position_id: int) -> list[Question]` | 列表 | **供 interview 出题使用**：返回该岗位全部候选题目（不过滤 source） |
-| `bulk_create_from_ai(db, user: User, position_id: int, items: list[GeneratedQuestion]) -> list[Question]` | 列表 | **供 interview 使用**：将 AI 生成题目入库，`source='ai'` |
+| `delete_question(db, user: User, question_id: int) -> None` | — | 被面试引用时由外键拒绝 → `BusinessError` |
+| `list_candidates_for_position(db, owner_id: int \| None, position_id: int) -> list[Question]` | 列表 | **供 interview 出题使用**（§5.6） |
+| `bulk_create_from_ai(db, user: User, position_id: int, items: list[GeneratedQuestion]) -> list[Question]` | 列表 | **供 interview 使用**：AI 题目入库（§5.4） |
 
-`QuestionFilters` 数据结构字段：`position_id: int | None`、`category: str | None`、`dimension: str | None`、`source: str | None`、`keyword: str | None`。
+`QuestionFilters` 字段：`position_id: int | None`、`category: str | None`、`dimension: str | None`、`source: str | None`、`keyword: str | None`。
 
 ### 4.4 repository 层方法签名
 
@@ -204,7 +218,7 @@ question ✗→ interview（不反向依赖）
 |---|---|---|
 | `create(db, **fields) -> Question` | Question | — |
 | `list_filtered(db, owner_id: int \| None, filters: QuestionFilters) -> list[Question]` | 列表 | `owner_id=None` 表示不过滤 |
-| `list_by_position(db, owner_id: int \| None, position_id: int) -> list[Question]` | 列表 | 出题候选查询，按 `id` 升序保证稳定 |
+| `list_by_position(db, owner_id: int \| None, position_id: int) -> list[Question]` | 列表 | 出题候选查询，**按 `id` 升序**保证稳定 |
 | `get_by_id(db, question_id: int) -> Question \| None` | Question | **不带权限过滤** |
 | `update(db, question: Question, **fields) -> Question` | Question | — |
 | `delete(db, question: Question) -> None` | — | 捕获 `IntegrityError` → 抛 `BusinessError` |
@@ -228,7 +242,7 @@ question ✗→ interview（不反向依赖）
 
 ### 5.2 单条资源访问权限模式
 
-与 position §5.2 完全一致：`get_by_id` → `None` 则 404 → `scope_owner_id(user)` 非 `None` 且不匹配 `created_by` 则 403。
+与 auth §5.3 / position §5.2 完全一致：`get_by_id` → `None` 则 404 → `scope_owner_id(user)` 非 `None` 且不匹配 `created_by` 则 403。
 
 ### 5.3 删除题目
 
@@ -241,26 +255,28 @@ question ✗→ interview（不反向依赖）
 
 ### 5.4 AI 生成题目的入库路径（`source='ai'` 的产生方式）
 
-**设计决策**：interview 出题组装时，AI 补充生成的题目**自动写入题库**，`source='ai'`，`created_by` 为该面试的创建人。
+PRD §5.2 定义了 `source: bank | ai` 两个取值，但未说明 `ai` 从何而来。本设计明确：
+
+**interview 出题组装时，AI 补充生成的题目自动写入题库，`source='ai'`，`created_by` 为该面试的创建人。**
 
 | 论点 | 说明 |
 |---|---|
-| 为何自动入库 | `source` 字段需要有真实来源；入库后 AI 出的好题能在后续面试中被复用，题库随使用增长 |
-| 为何 `created_by` 用面试创建人 | 数据隔离一致：该 HR 能在自己的题库里看到 AI 为自己的面试生成的题 |
-| 代价 | 题库会被 AI 题目填充。由 `source` 筛选与「删除」能力兜底；HR 可按 `source=bank` 只看手工题 |
-| 为何不由客户端指定 `source` | 来源是服务端事实（人工投递 vs AI 生成），客户端传参可伪造 |
+| 为何自动入库 | `source` 字段需要真实的产生来源；入库后 AI 出的好题能在后续面试中被复用，**题库随使用增长**（契合 PRD §1.2 的「提供可复用的题库」目标） |
+| 为何 `created_by` 用面试创建人 | 数据隔离一致：该 HR 能在自己的题库里看到 AI 为自己的面试生成的题（PRD §4.1） |
+| 代价 | 题库会被 AI 题目填充。由 `source` 筛选（§4.2）与「删除」能力兜底；HR 可按 `source=bank` 只看手工题 |
+| 为何不由客户端指定 `source` | 来源是**服务端事实**（人工投递 vs AI 生成），客户端传参可伪造 |
 
-**幂等性**：同一面试重复触发出题（MVP 中不出题只发生一次，见 interview §5.1）不会重复写入——由 interview 的状态机保证 `create_interview` 只执行一次。
+**幂等性**：同一面试只出题一次（由 interview 的状态机保证），因此不会重复写入。
 
 ### 5.5 岗位维度变更对已有题目的影响
 
 | 场景 | 行为 |
 |---|---|
-| 岗位维度删除后，已有题目仍引用该维度 | **不自动清理**，也不报错 |
-| 出题抽取时 | interview 的抽取算法**跳过** `dimension` 已不在岗位维度列表中的题目（见 interview §5.2） |
-| 更新题目时 | 若新 `dimension` 不在当前岗位维度中 → 400，强制收敛 |
+| 岗位维度被删除后，已有题目仍引用该维度 | **不自动清理**，也不报错 |
+| 出题抽取时 | interview 的抽取算法**跳过** `dimension` 已不在岗位维度列表中的题目 |
+| 更新题目时 | 若新 `dimension` 不在当前岗位维度中 → **400**，强制收敛 |
 
-> 理由：静默删除或改写历史题目会丢失数据；把「不合规题目」的处理放在抽取环节，既不丢数据又能保证新面试的题目合规。
+> **理由**：静默删除或改写历史题目会丢失数据；把「不合规题目」的处理放在抽取环节，既不丢数据又能保证新面试的题目合规。
 
 ### 5.6 出题候选查询（对 interview 的供给契约）
 
@@ -271,54 +287,53 @@ list_candidates_for_position(db, owner_id, position_id)
   → 不过滤 source（AI 题与人工题都可作为候选）
 ```
 
-**抽取算法的职责边界**：round-robin 抽取、跳过不合规维度、随机化、取满 N 题——全部在 interview 模块实现（见 interview §5.2）。question 模块只保证「按稳定顺序返回候选集」。
+**职责边界**：round-robin 抽取、跳过不合规维度、取满 N 题、AI 补齐——**全部在 interview 模块实现**（PRD §5.3 ①）。question 模块只保证「按稳定顺序返回候选集」。
 
 ---
 
-## 6. 错误处理
+## 6. 错误处理（对应 PRD §7）
 
-| 场景 | code | HTTP | message 示例 |
+| 场景 | code | HTTP | message |
 |---|---|---|---|
 | 未带 / 无效 token | `UNAUTHORIZED` / `INVALID_TOKEN` | 401 | — |
 | 题目不存在 | `NOT_FOUND` | 404 | 题目不存在 |
 | 访问他人题目 | `FORBIDDEN` | 403 | 无权限访问该题目 |
 | 岗位不存在 | `NOT_FOUND` | 404 | 岗位不存在 |
 | 岗位不可见 | `FORBIDDEN` | 403 | 无权限访问该岗位 |
-| `dimension` 不属于岗位维度 | `VALIDATION_ERROR` | 400 | 该维度不属于岗位的评估维度（`detail` 含合法维度列表） |
+| **`dimension` 不属于岗位维度** | `VALIDATION_ERROR` | 400 | 该维度不属于岗位的评估维度（`detail` 含合法维度列表） |
 | `content` 过短 / 过长 | `VALIDATION_ERROR` | 400 | 题目内容需 5–2000 字符 |
 | `tags` 超 10 个 / 单项超长 | `VALIDATION_ERROR` | 400 | — |
-| 删除被面试引用的题目 | `BUSINESS_ERROR` | 409 | 该题目已被面试引用，无法删除 |
+| `difficulty` 取值非法 | `VALIDATION_ERROR` | 400 | — |
+| **删除被面试引用的题目** | `BUSINESS_ERROR` | 409 | 该题目已被面试引用，无法删除 |
 
 ---
 
-## 7. 测试设计
+## 7. 测试设计（对应 PRD §10）
 
-`backend/tests/test_question.py`
-
-### 7.1 鉴权与数据隔离
+### 7.1 鉴权与数据隔离（PRD §4.1、§8）
 
 | 测试 | 断言 |
 |---|---|
 | `test_create_without_token` | 401 |
-| `test_create_ok` | 201，`source == "bank"`，`created_by` 正确 |
+| `test_create_ok` | 201，**`source == "bank"`**，`created_by` 正确 |
 | `test_list_only_own_questions` | 另一 hr 看不到 |
 | `test_admin_sees_all_questions` | admin 可见全部 |
 | `test_get_other_users_question_forbidden` | 403 |
 | `test_get_nonexistent_question` | 404 |
 | `test_update_delete_other_users_question_forbidden` | 403 |
 
-### 7.2 岗位与维度校验
+### 7.2 岗位与维度校验（§3.3、§5.1）
 
 | 测试 | 断言 |
 |---|---|
 | `test_create_with_nonexistent_position` | 404 |
 | `test_create_with_other_users_position` | 403 |
-| `test_create_with_invalid_dimension` | 400，`detail` 含合法维度列表 |
+| `test_create_with_invalid_dimension` | 400，**`detail` 含合法维度列表** |
 | `test_create_dimension_match_is_exact_after_strip` | 岗位维度为 `"沟通能力"`，传 `" 沟通能力 "` → 201 且落库为 `"沟通能力"` |
 | `test_update_question_to_other_position_revalidates_dimension` | 改到新岗位但 dimension 不属于新岗位 → 400 |
 | `test_update_question_to_other_position_ok` | dimension 合法时 200 |
 
-### 7.3 字段校验
+### 7.3 字段校验（§3.3）
 
 | 测试 | 断言 |
 |---|---|
@@ -331,8 +346,9 @@ list_candidates_for_position(db, owner_id, position_id)
 | `test_tags_exceed_limit` | 11 个 → 400 |
 | `test_tags_dedup_after_strip` | `["a"," a "]` → 落库 `["a"]` |
 | `test_tags_single_too_long` | 21 字符 → 400 |
+| `test_client_cannot_set_source` | 请求体带 `source: "ai"` → 落库仍为 `"bank"`（服务端决定） |
 
-### 7.4 筛选
+### 7.4 筛选（PRD §4.3）
 
 | 测试 | 断言 |
 |---|---|
@@ -341,33 +357,36 @@ list_candidates_for_position(db, owner_id, position_id)
 | `test_filter_by_dimension` | 精确匹配 |
 | `test_filter_by_source` | `source=ai` 仅返回 AI 题 |
 | `test_filter_by_keyword` | 按 `content` 模糊匹配 |
-| `test_filter_combined_is_and` | 多参数同时生效为 AND |
-| `test_filter_respects_isolation` | 筛选结果不越过 `created_by` 边界 |
+| `test_filter_combined_is_and` | 多参数同时生效为 **AND** |
+| `test_filter_respects_isolation` | **筛选结果不越过 `created_by` 边界** |
 
 ### 7.5 删除
 
 | 测试 | 断言 |
 |---|---|
-| `test_delete_ok` | 204，无响应体 |
+| `test_delete_ok` | 204，**无响应体** |
 | `test_delete_referenced_by_interview` | 409 `BUSINESS_ERROR` |
 
-### 7.6 对 interview 的供给契约
+### 7.6 对 interview 的供给契约（§5.6）
 
 | 测试 | 断言 |
 |---|---|
 | `test_list_candidates_returns_position_questions` | 返回指定岗位全部题目 |
-| `test_list_candidates_ordered_by_id` | 结果按 `id` 升序 |
+| `test_list_candidates_ordered_by_id` | 结果**按 `id` 升序** |
 | `test_list_candidates_respects_owner` | 不返回他人题目 |
+| `test_list_candidates_includes_ai_source` | 不过滤 `source`，AI 题也在候选集内 |
 | `test_bulk_create_from_ai_sets_source_ai` | 入库题目 `source == "ai"`，`created_by` 正确 |
 
 ---
 
 ## 8. 任务分解（TDD 步骤，无代码）
 
-### Task 3.1：Question 模型与迁移
+> 每步 2–5 分钟。**提交信息由你指定**。
+
+### Task 3.1：`Question` 模型与迁移
 
 - [ ] 定义 `Question` 模型（§3.1 全字段、枚举、JSON 列）
-- [ ] 建立四个索引与外键约束
+- [ ] 建立四个索引与两个外键约束（`position_id` RESTRICT）
 - [ ] 生成迁移、`alembic upgrade head`、验证结构
 - [ ] 提交
 
@@ -430,17 +449,18 @@ list_candidates_for_position(db, owner_id, position_id)
 
 ## 9. 验收标准
 
-- [ ] 创建题目返回 201，`source` 恒为 `bank`（客户端无法指定）
-- [ ] `dimension` 不属于所属岗位维度时返回 400，`detail` 含合法维度列表
+- [ ] 创建题目返回 201，**`source` 恒为 `bank`**（客户端无法指定）
+- [ ] `dimension` 不属于所属岗位维度时返回 400，**`detail` 含合法维度列表**
 - [ ] 岗位不存在返回 404，岗位不可见返回 403
 - [ ] `content` 长度、`tags` 数量与长度校验生效
 - [ ] `category` 缺省 `"通用"`，`difficulty` 缺省 `medium`，`tags` 缺省 `[]`
 - [ ] `tags` strip 去重生效
-- [ ] 五个筛选参数可单独及组合（AND）生效，且不越过数据隔离边界
+- [ ] 按岗位 / 分类 / 维度筛选生效（PRD §4.3）；补充的 `source` / `keyword` 筛选同样生效；多参数为 AND
+- [ ] **筛选结果不越过数据隔离边界**（PRD §4.1）
 - [ ] `PUT` 对 `tags` 为全量替换语义
-- [ ] 删除未被引用的题目返回 204 且无响应体
-- [ ] 删除被面试引用的题目返回 409（由 FK RESTRICT 保证）
-- [ ] `list_candidates_for_position` 按 `id` 升序返回，且受 `owner_id` 约束
+- [ ] 删除未被引用的题目返回 **204 且无响应体**
+- [ ] 删除被面试引用的题目返回 409（由外键 RESTRICT 保证）
+- [ ] `list_candidates_for_position` 按 `id` 升序返回，受 `owner_id` 约束，**不过滤 `source`**
 - [ ] `bulk_create_from_ai` 入库题目 `source == "ai"`
 - [ ] 全部 question 测试通过
 
@@ -450,10 +470,13 @@ list_candidates_for_position(db, owner_id, position_id)
 
 | 风险 / 权衡 | 决策 | 理由 |
 |---|---|---|
-| AI 题目是否自动入库 | 自动入库，`source='ai'` | `source` 字段需要真实来源；好题可复用；由 `source` 筛选与删除兜底 |
-| 是否禁止内容重复的题目 | 不禁止 | AI 可能生成近似题目，唯一约束会导致入库失败而非可解释错误 |
-| 岗位维度变更后已有题目怎么办 | 不清理、不改写；抽取时跳过不合规项 | 不丢数据；新面试题目保证合规 |
-| 创建题目时 `created_by` 与岗位 `created_by` 不一致 | 以建题人为准 | admin 可为他人的岗位建题；隔离语义以数据归属为准 |
-| 是否建标签表 | 不建，用 JSON 数组 | YAGNI，标签无需反向查询 |
-| 题目是否支持排序字段 `seq` | 不支持 | 题目在面试中的顺序由 `interview_question.seq` 决定，属于面试实例的属性 |
-| 列表是否分页 | 不分页 | 内部系统数据量小；支持 `keyword` 与多维筛选已足够 |
+| PRD §5.2 未给 `question` 定义归属字段 | **新增 `created_by`** | PRD §4.1 的数据隔离要求必须有归属字段才能落地。属补齐 |
+| `source='ai'` 从何而来 | **interview 出题时 AI 题目自动入库** | `source` 需真实来源；好题可复用，契合 PRD §1.2「可复用的题库」；由筛选与删除兜底 |
+| 是否允许客户端指定 `source` | **不允许** | 来源是服务端事实，客户端传参可伪造 |
+| 是否禁止内容重复的题目 | **不禁止** | AI 可能生成近似题目，唯一约束会导致入库失败而非可解释错误 |
+| 岗位维度变更后已有题目怎么办 | **不清理、不改写；抽取时跳过不合规项** | 不丢数据；新面试的题目保证合规 |
+| 建题人 ≠ 岗位拥有者时以谁为准 | **以建题人为准** | admin 可为他人的岗位建题；隔离语义以数据归属为准 |
+| 为何补充 `source` / `keyword` 筛选 | 补充 | `source` 是 PRD 定义的字段，不能筛选则无法分辨与清理 AI 题目 |
+| 是否建标签表 | **不建，用 JSON 数组** | YAGNI，标签无需反向查询 |
+| 题目是否支持排序字段 | **不支持** | 题目在面试中的顺序由 `interview_question.seq` 决定，属面试实例的属性 |
+| 列表是否分页 | **不分页** | 内部系统数据量小；多维筛选已足够 |
