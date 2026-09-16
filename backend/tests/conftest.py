@@ -32,6 +32,7 @@ from app.core.security import create_access_token  # noqa: E402
 # 导入全部模型，确保 Base.metadata 完整（否则 create_all 会漏表）
 # 新增业务模块时，必须在此处补上对应的 models 导入。
 import app.auth.models  # noqa: E402,F401
+import app.position.models  # noqa: E402,F401
 
 
 def _ensure_database(url: str) -> None:

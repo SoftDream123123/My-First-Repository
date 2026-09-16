@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.auth import repository
 from app.auth.models import ROLE_ADMIN, User
-from app.core.exceptions import BusinessError, NotFoundError, UnauthorizedError
+from app.core.exceptions import (
+    BusinessError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+)
 from app.core.security import create_access_token, hash_password, verify_password
 
 # 用户名或密码错误时的统一文案 —— 用户不存在与密码错误必须返回完全相同的响应，
@@ -100,3 +105,14 @@ def scope_owner_id(user: User) -> int | None:
     hr    → user.id（各业务模块据此追加 WHERE created_by = :owner_id）
     """
     return None if user.role == ROLE_ADMIN else user.id
+
+
+def ensure_resource_visible(user: User, created_by: int, label: str) -> None:
+    """统一的单条资源可见性校验。
+
+    各业务模块「取回一条记录后判断能否访问」时调用，保证隔离规则只有一处实现。
+    不可见时抛 ForbiddenError（403）而非 NotFoundError —— 语义明确：资源存在但无权访问。
+    """
+    owner_id = scope_owner_id(user)
+    if owner_id is not None and created_by != owner_id:
+        raise ForbiddenError(f"无权限访问该{label}")

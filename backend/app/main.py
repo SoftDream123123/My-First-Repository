@@ -97,5 +97,9 @@ def _register_routers() -> None:
 
     app.include_router(auth_router, prefix="/api")
 
+    from app.position.router import router as position_router
+
+    app.include_router(position_router, prefix="/api")
+
 
 _register_routers()
