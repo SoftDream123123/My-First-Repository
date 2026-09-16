@@ -33,6 +33,7 @@ from app.core.security import create_access_token  # noqa: E402
 # 新增业务模块时，必须在此处补上对应的 models 导入。
 import app.auth.models  # noqa: E402,F401
 import app.position.models  # noqa: E402,F401
+import app.question.models  # noqa: E402,F401
 
 
 def _ensure_database(url: str) -> None:
@@ -141,3 +142,38 @@ def admin_headers(admin_user) -> dict[str, str]:
 @pytest.fixture
 def hr_headers(hr_user) -> dict[str, str]:
     return {"Authorization": f"Bearer {create_access_token(hr_user.id)}"}
+
+
+@pytest.fixture
+def other_hr(db):
+    """第二个 hr 账号 —— 用于验证数据隔离。"""
+    from app.auth import service
+
+    return service.create_user(db, "hr_other", "hr12345678", "hr")
+
+
+@pytest.fixture
+def other_hr_headers(other_hr) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(other_hr.id)}"}
+
+
+# ---------------------------- 业务夹具 ----------------------------
+
+DEFAULT_DIMENSIONS = ["沟通能力", "专业能力", "逻辑思维"]
+
+
+@pytest.fixture
+def position(db, hr_user):
+    """由 hr_user 创建的标准岗位。"""
+    from app.position import service as position_service
+    from app.position.schemas import PositionCreate
+
+    return position_service.create_position(
+        db,
+        hr_user,
+        PositionCreate(
+            name="后端工程师",
+            jd="负责后端服务的开发与维护，要求熟悉 Python 与数据库设计。",
+            evaluation_dimensions=list(DEFAULT_DIMENSIONS),
+        ),
+    )

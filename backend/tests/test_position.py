@@ -1,9 +1,5 @@
 """position 模块测试：鉴权、数据隔离、维度校验、CRUD、删除保护。"""
 
-import pytest
-
-from app.core.security import create_access_token
-
 VALID_DIMS = ["沟通能力", "专业能力", "逻辑思维", "文化契合"]
 
 
@@ -17,18 +13,6 @@ def _create(client, headers, name="后端工程师", dims=None, jd="负责后端
         },
         headers=headers,
     )
-
-
-@pytest.fixture
-def other_hr(db):
-    from app.auth import service
-
-    return service.create_user(db, "hr_other", "hr12345678", "hr")
-
-
-@pytest.fixture
-def other_hr_headers(other_hr) -> dict[str, str]:
-    return {"Authorization": f"Bearer {create_access_token(other_hr.id)}"}
 
 
 # --------------------------- 鉴权与隔离 ---------------------------
@@ -246,3 +230,43 @@ class TestCrud:
             _create(client, hr_headers, name=name)
         ids = [p["id"] for p in client.get("/api/positions", headers=hr_headers).json()]
         assert ids == sorted(ids)
+
+
+# -------------------------- 删除保护（被引用） --------------------------
+
+
+class TestDeleteProtection:
+    def test_delete_referenced_by_question(self, client, hr_headers, position):
+        """岗位下有题目时不可删除 —— 由外键 ON DELETE RESTRICT 保证。"""
+        client.post(
+            "/api/questions",
+            json={
+                "position_id": position.id,
+                "dimension": "沟通能力",
+                "content": "挂在该岗位下的一道题目内容",
+            },
+            headers=hr_headers,
+        )
+
+        resp = client.delete(f"/api/positions/{position.id}", headers=hr_headers)
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+        assert "无法删除" in resp.json()["message"]
+
+    def test_delete_after_question_removed(self, client, hr_headers, position):
+        question_id = client.post(
+            "/api/questions",
+            json={
+                "position_id": position.id,
+                "dimension": "沟通能力",
+                "content": "挂在该岗位下的一道题目内容",
+            },
+            headers=hr_headers,
+        ).json()["id"]
+
+        client.delete(f"/api/questions/{question_id}", headers=hr_headers)
+
+        assert (
+            client.delete(f"/api/positions/{position.id}", headers=hr_headers).status_code
+            == 204
+        )
