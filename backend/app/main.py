@@ -105,5 +105,9 @@ def _register_routers() -> None:
 
     app.include_router(question_router, prefix="/api")
 
+    from app.interview.router import router as interview_router
+
+    app.include_router(interview_router, prefix="/api")
+
 
 _register_routers()

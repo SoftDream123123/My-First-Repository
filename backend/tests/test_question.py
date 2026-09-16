@@ -302,6 +302,31 @@ class TestDelete:
             == 404
         )
 
+    def test_delete_referenced_by_interview(self, client, hr_headers, position):
+        """题目被面试引用时不可删除 —— 由外键 ON DELETE RESTRICT 保证。"""
+        question_id = _create(client, hr_headers, position.id).json()["id"]
+
+        detail = client.post(
+            "/api/interviews",
+            json={"position_id": position.id, "candidate_name": "张三"},
+            headers=hr_headers,
+        ).json()
+        referenced = {
+            q["content"]
+            for q in detail["questions"]
+            if q["source"] == "bank"
+        }
+        assert _content_of(client, hr_headers, question_id) in referenced
+
+        resp = client.delete(f"/api/questions/{question_id}", headers=hr_headers)
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+        assert "无法删除" in resp.json()["message"]
+
+
+def _content_of(client, headers, question_id):
+    return client.get(f"/api/questions/{question_id}", headers=headers).json()["content"]
+
 
 # ------------------------ 对 interview 的供给契约 ------------------------
 
