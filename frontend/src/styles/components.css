@@ -1,0 +1,586 @@
+/* ==========================================================================
+   组件
+   ========================================================================== */
+
+/* ------------------------------- 按钮 ------------------------------- */
+/* 主按钮是墨色而非品牌色 —— 全站没有品牌主色，见 tokens 规则 1 */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  height: 34px;
+  padding: 0 var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  font-size: var(--t-base);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.btn--primary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #000;
+}
+
+.btn--ghost {
+  border-color: var(--line);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  border-color: var(--faint);
+}
+
+.btn--quiet {
+  color: var(--muted);
+  padding: 0 var(--s2);
+}
+
+.btn--quiet:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--ground);
+}
+
+.btn--danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #8f2a19;
+}
+
+.btn--wide {
+  width: 100%;
+}
+
+.btn--sm {
+  height: 28px;
+  padding: 0 var(--s3);
+  font-size: var(--t-sm);
+}
+
+/* ------------------------------- 面板 ------------------------------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+}
+
+.panel + .panel {
+  margin-top: var(--s5);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s2);
+}
+
+.panel-body {
+  padding: var(--s5);
+}
+
+.panel-body--tight {
+  padding: 0;
+}
+
+.panel-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line);
+  background: var(--ground);
+}
+
+/* ------------------------------- 表单 ------------------------------- */
+
+.field {
+  margin-bottom: var(--s5);
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: var(--s2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field-note {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--faint);
+}
+
+.field-error {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--danger);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  font-size: var(--t-base);
+  line-height: 1.6;
+  transition: border-color 120ms ease;
+}
+
+.input {
+  height: 34px;
+}
+
+.select {
+  height: 34px;
+  cursor: pointer;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover {
+  border-color: var(--faint);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--marker-wash);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--faint);
+}
+
+.input:read-only,
+.textarea:read-only {
+  background: var(--ground);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* ------------------------------- 标签 ------------------------------- */
+/* 3px 直角而非胶囊 —— 读起来像标注，不像 chip */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  padding: 0 var(--s2);
+  border: 1px solid transparent; /* 占位，让描边型标签与填充型同高 */
+  border-radius: var(--r-control);
+  font-size: var(--t-xs);
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--ground);
+  color: var(--muted);
+}
+
+/* 面试状态：颜色编码"在流程中的位置"，不是装饰。
+   四种状态必须一眼可分 —— 描边 = 还没落定；实底 = 已经落定。 */
+.tag--ongoing {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
+.tag--completed {
+  background: #e7eaed;
+  color: var(--ink);
+}
+
+.tag--evaluating {
+  background: var(--marker-wash);
+  border-color: var(--marker-line);
+  color: #7a5c00;
+}
+
+.tag--evaluated {
+  background: var(--pass-wash);
+  border-color: #bfd9d2;
+  color: var(--pass);
+}
+
+/* 题目来源：沿用与面试状态同一套"描边 vs 实底"的手法，
+   不引入第四个色系 —— 调色板只留给分数与当前位置。 */
+.tag--bank {
+  background: var(--ground);
+  color: var(--muted);
+}
+
+.tag--ai {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
+/* 维度 */
+.tag--dim {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* ------------------------------- 表格 ------------------------------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-base);
+}
+
+.table th {
+  text-align: left;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--muted);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.table .cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 长文本截断，悬停看全文。
+   必须是 block —— max-width 对行内元素无效，用在 <span> 上会失效。 */
+.truncate {
+  display: block;
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------- 分数 ------------------------------- */
+/* 规则 2：衬线体只说数字 */
+
+.score {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.score--hero {
+  font-size: var(--t-hero);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.score--lg {
+  font-size: var(--t-xl);
+}
+
+.score--md {
+  font-size: var(--t-lg);
+}
+
+/* 表格里需要扫描对齐的分数改用无衬线 + 等宽数字 */
+.score--cell {
+  font-family: var(--font-ui);
+  font-size: var(--t-base);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.is-pass {
+  color: var(--pass);
+}
+
+.is-watch {
+  color: var(--watch);
+}
+
+/* ---------------------------- 状态轨 ---------------------------- */
+/* 全站的结构脊柱。产品本身有真实的状态机（module-05 §5.4），
+   所以横向步骤指示是信息，不是装饰。 */
+
+.rail {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+
+.rail-step {
+  flex: 1;
+  position: relative;
+  padding: 0 0 var(--s4);
+}
+
+/* 连接线 */
+.rail-step::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--line);
+}
+
+.rail-step:first-child::after {
+  left: 0;
+}
+
+.rail-label {
+  display: inline-block;
+  padding: 2px var(--s2);
+  font-size: var(--t-base);
+  color: var(--faint);
+}
+
+/* 已完成：墨色 */
+.rail-step.is-done::after {
+  background: var(--ink);
+}
+
+.rail-step.is-done .rail-label {
+  color: var(--ink-soft);
+}
+
+/* 当前：荧光笔划过标签 —— 全站唯一的大胆手势 */
+.rail-step.is-current::after {
+  background: var(--marker);
+}
+
+.rail-step.is-current .rail-label {
+  background: var(--marker);
+  color: var(--ink);
+  font-weight: 600;
+  border-radius: 2px;
+}
+
+/* ---------------------------- 空态 ---------------------------- */
+
+.empty {
+  padding: var(--s8) var(--s5);
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-title {
+  font-size: var(--t-md);
+  color: var(--ink);
+  margin-bottom: var(--s2);
+}
+
+.empty-action {
+  margin-top: var(--s5);
+}
+
+/* ---------------------------- 加载 ---------------------------- */
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------- 进度条 ---------------------------- */
+
+.progress {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--marker);
+  transition: width 240ms ease;
+}
+
+/* ---------------------------- 弹窗 ---------------------------- */
+/* 投影只给真正浮起来的层 */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 32, 43, 0.42);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 9vh var(--s5) var(--s5);
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border-radius: var(--r-surface);
+  box-shadow: var(--shadow-float);
+  animation: rise 160ms ease-out both;
+}
+
+.modal--wide {
+  max-width: 680px;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  padding: var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-title {
+  font-size: var(--t-lg);
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: var(--s5);
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------------------------- 提示 ---------------------------- */
+
+.toast-stack {
+  position: fixed;
+  top: var(--s5);
+  right: var(--s5);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  min-width: 260px;
+  max-width: 400px;
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  border-radius: var(--r-control);
+  box-shadow: var(--shadow-float);
+  font-size: var(--t-base);
+  animation: rise 160ms ease-out both;
+}
+
+.toast--error {
+  border-left-color: var(--danger);
+}
+
+.toast--success {
+  border-left-color: var(--pass);
+}
+
+/* ---------------------------- 雷达图 ---------------------------- */
+
+.radar-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.radar-fallback {
+  color: var(--muted);
+  font-size: var(--t-base);
+}
+
+/* ---------------------------- 保存状态 ---------------------------- */
+
+.save-state {
+  font-size: var(--t-xs);
+  color: var(--faint);
+}
+
+.save-state.is-saving {
+  color: var(--muted);
+}
+
+.save-state.is-saved {
+  color: var(--pass);
+}
+
+.save-state.is-failed {
+  color: var(--danger);
+}
