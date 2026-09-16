@@ -4,20 +4,31 @@
  * 页面模块契约：导出 render(container, params)，可选 destroy()。
  * 路由在切换前必须调用上一页的 destroy —— 评估页持有 SSE 长连接，
  * 不清理会导致连接泄漏、后台仍在推送、甚至重复渲染。
+ *
+ * 页面用**静态注册表**而非动态 import()：模块图保持完全静态，
+ * 既能被单文件打包（standalone.html），也让依赖关系一眼可见。
+ * 在正式 Vite 工程里如需代码分割，把这个注册表换回动态 import 即可。
  */
 
 import * as auth from './auth.js';
 import { toast } from './components/toast.js';
 
 const routes = [
-  { path: '/login', load: () => import('./pages/login.js'), isPublic: true },
-  { path: '/interviews', load: () => import('./pages/interviews.js') },
-  { path: '/interviews/:id/evaluation', load: () => import('./pages/evaluation.js') },
-  { path: '/interviews/:id', load: () => import('./pages/interview-detail.js') },
-  { path: '/positions', load: () => import('./pages/positions.js') },
-  { path: '/questions', load: () => import('./pages/questions.js') },
-  { path: '/users', load: () => import('./pages/users.js'), adminOnly: true },
+  { path: '/login', key: 'login', isPublic: true },
+  { path: '/interviews', key: 'interviews' },
+  { path: '/interviews/:id/evaluation', key: 'evaluation' },
+  { path: '/interviews/:id', key: 'interviewDetail' },
+  { path: '/positions', key: 'positions' },
+  { path: '/questions', key: 'questions' },
+  { path: '/users', key: 'users', adminOnly: true },
 ];
+
+/** 由 main.js 注入。key 与上面的 routes 表对应。 */
+let pages = {};
+
+export function registerPages(map) {
+  pages = map;
+}
 
 export const DEFAULT_ROUTE = '/interviews';
 
@@ -96,17 +107,15 @@ async function render() {
   }
   currentPage = null;
 
-  let module;
-  try {
-    module = await resolved.route.load();
-  } catch (error) {
-    console.error('页面加载失败', error);
+  const page = pages[resolved.route.key];
+  if (!page) {
+    console.error(`页面未注册：${resolved.route.key}`);
     toast.error('页面加载失败，请刷新重试');
     return;
   }
 
-  currentPage = module;
-  await module.render(container, resolved.params);
+  currentPage = page;
+  await page.render(container, resolved.params);
 }
 
 export function navigate(path) {
