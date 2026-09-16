@@ -19,6 +19,10 @@ engine = create_engine(
     pool_pre_ping=True,  # 连接失效时自动重连，避免 MySQL 8h 超时导致的 "server has gone away"
     pool_recycle=3600,
     future=True,
+    # 把会话时区钉死在 UTC：模型里的 server_default=func.now() 走的是 MySQL 的
+    # NOW()，若不同步时区，它会与 Python 侧写入的 datetime.now(UTC) 相差数小时，
+    # 导致同一行的 created_at 与 updated_at 不在同一时间基准上。
+    connect_args={"init_command": "SET time_zone = '+00:00'"},
 )
 
 SessionLocal = sessionmaker(

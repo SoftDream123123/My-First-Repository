@@ -22,8 +22,9 @@ bcrypt>=4.2
 # --- AI Provider（真实实现）---
 httpx>=0.27
 
-# --- SSE 流式评估 ---
-sse-starlette>=2.1
-
 # --- 测试 ---
 pytest>=8.3
+
+# 说明：SSE 使用 Starlette 内置的 StreamingResponse 实现（见 evaluation/stream.py），
+# 未引入 sse-starlette —— 它是 async-only 的，与同步 SQLAlchemy 会话 + 后台线程的
+# 组合不契合；自实现的心跳与事件格式化同样满足 PRD §5.3 ③ 的事件契约。

@@ -1,0 +1,111 @@
+"""evaluation 模块数据模型。"""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.db import Base
+
+# 评分精度：DECIMAL(3,1) —— 定点类型避免浮点误差累积到总分平均值里
+SCORE_PRECISION = (3, 1)
+
+
+class QuestionScore(Base):
+    """逐题评分。"""
+
+    __tablename__ = "question_score"
+    __table_args__ = (
+        UniqueConstraint(
+            "interview_id",
+            "interview_question_id",
+            name="uq_question_score_interview_entry",
+        ),
+        Index("ix_question_score_interview", "interview_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # 冗余 interview_id 是刻意的：「清空某面试全部评分」与「按面试查询」
+    # 是最高频操作，冗余这一列让二者免于联表
+    interview_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("interview.id", ondelete="CASCADE"), nullable=False
+    )
+    interview_question_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("interview_question.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    score: Mapped[float] = mapped_column(Numeric(*SCORE_PRECISION), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - 调试辅助
+        return f"<QuestionScore iq={self.interview_question_id} score={self.score}>"
+
+
+class DimensionScore(Base):
+    """多维评分（供雷达图）。"""
+
+    __tablename__ = "dimension_score"
+    __table_args__ = (
+        UniqueConstraint(
+            "interview_id", "dimension", name="uq_dimension_score_interview_dim"
+        ),
+        Index("ix_dimension_score_interview", "interview_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    interview_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("interview.id", ondelete="CASCADE"), nullable=False
+    )
+    dimension: Mapped[str] = mapped_column(String(50), nullable=False)
+    score: Mapped[float] = mapped_column(Numeric(*SCORE_PRECISION), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - 调试辅助
+        return f"<DimensionScore {self.dimension}={self.score}>"
+
+
+class Report(Base):
+    """汇总报告。一次面试一份。"""
+
+    __tablename__ = "report"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    interview_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("interview.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    overall_score: Mapped[float] = mapped_column(
+        Numeric(*SCORE_PRECISION), nullable=False
+    )
+    conclusion: Mapped[str] = mapped_column(Text, nullable=False)
+    strengths: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    weaknesses: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - 调试辅助
+        return f"<Report interview={self.interview_id} overall={self.overall_score}>"

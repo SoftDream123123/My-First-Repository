@@ -1,5 +1,6 @@
 """interview 模块业务逻辑：出题组装、回答记录、状态机。"""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
@@ -65,6 +66,17 @@ def _assert_transition(current: str, target: str) -> None:
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+@dataclass
+class EvaluationItem:
+    """供 evaluation 使用的一条面试题记录（比 QAPair 多带 id 与 seq）。"""
+
+    interview_question_id: int
+    seq: int
+    dimension: str
+    question: str
+    answer: str | None
 
 
 # ---------------------------- 读取与权限 ----------------------------
@@ -370,25 +382,39 @@ def update_candidate(
 # ------------------- 对 evaluation 的供给契约 -------------------
 
 
-def get_answers_for_evaluation(db: Session, interview_id: int) -> list[QAPair]:
-    """维度与题干取自**快照**；未作答的 answer 为 None（而非空串）。"""
+def get_items_for_evaluation(db: Session, interview_id: int) -> list[EvaluationItem]:
+    """evaluation 读取面试数据的完整契约。
+
+    维度与题干取自**快照**；未作答的 answer 为 None（而非空串）。
+    比 QAPair 多带 interview_question_id 与 seq —— SSE 事件载荷需要它们。
+    """
     entries = repository.list_questions(db, interview_id)
     answers = repository.list_answers(db, interview_id)
     by_entry = {a.interview_question_id: a.content for a in answers}
 
-    pairs: list[QAPair] = []
+    items: list[EvaluationItem] = []
     for entry in entries:
         content = by_entry.get(entry.id)
         if content is not None and content.strip() == "":
-            content = None
-        pairs.append(
-            QAPair(
+            content = None  # 空串表示未作答
+        items.append(
+            EvaluationItem(
+                interview_question_id=entry.id,
+                seq=entry.seq,
                 dimension=entry.dimension_snapshot,
                 question=entry.content_snapshot,
                 answer=content,
             )
         )
-    return pairs
+    return items
+
+
+def get_answers_for_evaluation(db: Session, interview_id: int) -> list[QAPair]:
+    """QAPair 视图 —— 供 ai Provider 使用。"""
+    return [
+        QAPair(dimension=item.dimension, question=item.question, answer=item.answer)
+        for item in get_items_for_evaluation(db, interview_id)
+    ]
 
 
 def get_position_id(db: Session, interview_id: int) -> int:
@@ -402,6 +428,23 @@ def get_evaluation_dimensions(db: Session, interview_id: int) -> list[str]:
     """取岗位**当前**的评估维度 —— 维度是「按什么标准评」，权威定义在岗位。"""
     position = repository.get_position(db, get_position_id(db, interview_id))
     return list(position.evaluation_dimensions) if position else []
+
+
+def begin_evaluation(db: Session, interview_id: int) -> None:
+    """进入评估：completed / evaluated → evaluating。
+
+    幂等 —— 已在 evaluating 则直接返回。这让 evaluate_interview 可以独立调用，
+    而不必依赖调用方先做过状态迁移。
+    """
+    interview = repository.get_by_id(db, interview_id)
+    if interview is None:
+        raise NotFoundError("面试不存在")
+    if interview.status == STATUS_EVALUATING:
+        return
+
+    _assert_transition(interview.status, STATUS_EVALUATING)
+    interview.status = STATUS_EVALUATING
+    db.commit()
 
 
 def transition_to_evaluating(db: Session, interview_id: int) -> None:
