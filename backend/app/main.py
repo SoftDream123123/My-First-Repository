@@ -115,3 +115,10 @@ def _register_routers() -> None:
 
 
 _register_routers()
+
+# 启动期校验 AI Provider 配置（fail fast）：
+# PROVIDER_NAME 取值非法、或选了 openai 却没配 Key，都在此直接失败，
+# 而不是等到第一次调用 AI 才报错。
+from app.ai.factory import validate_provider_config  # noqa: E402
+
+validate_provider_config()
