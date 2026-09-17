@@ -89,6 +89,31 @@ class TestEvaluationPipeline:
         for score in repository.list_question_scores(db, completed_interview.id):
             assert round(float(score.score), 1) == float(score.score)
 
+    def test_dimension_scores_fewer_than_dims_ok(
+        self, db, completed_interview, spy, monkeypatch
+    ):
+        """Provider 只返回部分维度时：按实际写入，不补齐、不报错。
+
+        计划书 §5.4：雷达图按实际维度数渲染，缺的维度不伪造数据。
+        """
+        from app.ai.mock_provider import MockProvider
+
+        class PartialDimensionProvider(MockProvider):
+            def evaluate_dimensions(self, dims, qa_pairs):
+                return super().evaluate_dimensions(dims[:1], qa_pairs)
+
+        monkeypatch.setattr(
+            "app.evaluation.service.get_provider", lambda: PartialDimensionProvider()
+        )
+
+        evaluation_service.evaluate_interview(db, completed_interview.id, spy)
+
+        scores = repository.list_dimension_scores(db, completed_interview.id)
+        assert [s.dimension for s in scores] == [
+            completed_interview.evaluation_dimensions[0]
+        ]
+        assert spy.names.count("dimension") == 1
+
     def test_status_becomes_evaluated(self, db, completed_interview, spy):
         from app.interview import repository as interview_repo
 
@@ -305,6 +330,12 @@ class TestGetReport:
         )
         with pytest.raises(BusinessError):
             evaluation_service.get_report(db, hr_user, detail.id)
+
+    def test_report_nonexistent_interview(self, db, hr_user):
+        from app.core.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError):
+            evaluation_service.get_report(db, hr_user, 999999)
 
     def test_report_other_user_forbidden(self, db, other_hr, completed_interview, spy):
         from app.core.exceptions import ForbiddenError

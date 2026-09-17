@@ -48,10 +48,6 @@ class EvaluationRun:
     started_at: float = field(default_factory=time.time)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def snapshot(self) -> list[tuple[str, dict[str, Any]]]:
-        with self.lock:
-            return list(self.events)
-
 
 _runs: dict[int, EvaluationRun] = {}
 _runs_lock = threading.Lock()
@@ -91,6 +87,26 @@ def _signal_end(run: EvaluationRun) -> None:
         subscriber.put(None)
 
 
+def publish_terminal(
+    run: EvaluationRun, name: str, payload: dict[str, Any], status: str
+) -> None:
+    """终结事件与运行状态必须在**同一把锁内**写入。
+
+    否则 `stream_events` 在锁内原子读取「事件列表 + 状态」时，可能读到
+    「状态已终结、终结事件尚未入列」的组合，于是推出一段**没有终结事件**的
+    截断流 —— 客户端既不报错也收不到 done/error，界面永远停在半截。
+    """
+    with run.lock:
+        run.events.append((name, payload))
+        run.status = status
+        subscribers = list(run.subscribers)
+
+    for subscriber in subscribers:
+        subscriber.put((name, payload))
+
+    _signal_end(run)
+
+
 # ---------------------------- 后台运行器 ----------------------------
 
 
@@ -101,14 +117,12 @@ def _evaluate_in_thread(interview_id: int, run: EvaluationRun) -> None:
         evaluation_service.evaluate_interview(
             db, interview_id, lambda event: publish(run, event.name, event.payload)
         )
-        run.status = RUN_DONE
-        publish(run, "done", {"status": STATUS_EVALUATED})
+        publish_terminal(run, "done", {"status": STATUS_EVALUATED}, RUN_DONE)
     except Exception as exc:  # noqa: BLE001 - 统一转为 error 事件
         logger.exception("面试 %s 评估失败", interview_id)
         db.rollback()
         _rollback_status(interview_id)
-        run.status = RUN_FAILED
-        publish(run, "error", _error_payload(exc))
+        publish_terminal(run, "error", _error_payload(exc), RUN_FAILED)
     finally:
         db.close()
         _signal_end(run)
@@ -252,18 +266,24 @@ def stream_events(interview_id: int) -> Iterator[str]:
         )
         return
 
-    # 1) 重放已推事件
-    for name, payload in run.snapshot():
-        yield format_event(name, payload)
-
-    if run.status in (RUN_DONE, RUN_FAILED):
-        return
-
-    # 2) 订阅后续事件
+    # 1) 「订阅 + 取快照 + 读状态」必须在**同一把锁**内完成。
+    #    若先取快照再订阅，两步之间 publish 的事件既不在快照里、也投递不到
+    #    订阅者 —— 客户端会看到跳号，甚至永远等不到终结事件。
     subscriber: queue.Queue = queue.Queue()
     with run.lock:
-        run.subscribers.append(subscriber)
+        replayed = list(run.events)
+        finished = run.status in (RUN_DONE, RUN_FAILED)
+        if not finished:
+            run.subscribers.append(subscriber)
 
+    for name, payload in replayed:
+        yield format_event(name, payload)
+
+    if finished:
+        # 与 publish_terminal 的原子写入配合：状态已终结 ⇒ 终结事件必在 replayed 中
+        return
+
+    # 2) 转发后续事件（此时已在订阅者名单内，不会漏）
     try:
         while True:
             try:

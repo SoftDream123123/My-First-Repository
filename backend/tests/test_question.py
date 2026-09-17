@@ -381,6 +381,27 @@ class TestSupplyContract:
         candidates = service.list_candidates_for_position(db, None, position.id)
         assert len(candidates) == 1
 
+    def test_list_candidates_includes_ai_source(
+        self, client, hr_headers, db, hr_user, position
+    ):
+        """供给契约不按 source 过滤 —— 手工题与 AI 题都是候选。"""
+        from app.question import service
+
+        _create(client, hr_headers, position.id)  # 一道手工题
+        db.rollback()
+
+        # 建一场面试：AI 补的题会以 source='ai' 落回题库
+        created = client.post(
+            "/api/interviews",
+            json={"position_id": position.id, "candidate_name": "张三"},
+            headers=hr_headers,
+        )
+        assert created.status_code == 201
+        db.rollback()
+
+        candidates = service.list_candidates_for_position(db, hr_user.id, position.id)
+        assert {q.source for q in candidates} == {"bank", "ai"}
+
     def test_bulk_create_from_ai_sets_source_ai(self, db, hr_user, position):
         from app.ai.base import GeneratedQuestion
         from app.question import service

@@ -1,13 +1,14 @@
 """evaluation SSE 层测试：事件序列、重连重放、幂等、失败回退、孤儿自愈。"""
 
-import json
-import time
+import threading
 
 import pytest
 
 from app.evaluation import stream
 from app.interview import service as interview_service
 from app.interview.schemas import InterviewCreate
+from tests.sse_helpers import read_events as _read_events
+from tests.sse_helpers import wait_until_finished as _wait_until_finished
 
 ANSWER = "我在上一家公司负责过一个高并发的订单系统重构项目，通过引入缓存与分库分表，" * 3
 
@@ -35,57 +36,34 @@ def completed_id(db, hr_user, position):
     return detail.id
 
 
-def _read_events(client, url, headers, stop_on=("done", "error")):
-    """读取 SSE 直到终结事件。"""
-    events = []
-    with client.stream("GET", url, headers=headers) as response:
-        assert response.status_code == 200
-        name = None
-        for line in response.iter_lines():
-            if line.startswith("event: "):
-                name = line[len("event: ") :]
-            elif line.startswith("data: "):
-                payload = json.loads(line[len("data: ") :])
-                events.append((name, payload))
-                if name in stop_on:
-                    break
-    return events
-
-
-def _wait_until_finished(interview_id, timeout=15.0):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        run = stream.get_run(interview_id)
-        if run is not None and run.status != stream.RUN_RUNNING:
-            return run
-        time.sleep(0.05)
-    raise AssertionError("评估未在超时内结束")
-
-
 def _trigger(client, headers, interview_id):
     return client.post(f"/api/interviews/{interview_id}/evaluate", headers=headers)
 
 
-class SlowProvider:
-    """每个方法都慢一点 —— 让「运行中」状态可被稳定观察到。"""
+class GatedProvider:
+    """被闸门挡住的 Provider —— 让「运行中」成为**确定**状态而非时间赌注。
 
-    def __init__(self, delegate, delay=0.15):
+    原本用 sleep 拖慢评估来制造观察窗口，那是时间竞态：机器一卡或后台线程被
+    调度延迟，第一次运行就可能在第二次触发前跑完，于是 start_run 创建出新的
+    运行对象，`get_run(id) is run_before` 这条断言随机失败（约 1/10 概率）。
+    改用事件闸门后，测试不放行则运行必然停在 RUNNING，断言完全确定。
+    """
+
+    def __init__(self, delegate, gate: threading.Event):
         self._delegate = delegate
-        self._delay = delay
+        self._gate = gate
 
     def generate_questions(self, *args, **kwargs):
         return self._delegate.generate_questions(*args, **kwargs)
 
     def evaluate_answer(self, *args, **kwargs):
-        time.sleep(self._delay)
+        self._gate.wait(timeout=10)  # 兜底：即使测试异常也不会永久挂住线程
         return self._delegate.evaluate_answer(*args, **kwargs)
 
     def evaluate_dimensions(self, *args, **kwargs):
-        time.sleep(self._delay)
         return self._delegate.evaluate_dimensions(*args, **kwargs)
 
     def summarize_report(self, *args, **kwargs):
-        time.sleep(self._delay)
         return self._delegate.summarize_report(*args, **kwargs)
 
 
@@ -122,20 +100,26 @@ class TestTrigger:
     def test_idempotent_when_running(self, client, hr_headers, completed_id, monkeypatch):
         from app.ai.factory import get_provider
 
+        gate = threading.Event()
         monkeypatch.setattr(
             "app.evaluation.service.get_provider",
-            lambda: SlowProvider(get_provider()),
+            lambda: GatedProvider(get_provider(), gate),
         )
 
-        first = _trigger(client, hr_headers, completed_id)
-        assert first.status_code == 202
+        try:
+            first = _trigger(client, hr_headers, completed_id)
+            assert first.status_code == 202
 
-        run_before = stream.get_run(completed_id)
-        second = _trigger(client, hr_headers, completed_id)
+            run_before = stream.get_run(completed_id)
+            assert run_before is not None and run_before.status == stream.RUN_RUNNING
 
-        assert second.status_code == 202
-        assert second.json()["stream_url"] == first.json()["stream_url"]
-        assert stream.get_run(completed_id) is run_before  # 未创建第二个运行
+            second = _trigger(client, hr_headers, completed_id)
+
+            assert second.status_code == 202
+            assert second.json()["stream_url"] == first.json()["stream_url"]
+            assert stream.get_run(completed_id) is run_before  # 未创建第二个运行
+        finally:
+            gate.set()  # 放行后台线程，避免断言失败时任务悬停
 
         _wait_until_finished(completed_id)
 
@@ -175,6 +159,20 @@ class TestEventStream:
             headers=hr_headers,
         ) as response:
             assert response.headers["content-type"].startswith("text/event-stream")
+
+    def test_stream_headers(self, client, hr_headers, completed_id):
+        """计划书 §4.3：流式响应必须带齐防缓冲头。"""
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+
+        with client.stream(
+            "GET",
+            f"/api/interviews/{completed_id}/evaluation/stream",
+            headers=hr_headers,
+        ) as response:
+            assert response.headers["content-type"].startswith("text/event-stream")
+            assert response.headers["cache-control"] == "no-cache"
+            assert response.headers["x-accel-buffering"] == "no"
 
     def test_requires_auth(self, client, completed_id):
         resp = client.get(f"/api/interviews/{completed_id}/evaluation/stream")
@@ -383,6 +381,71 @@ class TestReportEndpoint:
         assert len(body["dimension_scores"]) == 3
         assert len(body["question_scores"]) == 8
 
+    def test_report_includes_position_name_and_evaluated_at(
+        self, client, hr_headers, completed_id
+    ):
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+
+        body = client.get(
+            f"/api/interviews/{completed_id}/report", headers=hr_headers
+        ).json()
+
+        assert body["candidate_name"] == "张三"
+        assert body["position_name"] == "后端工程师"
+        assert body["evaluated_at"]
+        assert body["strengths"] and body["weaknesses"]
+
+    def test_report_all_scores_in_range(self, client, hr_headers, completed_id):
+        """计划书 §4.3-5：逐题分、维度分、总分均在 0–10 且保留 1 位小数。"""
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+
+        body = client.get(
+            f"/api/interviews/{completed_id}/report", headers=hr_headers
+        ).json()
+
+        scores = [body["overall_score"]]
+        scores += [q["score"] for q in body["question_scores"]]
+        scores += [d["score"] for d in body["dimension_scores"]]
+
+        for score in scores:
+            assert 0.0 <= score <= 10.0
+            assert round(score, 1) == score
+
+    def test_report_uses_snapshot_content(self, client, hr_headers, db, completed_id):
+        """评估后改写题库题干，报告仍显示评估时的快照。"""
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+
+        before = client.get(
+            f"/api/interviews/{completed_id}/report", headers=hr_headers
+        ).json()
+
+        from app.interview import repository as interview_repo
+        from app.question import repository as question_repo
+
+        position_id = interview_repo.get_by_id(db, completed_id).position_id
+        for question in question_repo.list_by_position(db, None, position_id):
+            question.content = "题库题干已被彻底改写"
+        db.commit()
+
+        after = client.get(
+            f"/api/interviews/{completed_id}/report", headers=hr_headers
+        ).json()
+
+        assert [q["content"] for q in after["question_scores"]] == [
+            q["content"] for q in before["question_scores"]
+        ]
+        assert all(
+            "已被彻底改写" not in q["content"] for q in after["question_scores"]
+        )
+
+    def test_report_nonexistent_interview_404(self, client, hr_headers):
+        resp = client.get("/api/interviews/999999/report", headers=hr_headers)
+        assert resp.status_code == 404
+        assert resp.json()["code"] == "NOT_FOUND"
+
     def test_report_before_evaluation_409(self, client, hr_headers, completed_id):
         resp = client.get(f"/api/interviews/{completed_id}/report", headers=hr_headers)
         assert resp.status_code == 409
@@ -411,3 +474,73 @@ def test_disconnect_does_not_stop_task(client, hr_headers, completed_id):
 
     run = _wait_until_finished(completed_id)
     assert run.status == stream.RUN_DONE
+
+
+# ---------------------------- 重放窗口竞态 ----------------------------
+
+
+class TestReplayWindow:
+    """重放窗口不得吞掉终结事件。
+
+    真实竞态：`stream_events` 先 materialize 一份快照、再单独读 `run.status`；
+    而后台线程是**先置 `run.status`、再 publish 终结事件**。若后台恰好在这两步
+    之间完成，生成器会直接 `return`，客户端收到的是一段**没有终结事件**的截断流。
+
+    这违反 module-06 §5.5「done 与 error 互斥且**必有其一**」：前端会表现为
+    评估永远停在半截 —— 既不报错，也不出现「连接已断开 / 重新连接」提示。
+
+    竞态无法靠 sleep 稳定命中，这里用白盒方式把交错**固定**下来：直接操控运行
+    对象，把「取快照 → 后台完成 → 读状态」这个顺序显式写出来。
+    """
+
+    INTERVIEW_ID = 424242  # 仅存在于注册表，不涉及数据库
+
+    @pytest.fixture(autouse=True)
+    def _fast_ping(self, monkeypatch):
+        """把心跳压到毫秒级 —— 流若被截断，测试要快速失败而不是挂住等心跳。"""
+        monkeypatch.setattr(stream, "PING_INTERVAL_SECONDS", 0.05)
+
+    @staticmethod
+    def _drain(generator, limit=10) -> str:
+        """有界读取：流若已截断，不能让测试无限等下去。"""
+        chunks = []
+        for _ in range(limit):
+            try:
+                chunks.append(next(generator))
+            except StopIteration:
+                break
+        return "".join(chunks)
+
+    def test_terminal_event_survives_completion_landing_mid_replay(self):
+        run = stream._create_run(self.INTERVIEW_ID)
+        stream.publish(run, "question", {"seq": 1, "score": 7.0})
+
+        generator = stream.stream_events(self.INTERVIEW_ID)
+        first = next(generator)  # 快照在此刻被取走
+        assert "event: question" in first
+
+        # 后台恰好在「取快照」与「读状态」之间完成
+        run.status = stream.RUN_DONE
+        stream.publish(run, "done", {"status": "evaluated"})
+
+        delivered = first + self._drain(generator)
+        assert "event: done" in delivered, (
+            "运行在重放途中终结时，流仍必须以终结事件收尾，"
+            "否则客户端静默停在半截且无任何提示"
+        )
+
+    def test_events_published_after_replay_are_delivered_exactly_once(self):
+        """订阅与取快照必须原子 —— 否则同一事件会既走重放又走队列，客户端看到重复。"""
+        run = stream._create_run(self.INTERVIEW_ID)
+        stream.publish(run, "question", {"seq": 1, "score": 7.0})
+
+        generator = stream.stream_events(self.INTERVIEW_ID)
+        delivered = next(generator)
+
+        stream.publish(run, "report", {"overall_score": 7.0})
+        stream.publish(run, "done", {"status": "evaluated"})
+        delivered += self._drain(generator)
+
+        assert delivered.count("event: question") == 1
+        assert delivered.count("event: report") == 1
+        assert delivered.count("event: done") == 1

@@ -253,6 +253,30 @@ class TestDeleteProtection:
         assert resp.json()["code"] == "BUSINESS_ERROR"
         assert "无法删除" in resp.json()["message"]
 
+    def test_delete_referenced_by_interview(
+        self, client, hr_headers, db, hr_user, position
+    ):
+        """岗位仅被面试引用（尚无题目）时同样不可删除。
+
+        直接在库里插一场面试 —— 走 HTTP 创建会自动生成 AI 题目落库，
+        那样就分不清是 question 还是 interview 的外键在拦截。
+        """
+        from app.interview import repository as interview_repo
+
+        interview_repo.create_interview(
+            db,
+            position_id=position.id,
+            candidate_name="张三",
+            contact=None,
+            created_by=hr_user.id,
+        )
+        db.commit()
+
+        resp = client.delete(f"/api/positions/{position.id}", headers=hr_headers)
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+        assert "无法删除" in resp.json()["message"]
+
     def test_delete_after_question_removed(self, client, hr_headers, position):
         question_id = client.post(
             "/api/questions",

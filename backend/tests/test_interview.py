@@ -435,6 +435,69 @@ class TestStateMachineServiceLevel:
             service.complete_interview(db, owner, interview.id)
 
 
+class TestIllegalTransitionsOverHttp:
+    """计划书 §5.4.3 的「操作矩阵」在端点层逐格成立。
+
+    service 层已由 test_state_machine_matrix.py 覆盖全矩阵；这里补的是
+    「端点确实把这些非法操作挡住了」—— 两者缺一不可。
+    """
+
+    @pytest.fixture
+    def ongoing_row(self, client, hr_headers, db, bank):
+        """绕过 HTTP 取到 ORM 对象，便于直接推进状态。"""
+        detail = _create_interview(client, hr_headers, bank.id).json()
+        db.rollback()
+        from app.interview import repository
+
+        return repository.get_by_id(db, detail["id"])
+
+    def test_save_answer_when_evaluating_rejected(
+        self, client, hr_headers, db, ongoing_row
+    ):
+        from app.interview import repository, service
+
+        _complete(db, ongoing_row)
+        service.transition_to_evaluating(db, ongoing_row.id)
+
+        entry_id = repository.list_questions(db, ongoing_row.id)[0].id
+        resp = client.post(
+            f"/api/interviews/{ongoing_row.id}/answers",
+            json={"interview_question_id": entry_id, "content": "评估中修改的回答"},
+            headers=hr_headers,
+        )
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+
+    def test_complete_from_evaluated_rejected(
+        self, client, hr_headers, db, ongoing_row
+    ):
+        from app.interview import service
+
+        _complete(db, ongoing_row)
+        service.transition_to_evaluating(db, ongoing_row.id)
+        service.transition_to_evaluated(db, ongoing_row.id)
+
+        resp = client.post(
+            f"/api/interviews/{ongoing_row.id}/complete", headers=hr_headers
+        )
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+
+    def test_rollback_from_evaluating_rejected(
+        self, client, hr_headers, db, ongoing_row
+    ):
+        from app.interview import service
+
+        _complete(db, ongoing_row)
+        service.transition_to_evaluating(db, ongoing_row.id)
+
+        resp = client.post(
+            f"/api/interviews/{ongoing_row.id}/rollback", headers=hr_headers
+        )
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+
+
 # --------------------------- 候选人信息 ---------------------------
 
 
