@@ -5,7 +5,8 @@
  * 既能让单文件打包工作，也让"这个应用由哪些页面组成"一眼可见。
  */
 
-import { isLive, setUnauthorizedHandler } from './api.js';
+import { setUnauthorizedHandler } from './api.js';
+import * as auth from './auth.js';
 import { registerPages, start } from './router.js';
 import { toast } from './components/toast.js';
 
@@ -38,13 +39,22 @@ if (!app) {
   throw new Error('找不到挂载点 #app');
 }
 
-start(app);
-
-// 原型模式下给个明确提示，避免误以为已经接上后端
-if (!isLive()) {
-  console.info(
-    '%c原型模式%c 数据来自内存 mock。接真实后端：访问任意页面时加 ?live=1，或执行 localStorage.setItem("prototype.live","1")',
-    'background:#f2c744;color:#16202b;padding:2px 6px;border-radius:3px;font-weight:600',
-    'color:#5e6c7a',
-  );
+/**
+ * 启动前刷新一次用户信息（module-07 §4.2）。
+ *
+ * 角色不缓存在 JWT 里，后端每次请求都回查数据库 —— 所以被提升为 admin 后
+ * 无需重新登录，这里刷新后侧边栏立刻出现「用户管理」。
+ * 失败不阻塞启动：401 已由上面的统一处理器接管，其余错误先用缓存的信息渲染。
+ */
+async function boot() {
+  if (auth.isLoggedIn()) {
+    try {
+      await auth.refreshUser();
+    } catch {
+      /* 交给统一 401 处理；其它错误不阻塞 */
+    }
+  }
+  start(app);
 }
+
+boot();

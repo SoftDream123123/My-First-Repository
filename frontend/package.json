@@ -1,0 +1,21 @@
+{
+  "name": "ai-interview-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI 智能面试助手 · HR 工作台前端（原生 HTML/CSS/JS + Vite，无 UI 框架、无图表库）",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

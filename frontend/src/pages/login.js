@@ -72,7 +72,6 @@ function buildForm(onSubmit) {
     id: 'login-username',
     name: 'username',
     autocomplete: 'username',
-    value: 'admin',
   });
 
   const password = el('input', {
@@ -81,7 +80,6 @@ function buildForm(onSubmit) {
     name: 'password',
     type: 'password',
     autocomplete: 'current-password',
-    value: 'admin12345',
   });
 
   const submit = el('button', {
@@ -123,7 +121,6 @@ function buildForm(onSubmit) {
     ),
 
     submit,
-    el('p', { class: 'hint', style: 'margin-top:16px' }, '原型演示账号：admin / admin12345'),
   );
 
   return form;

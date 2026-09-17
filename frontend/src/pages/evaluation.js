@@ -8,8 +8,7 @@
 
 import { el, mount, clear } from '../dom.js';
 import * as api from '../api.js';
-import { buildStreamEvents } from '../mock.js';
-import { isLive, mockConnect, sseConnect } from '../sse.js';
+import { sseConnect } from '../sse.js';
 import { toast } from '../components/toast.js';
 import { drawRadar } from '../components/radar.js';
 import {
@@ -82,6 +81,8 @@ export async function render(container, params) {
     report: null,
     errorMessage: '',
     total: detail.question_count,
+    // 默认取文档约定的固定路径；触发评估后以服务端返回的 stream_url 为准
+    streamUrl: `/api/interviews/${interviewId}/evaluation/stream`,
   };
 
   /* ------------------------------ 容器 ------------------------------ */
@@ -490,28 +491,15 @@ export async function render(container, params) {
       },
     };
 
-    if (isLive()) {
-      connection = sseConnect(`/api/interviews/${interviewId}/evaluation/stream`, handlers);
-    } else {
-      // 原型：已是"已评估"的面试瞬间重放（对应后端从库合成），
-      // 正在评估中的才按节奏推，这样两种真实情形都能被看到。
-      const events = buildStreamEvents(interviewId);
-      const instant = detail.status === 'evaluated';
-      connection = instant
-        ? replayInstantly(events, handlers)
-        : mockConnect(events, handlers);
-    }
-  }
-
-  function replayInstantly(events, handlers) {
-    events.forEach(([name, data]) => handlers.onEvent(name, data));
-    handlers.onClose();
-    return { close() {}, isOpen: () => false };
+    connection = sseConnect(state.streamUrl, handlers);
   }
 
   async function retry() {
     try {
-      await api.post(`/interviews/${interviewId}/evaluate`);
+      const run = await api.post(`/interviews/${interviewId}/evaluate`);
+      // 服务端是 stream_url 的权威来源（幂等时还会返回同一个地址）
+      if (run?.stream_url) state.streamUrl = run.stream_url;
+
       state.phase = 'connecting';
       state.questions = [];
       state.dimensions = [];

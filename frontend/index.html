@@ -6,58 +6,15 @@
   <title>面试助手 · HR 工作台</title>
 
   <!-- 仅 PC 端（PRD §2）。离线环境不加载外部字体，
-       排印的个性来自字号比例、行距与衬线/无衬线的分工，而非字体族。 -->
-
-  <link rel="stylesheet" href="./src/styles/tokens.css">
-  <link rel="stylesheet" href="./src/styles/base.css">
-  <link rel="stylesheet" href="./src/styles/components.css">
-  <link rel="stylesheet" href="./src/styles/pages.css">
+       排印的个性来自字号比例、行距与衬线/无衬线的分工，而非字体族。
+       顺序即层叠顺序：令牌 → 基础 → 组件 → 页面。 -->
+  <link rel="stylesheet" href="/src/styles/tokens.css">
+  <link rel="stylesheet" href="/src/styles/base.css">
+  <link rel="stylesheet" href="/src/styles/components.css">
+  <link rel="stylesheet" href="/src/styles/pages.css">
 </head>
 <body>
   <div id="app"></div>
-
-  <!--
-    这段是普通脚本（不是模块），因此在 file:// 下也能执行。
-    模块脚本在 file:// 协议下会被 CORS 拒绝加载，页面会是一片空白 ——
-    与其让人对着空白猜原因，不如直接说清楚该怎么办。
-  -->
-  <script>
-    if (location.protocol === 'file:') {
-      var app = document.getElementById('app');
-      var box = document.createElement('div');
-      box.className = 'empty';
-      box.style.cssText = 'max-width:640px;margin:12vh auto;text-align:left;';
-
-      var title = document.createElement('p');
-      title.className = 'empty-title';
-      title.textContent = '这个页面需要在服务器下打开';
-      box.appendChild(title);
-
-      var why = document.createElement('p');
-      why.textContent =
-        'index.html 用的是 ES 模块，浏览器在 file:// 协议下会拒绝加载它们。两种打开方式：';
-      box.appendChild(why);
-
-      var option1 = document.createElement('p');
-      option1.style.marginTop = '20px';
-      option1.textContent = '① 直接双击同目录下的 standalone.html（单文件版本，无需服务器）';
-      box.appendChild(option1);
-
-      var option2 = document.createElement('p');
-      option2.style.marginTop = '8px';
-      option2.textContent = '② 或在本目录执行 python -m http.server 5173，再访问 http://127.0.0.1:5173';
-      box.appendChild(option2);
-
-      var back = document.createElement('p');
-      back.className = 'hint';
-      back.style.marginTop = '24px';
-      back.textContent = 'standalone.html 由 tools/build-standalone.py 生成，源码改动后请重新运行该脚本。';
-      box.appendChild(back);
-
-      app.replaceChildren(box);
-    }
-  </script>
-
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

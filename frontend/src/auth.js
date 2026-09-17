@@ -3,48 +3,33 @@
  *
  * 用 localStorage：刷新与跨标签保持登录，实现最简单。
  * 已声明的风险 —— localStorage 里的 token 可被 XSS 读取；本设计通过
- * "界面无 HTML 注入点 + 全部 textContent 渲染" 缓解（见 dom.js）。
+ * 「界面无 HTML 注入点 + 全部 textContent 渲染」缓解（见 dom.js）。
+ * 若将来面向公网，应迁移到 httpOnly Cookie + CSRF 防护。
  */
 
 import * as api from './api.js';
+import * as session from './session.js';
 
-const TOKEN_KEY = 'prototype.token';
-const USER_KEY = 'prototype.user';
-
-export function saveToken(token, user) {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function getUser() {
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+export const saveToken = session.save;
+export const getToken = session.getToken;
+export const getUser = session.getUser;
 
 export function isLoggedIn() {
-  return Boolean(getToken());
+  return Boolean(session.getToken());
 }
 
 export function isAdmin() {
-  return getUser()?.role === 'admin';
+  return session.getUser()?.role === 'admin';
 }
 
 export function logout() {
-  api.clearToken();
+  session.clear();
   location.hash = '#/login';
 }
 
 /** 刷新用户信息，保证角色是最新的（管理员改角色后立即生效）。 */
 export async function refreshUser() {
   const user = await api.get('/auth/me');
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  session.setUser(user);
   return user;
 }

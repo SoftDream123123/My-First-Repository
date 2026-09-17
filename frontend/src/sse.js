@@ -5,15 +5,16 @@
  * 完全依赖 Authorization: Bearer。把 JWT 放进 query string 会让令牌进入
  * 服务器访问日志、代理日志与浏览器历史 —— 这是可以避免的泄露面。
  *
- * 解析逻辑抽成纯函数，便于单测（§8.2），也便于 mock 模式复用。
+ * 解析逻辑抽成纯函数（splitBlocks / parseEventBlock / parseChunk），
+ * 因此跨块缓冲这类最易错的逻辑可以脱离 ReadableStream 直接单测（§8.2）。
  */
 
-import { isLive } from './api.js';
+import { clear, getToken } from './session.js';
 
 const TERMINAL_EVENTS = new Set(['done', 'error']);
 
 /**
- * 纯函数：把累积的缓冲切成完整事件块，返回 [事件块, 剩余缓冲]。
+ * 纯函数：把缓冲切成完整事件块，返回 [事件块, 剩余缓冲]。
  *
  * 跨块缓冲是最容易写错的地方 —— 尾部不完整时必须原样保留，
  * 与下一个 chunk 拼接后再切分。
@@ -69,12 +70,31 @@ export function parseEventBlock(block) {
   return { name, data };
 }
 
+/**
+ * 纯函数：把新到的 chunk 并入缓冲，产出**已经完整**的事件。
+ *
+ * 返回 [events, remaining] —— remaining 是尾部尚未闭合的部分，
+ * 必须原样交给下一次调用，否则跨块的事件会丢。
+ * sseConnect 的读取循环就是靠它保持"缓冲在循环外、解析在纯函数里"。
+ */
+export function parseChunk(buffer, chunk) {
+  const [blocks, rest] = splitBlocks(buffer + chunk);
+  const events = [];
+
+  for (const block of blocks) {
+    const event = parseEventBlock(block);
+    if (event) events.push(event);
+  }
+
+  return [events, rest];
+}
+
 /** 建连。返回 { close, isOpen }。 */
 export function sseConnect(path, handlers) {
   const controller = new AbortController();
   let open = true;
 
-  const token = localStorage.getItem('prototype.token');
+  const token = getToken();
 
   fetch(path, {
     headers: {
@@ -85,8 +105,7 @@ export function sseConnect(path, handlers) {
   })
     .then(async (response) => {
       if (response.status === 401) {
-        localStorage.removeItem('prototype.token');
-        localStorage.removeItem('prototype.user');
+        clear();
         if (handlers.onUnauthorized) handlers.onUnauthorized();
         return;
       }
@@ -106,13 +125,10 @@ export function sseConnect(path, handlers) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const [blocks, rest] = splitBlocks(buffer);
+        const [events, rest] = parseChunk(buffer, decoder.decode(value, { stream: true }));
         buffer = rest;
 
-        for (const block of blocks) {
-          const event = parseEventBlock(block);
-          if (!event) continue;
+        for (const event of events) {
           handlers.onEvent?.(event.name, event.data);
           if (TERMINAL_EVENTS.has(event.name)) {
             open = false;
@@ -140,45 +156,3 @@ export function sseConnect(path, handlers) {
     isOpen: () => open,
   };
 }
-
-/**
- * 原型用的模拟事件流：按真实节奏逐条抛出事件，
- * 让"逐题出现 / 雷达逐维度生长"这些交互可以被真实看到。
- */
-export function mockConnect(events, handlers) {
-  let cancelled = false;
-  let timer = null;
-
-  const step = (index) => {
-    if (cancelled) return;
-
-    if (index >= events.length) {
-      handlers.onClose?.();
-      return;
-    }
-
-    const [name, data] = events[index];
-    handlers.onEvent?.(name, data);
-
-    if (TERMINAL_EVENTS.has(name)) {
-      handlers.onClose?.();
-      return;
-    }
-
-    // 逐题事件快一些，维度与报告慢一些，读起来更像"在想"
-    const gap = name === 'question' ? 420 : name === 'dimension' ? 620 : 700;
-    timer = setTimeout(() => step(index + 1), gap);
-  };
-
-  timer = setTimeout(() => step(0), 450);
-
-  return {
-    close() {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    },
-    isOpen: () => !cancelled,
-  };
-}
-
-export { isLive };
