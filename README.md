@@ -5,8 +5,27 @@
 - **设计文档**：[docs/superpowers/mvp/](docs/superpowers/mvp/)（PRD）
 - **模块计划书**：[docs/superpowers/specs/](docs/superpowers/specs/)（7 个模块的设计与验收标准）
 
-> **当前实现范围**：**后端**（FastAPI + MySQL）。前端（Vite + 原生 JS）尚未实现，
-> 详见 [docs/superpowers/specs/2026-09-15-module-07-frontend-plan.md](docs/superpowers/specs/2026-09-15-module-07-frontend-plan.md)。
+---
+
+## 快速开始
+
+**只想运行 / 演示：双击根目录的 [`一键启动.bat`](一键启动.bat)。**
+
+它会构建前端、检查数据库、启动后端，然后自动打开 <http://127.0.0.1:8000>。
+登录：`admin` / `admin12345`。
+
+失败时脚本会把原因和解决办法直接打印出来。完整的分步说明与排查表见
+[如何打开项目.md](如何打开项目.md)。
+
+> ⚠️ **不要双击 `frontend/index.html`**，也不要双击 `frontend/dist/index.html`
+> —— 它们是 ES 模块，浏览器在 `file://` 下会用 CORS 策略拒绝加载，双击必然白屏。
+> 必须经由 `http://` 访问（上面的一键启动做的就是这件事）。
+>
+> 例外的只有 `frontend/standalone.html`：它是单文件版本，双击确实能开，
+> 但数据是写死的假数据、界面是 2026-09-16 的冻结快照，不再更新 ——
+> 只适合给人扫一眼设计，不能用来演示真实功能。
+
+下面的内容是给要改这个项目的人看的。
 
 ---
 
@@ -14,8 +33,9 @@
 
 | 项 | 选择 |
 |---|---|
-| 架构 | 前后端分离，后端纯 API（不渲染页面） |
+| 架构 | 前后端分离；开发期前端经 Vite 代理，演示期前端由后端托管（同源，无 CORS） |
 | 后端 | Python 3.11+ / FastAPI |
+| 前端 | Vite 8 + 原生 HTML/CSS/JS（无 UI 框架、无图表库、无状态管理库） |
 | 数据库 | MySQL 8.0+ |
 | 分层 | `router → service → repository → MySQL`，严格单向依赖 |
 | 模块 | 七个独立 package：`core` / `auth` / `position` / `question` / `interview` / `evaluation` / `ai` |
@@ -32,7 +52,13 @@
 
 ---
 
-## 后端启动
+## 手动启动
+
+> 日常运行请直接双击 [`一键启动.bat`](一键启动.bat)，本节是它背后做的事。
+> **所有命令都必须在所示目录下执行** —— 在项目根目录跑 `uvicorn` 会得到
+> `ModuleNotFoundError: No module named 'app'`（详见 [如何打开项目.md](如何打开项目.md)）。
+
+### 后端
 
 ```bash
 cd backend
@@ -82,6 +108,33 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 > `seed_admin.py` 使用的默认密码（`admin12345`）仅供本地开发。
 > **生产环境必须在 `.env` 中修改 `ADMIN_PASSWORD` 后重建账号**。
 
+### 前端
+
+后端启动后会**自动托管前端构建产物**（`frontend/dist` 存在时），
+所以 <http://127.0.0.1:8000> 直接就是完整应用，不需要再开一个服务。
+
+```bash
+cd frontend
+npm install
+npm run build      # 产出 dist/，后端下次启动即可托管
+```
+
+**要频繁改前端**时用开发服务器（保存即刷新，但要多开一个进程）：
+
+```bash
+cd frontend
+npm run dev        # → http://localhost:5173，/api 被代理到 8000
+```
+
+| | 一键启动 / 后端托管 | `npm run dev` |
+|---|---|---|
+| 地址 | <http://127.0.0.1:8000> | <http://localhost:5173> |
+| 进程数 | 1 | 2（后端 + Vite） |
+| 改了前端代码 | 需重新 `npm run build` | 自动刷新 |
+| 适合 | 演示、给别人看 | 自己写代码 |
+
+前端的设计决策见 [frontend/README.md](frontend/README.md)。
+
 ---
 
 ## AI Provider 切换
@@ -119,7 +172,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 
 ```bash
 cd backend
-python -m pytest                       # 全部（344 项）
+python -m pytest                       # 全部（462 项）
 python -m pytest tests/test_interview.py -v
 ```
 
@@ -239,7 +292,24 @@ backend/
   scripts/
     seed_admin.py        # 创建初始管理员（幂等）
     smoke_e2e.py         # 端到端冒烟
-  tests/                 # 344 项测试
+  tests/                 # 462 项测试
+
+frontend/
+  index.html             # Vite 入口（ES 模块 —— 只能经 http:// 访问，不能双击）
+  vite.config.js         # /api 代理 + Vitest 配置
+  src/
+    api.js               # HTTP 封装（JWT 注入 / 统一错误 / 401 / 204）
+    sse.js               # SSE 客户端 + 纯函数解析器
+    router.js            # hash 路由 + 导航守卫
+    components/          # shell（外壳 + 状态轨）· radar · modal · toast
+    pages/               # 7 个页面
+    styles/              # tokens / base / components / pages
+  dist/                  # 构建产物，由后端托管（gitignore）
+  __tests__/             # 25 项单测：SSE 分帧解析 · 雷达图几何
+
+一键启动.bat             # 双击这个 —— 构建前端 → 查库 → 起后端 → 开浏览器
+scripts/start.ps1        # 上面那个 bat 的实际逻辑
+如何打开项目.md           # 分步说明与排查表
 ```
 
 ### 面试状态机
@@ -271,7 +341,7 @@ draft → ongoing → completed → evaluating → evaluated
 | 限制 | 说明 |
 |---|---|
 | **单进程部署** | SSE 运行注册表是进程内的，必须 `--workers 1` |
-| **无前端** | 本次仅实现后端；前端计划书已就绪（V1.1 交付） |
+| **前端构建需手动触发** | `npm run build` 后由后端托管；未接入 CI |
 | **无 JWT 刷新** | 过期后需重新登录（有效期默认 12 小时） |
 | **评估不留历史版本** | 同一面试只保留最近一次评估结果 |
 | **列表不分页** | 内部系统数据量小 |

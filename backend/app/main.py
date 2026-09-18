@@ -1,11 +1,13 @@
 """FastAPI 应用装配：实例、CORS、全局异常处理器、路由注册、健康检查。"""
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.exceptions import AppError
@@ -122,3 +124,32 @@ _register_routers()
 from app.ai.factory import validate_provider_config  # noqa: E402
 
 validate_provider_config()
+
+
+# --------------------------- 前端静态托管（可选） ---------------------------
+# 前端构建产物 frontend/dist 存在时，由后端一并托管，于是**一个进程、一个端口**
+# 就能打开完整应用 —— 根目录的「一键启动.bat」依赖这一点。
+#
+# 不存在时静默跳过：后端仍可单独作为纯 API 运行（pytest / smoke_e2e / 前端 dev
+# 服务器经 Vite 代理联调都不受影响）。
+#
+# 为什么只挂 /assets 与 / 两个入口，而不是 StaticFiles 挂在 "/"：
+# Starlette 按注册顺序匹配，Mount("/") 会兜住一切路径，此后**再动态注册的路由
+# 都会被它抢先吞掉**（测试套件里 @app.get("/api/_test_unhandled") 就是这么失效的，
+# 表现为 404 而非预期的 500）。前端是 hash 路由，服务端实际只需要这两个入口，
+# 精确挂载既不牺牲功能，也不改变全局路由语义。
+_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+_INDEX_HTML = _DIST_DIR / "index.html"
+
+if _INDEX_HTML.is_file():
+    _assets_dir = _DIST_DIR / "assets"
+    if _assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="frontend-assets")
+
+    @app.get("/", include_in_schema=False)
+    async def serve_frontend_index() -> FileResponse:
+        return FileResponse(_INDEX_HTML)
+
+    logger.info("前端静态托管已启用：%s", _DIST_DIR)
+else:
+    logger.info("未找到 %s，跳过前端托管（纯 API 模式）", _INDEX_HTML)
