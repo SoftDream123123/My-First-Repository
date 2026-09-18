@@ -46,7 +46,8 @@ python scripts/seed_admin.py
 > `--workers 1` 是硬性要求：评估的 SSE 运行注册表是进程内的，多 worker 会让
 > `POST /evaluate` 与 `GET /evaluation/stream` 落在不同进程而无法衔接。
 
-接口契约见 [`docs/api/API接口文档.md`](../docs/api/API接口文档.md)。
+接口契约见 [`docs/apis/API接口文档.md`](../docs/apis/API接口文档.md)（含每个接口的
+提交方式 / URL / 参数 / 响应 / 示例，以及前端 SSE 与错误处理的完整实现）。
 
 ---
 

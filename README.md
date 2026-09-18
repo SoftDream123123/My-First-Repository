@@ -198,6 +198,10 @@ python scripts/smoke_e2e.py
 
 ## API 概览
 
+> 📖 **完整接口文档（前端对接版）**：[`docs/apis/API接口文档.md`](docs/apis/API接口文档.md)
+> —— 26 个接口的提交方式 / URL / 参数 / 响应 / 示例，以及 SSE 与错误处理的实现代码。
+> 本节只是速查表。
+
 统一前缀 `/api`，除登录外均需 `Authorization: Bearer <token>`。
 
 ### 认证与用户
