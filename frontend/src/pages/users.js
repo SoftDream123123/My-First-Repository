@@ -9,7 +9,7 @@ import { el, mount } from '../dom.js';
 import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
-import { openModal } from '../components/modal.js';
+import { confirmModal, openModal } from '../components/modal.js';
 import {
   contextTitle,
   createShell,
@@ -27,13 +27,18 @@ function openCreateModal(onSaved) {
     maxlength: '50',
     autocomplete: 'off',
   });
+  const usernameError = el('p', { class: 'field-error', hidden: true });
 
+  // maxlength 与后端的 8–128 对齐：超长输入在浏览器里就被挡住，
+  // 而不是提交后才拿一个「请求参数不合法」——后者说不清是哪个字段。
   const passwordInput = el('input', {
     class: 'input',
     id: 'user-password',
     type: 'password',
+    maxlength: '128',
     autocomplete: 'new-password',
   });
+  const passwordError = el('p', { class: 'field-error', hidden: true });
 
   const roleSelect = el(
     'select',
@@ -41,6 +46,38 @@ function openCreateModal(onSaved) {
     el('option', { value: 'hr', text: 'HR（只能看到自己创建的数据）' }),
     el('option', { value: 'admin', text: '管理员（可看全部数据、管理用户）' }),
   );
+  const roleError = el('p', { class: 'field-error', hidden: true });
+
+  // 字段名 → 错误节点。前端本地校验与后端 400 的 detail.fields 走同一条展示路径，
+  // 所以「哪个字段错了」这件事只有一个出口（API 文档 §12.1）。
+  const errorNodes = { username: usernameError, password: passwordError, role: roleError };
+
+  function clearErrors() {
+    for (const node of Object.values(errorNodes)) {
+      node.textContent = '';
+      node.hidden = true;
+    }
+  }
+
+  function showError(field, message) {
+    const node = errorNodes[field];
+    if (!node) return false;
+    node.textContent = message;
+    node.hidden = false;
+    return true;
+  }
+
+  /** 后端 400 → 落到具体表单项。命中返回 true，调用方就不再弹通用 toast。 */
+  function applyServerFieldErrors(error) {
+    const fields = error.detail?.fields;
+    if (error.code !== 'VALIDATION_ERROR' || !Array.isArray(fields)) return false;
+
+    let matched = false;
+    for (const item of fields) {
+      if (showError(item.field, item.message)) matched = true;
+    }
+    return matched;
+  }
 
   const body = el(
     'div',
@@ -50,19 +87,22 @@ function openCreateModal(onSaved) {
       { class: 'field' },
       el('label', { class: 'field-label', for: 'user-username', text: '用户名' }),
       usernameInput,
+      usernameError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'user-password', text: '初始密码' }),
       passwordInput,
-      el('p', { class: 'field-note', text: '至少 8 位。创建后请让本人尽快修改。' }),
+      el('p', { class: 'field-note', text: '8–128 位。创建后请让本人尽快修改。' }),
+      passwordError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'user-role', text: '角色' }),
       roleSelect,
+      roleError,
     ),
   );
 
@@ -78,13 +118,16 @@ function openCreateModal(onSaved) {
   });
 
   submit.addEventListener('click', async () => {
-    if (!usernameInput.value.trim()) {
-      toast.error('请填写用户名');
+    clearErrors();
+
+    const username = usernameInput.value.trim();
+    if (!username) {
+      showError('username', '请填写用户名');
       usernameInput.focus();
       return;
     }
     if (passwordInput.value.length < 8) {
-      toast.error('密码长度不能少于 8 位');
+      showError('password', '密码长度不能少于 8 位');
       passwordInput.focus();
       return;
     }
@@ -92,7 +135,7 @@ function openCreateModal(onSaved) {
     handle.setBusy(true);
     try {
       await api.post('/users', {
-        username: usernameInput.value.trim(),
+        username,
         password: passwordInput.value,
         role: roleSelect.value,
       });
@@ -101,7 +144,8 @@ function openCreateModal(onSaved) {
       onSaved();
     } catch (error) {
       handle.setBusy(false);
-      toast.error(error.message);
+      // 400 定位到字段；409（用户名已存在）等仍用后端文案提示
+      if (!applyServerFieldErrors(error)) toast.error(error.message);
     }
   });
 }
@@ -129,6 +173,44 @@ export async function render(container) {
     } catch (error) {
       toast.error(error.message);
     }
+  }
+
+  /**
+   * 降级与禁用都先二次确认 —— 二者都会**立刻拿走对方已有的东西**：
+   * 降级后对方看不到他人的数据，禁用则当场把对方踢下线。误点的代价
+   * 由被操作的人承担，所以照项目里删除岗位 / 题目的做法先问一句。
+   * 升为管理员与启用不确认：它们是给回权限，不拿走任何东西。
+   */
+  async function changeRole(user) {
+    const toHr = user.role === 'admin';
+
+    if (toHr) {
+      const ok = await confirmModal({
+        title: `将「${user.username}」降为 HR？`,
+        message: '降级后对方将只能看到自己创建的数据，左侧「用户管理」入口也会消失。随时可以再升回来。',
+        confirmLabel: '降为 HR',
+      });
+      if (!ok) return;
+    }
+
+    mutate(user.id, { role: toHr ? 'hr' : 'admin' }, '角色已更新');
+  }
+
+  async function toggleActive(user) {
+    if (user.is_active) {
+      const ok = await confirmModal({
+        title: `禁用「${user.username}」？`,
+        message: '禁用后对方会立即被登出（已签发的登录态同时失效），在重新启用前无法登录。',
+        confirmLabel: '禁用',
+      });
+      if (!ok) return;
+    }
+
+    mutate(
+      user.id,
+      { is_active: !user.is_active },
+      user.is_active ? '账号已禁用' : '账号已启用',
+    );
   }
 
   function buildRow(user) {
@@ -166,24 +248,14 @@ export async function render(container) {
           text: user.role === 'admin' ? '降为 HR' : '升为管理员',
           disabled: isSelf,
           title: isSelf ? '不能修改自己的角色' : '',
-          onClick: () =>
-            mutate(
-              user.id,
-              { role: user.role === 'admin' ? 'hr' : 'admin' },
-              '角色已更新',
-            ),
+          onClick: () => changeRole(user),
         }),
         el('button', {
           class: 'btn btn--quiet btn--sm',
           text: user.is_active ? '禁用' : '启用',
           disabled: isSelf,
           title: isSelf ? '不能禁用自己的账号' : '',
-          onClick: () =>
-            mutate(
-              user.id,
-              { is_active: !user.is_active },
-              user.is_active ? '账号已禁用' : '账号已启用',
-            ),
+          onClick: () => toggleActive(user),
         }),
       ),
     );

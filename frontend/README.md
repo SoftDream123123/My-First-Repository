@@ -109,7 +109,8 @@ frontend/
     styles/                   tokens / base / components / pages
     __tests__/                sse.test.js · radar.test.js
   standalone.html             原型期冻结的单文件快照（见下）
-  .screenshots/               设计记录（8 张）
+  mock/                       Mock 联调测试（浏览器端，见「单测」一节）
+  .screenshots/               设计记录（9 张）
 ```
 
 ### 关于 `standalone.html`
@@ -149,7 +150,34 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | `src/__tests__/sse.test.js` | 分帧、**跨块缓冲**、多行 data、心跳注释、畸形 JSON、逐字节喂入 |
 | `src/__tests__/radar.test.js` | 首顶点在正上方、顶点均分、半径与分数成正比、0 分落圆心、满分对齐 radius、维度 < 3 降级、越界夹取 |
 
-页面逻辑（"调 API + 重渲染"）不引入 DOM 测试框架，改用 module-07 §8.4 的手工联调清单覆盖。
+页面逻辑（"调 API + 重渲染"）不引入 DOM 测试框架，改用下面的 Mock 联调测试
+覆盖（module-07 §8.4 的手工联调清单仍是最后一道关）。
+
+### Mock 联调测试（浏览器端）
+
+```bash
+npm run dev
+# 打开 http://localhost:5173/mock/users-harness.html
+```
+
+`mock/users-harness.js` 拦截 `window.fetch` 当假后端，然后**驱动页面里的真实代码**
+（`src/pages/users.js`），把每条断言的结果渲染到右上角面板，并写进 `document.title`
+（`MOCK-ALL-PASS 45` / `MOCK-FAIL n/m`），因此 headless 浏览器也能直接抓结果：
+
+```bash
+msedge --headless=new --virtual-time-budget=20000 \
+  --dump-dom http://localhost:5173/mock/users-harness.html
+```
+
+为什么不用 jsdom：module-07 §8.1 明确不引入 DOM 测试框架，而本模块的价值恰恰在
+DOM 行为（二次确认、字段级报错、按钮禁用）。这个做法不新增依赖，又比手工点一遍可靠。
+
+`mock/` 不参与 `npm run build`，不会进入 `dist/`。
+
+> 它抓到的第一个真 bug 不在用户模块，而在 `components/modal.js`：
+> `close()` 在 `busy` 时直接 return，而没有任何地方把 `busy` 复位，
+> 于是**四个页面的创建/编辑弹窗在提交成功后都关不掉**（按钮还被禁用了，只能刷新）。
+> 已修：`close()` 不再受 `busy` 影响，只有用户发起的关闭（Esc / 点遮罩）才挡。
 
 ---
 

@@ -8,21 +8,36 @@ import { el, mount } from '../dom.js';
 /**
  * 打开弹窗。
  * 返回 { close, setBusy, root }。
+ *
+ * 关于 `busy` 与 `close` 的分工（这里踩过一次坑）：
+ * `setBusy(true)` 会禁用弹窗内所有控件，用于「提交中」防止重复提交。
+ * 但**返回出去的 `close()` 不受 busy 影响** —— 调用方在请求成功后必须能关掉弹窗。
+ * 早期版本让 close() 在 busy 时直接 return，于是「提交中锁住」变成了
+ * 「提交成功后也关不掉」：弹窗连同被禁用的按钮一起卡在页面上，只能刷新。
+ * 四个页面（用户 / 岗位 / 题库 / 面试）都受影响。
+ *
+ * 用户自己发起的关闭（Esc、点遮罩）另走 closeByUser()，那才是该挡的：
+ * 提交期间不该让弹窗消失，否则请求的结果无处安放。
+ * footer 里的「取消」按钮不需要在这里挡 —— setBusy(true) 已经把它禁用了。
  */
 export function openModal({ title, body, footer, wide = false, onClose }) {
   const overlay = el('div', { class: 'modal-overlay' });
   let busy = false;
 
-  const close = () => {
-    if (busy) return; // 提交中不允许关闭
+  function onKeydown(event) {
+    if (event.key === 'Escape') closeByUser();
+  }
+
+  function dismiss() {
     document.removeEventListener('keydown', onKeydown);
     overlay.remove();
     if (onClose) onClose();
-  };
+  }
 
-  const onKeydown = (event) => {
-    if (event.key === 'Escape') close();
-  };
+  function closeByUser() {
+    if (busy) return; // 提交中，用户不能关
+    dismiss();
+  }
 
   const panel = el(
     'div',
@@ -34,7 +49,7 @@ export function openModal({ title, body, footer, wide = false, onClose }) {
 
   overlay.append(panel);
   overlay.addEventListener('mousedown', (event) => {
-    if (event.target === overlay) close();
+    if (event.target === overlay) closeByUser();
   });
   document.addEventListener('keydown', onKeydown);
   document.body.append(overlay);
@@ -45,7 +60,7 @@ export function openModal({ title, body, footer, wide = false, onClose }) {
 
   return {
     root: panel,
-    close,
+    close: dismiss,
     setBusy(value) {
       busy = value;
       overlay.querySelectorAll('button, input, select, textarea').forEach((node) => {
