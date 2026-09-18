@@ -10,6 +10,7 @@ import { el, mount } from '../dom.js';
 import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
+import { fieldError, fieldErrors } from '../components/form.js';
 import { navigate } from '../components/shell.js';
 
 const SAMPLE_BARS = [
@@ -71,16 +72,22 @@ function buildForm(onSubmit) {
     class: 'input',
     id: 'login-username',
     name: 'username',
+    maxlength: '50',
     autocomplete: 'username',
   });
+  const usernameError = fieldError();
 
   const password = el('input', {
     class: 'input',
     id: 'login-password',
     name: 'password',
     type: 'password',
+    maxlength: '128',
     autocomplete: 'current-password',
   });
+  const passwordError = fieldError();
+
+  const errors = fieldErrors({ username: usernameError, password: passwordError });
 
   const submit = el('button', {
     class: 'btn btn--primary btn--wide',
@@ -94,10 +101,26 @@ function buildForm(onSubmit) {
       class: 'login-form',
       onSubmit: async (event) => {
         event.preventDefault();
+        errors.clear();
+
+        if (!username.value.trim()) {
+          errors.show('username', '请填写用户名');
+          username.focus();
+          return;
+        }
+        if (!password.value) {
+          errors.show('password', '请填写密码');
+          password.focus();
+          return;
+        }
+
         submit.disabled = true;
         submit.textContent = '登录中…';
         try {
           await onSubmit(username.value, password.value);
+        } catch (error) {
+          // 400 落到字段；「用户名或密码错误」这类业务错误仍用后端文案提示
+          if (!errors.fromServer(error)) toast.error(error.message);
         } finally {
           submit.disabled = false;
           submit.textContent = '登录';
@@ -112,12 +135,14 @@ function buildForm(onSubmit) {
       { class: 'field' },
       el('label', { class: 'field-label', for: 'login-username', text: '用户名' }),
       username,
+      usernameError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'login-password', text: '密码' }),
       password,
+      passwordError,
     ),
 
     submit,
@@ -134,15 +159,11 @@ export function render(container) {
     el(
       'section',
       { class: 'login-form-side' },
+      // 错误交给 buildForm 统一处理：400 落到字段，其余用后端 message
       buildForm(async (username, password) => {
-        try {
-          const result = await api.post('/auth/login', { username, password });
-          auth.saveToken(result.token, result.user);
-          navigate('/interviews');
-        } catch (error) {
-          // 文案直接用后端的 message，前端不重新编造
-          toast.error(error.message);
-        }
+        const result = await api.post('/auth/login', { username, password });
+        auth.saveToken(result.token, result.user);
+        navigate('/interviews');
       }),
     ),
   );

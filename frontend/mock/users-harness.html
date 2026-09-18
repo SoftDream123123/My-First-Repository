@@ -9,35 +9,7 @@
   <link rel="stylesheet" href="/src/styles/base.css">
   <link rel="stylesheet" href="/src/styles/components.css">
   <link rel="stylesheet" href="/src/styles/pages.css">
-
-  <style>
-    /* 结果面板浮在右上角：一次截图里既能看到真实页面，也能看到断言结果 */
-    #results {
-      position: fixed;
-      top: 0;
-      right: 0;
-      z-index: 9999;
-      width: 620px;
-      max-height: 100vh;
-      overflow: auto;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.97);
-      border-left: 2px solid #16202b;
-      font: 12px/1.6 ui-monospace, Consolas, monospace;
-      box-shadow: -8px 0 24px rgba(22, 32, 43, 0.12);
-    }
-    #results h1 { font-size: 15px; margin: 0 0 10px; }
-    #results h1.ok { color: #0e6b5c; }
-    #results h1.bad { color: #a8331f; }
-    #results table.report { border-collapse: collapse; width: 100%; }
-    #results td { padding: 3px 6px; border-bottom: 1px solid #e9edf0; vertical-align: top; }
-    #results td:first-child { font-weight: 700; white-space: nowrap; }
-    #results tr.pass td:first-child { color: #0e6b5c; }
-    #results tr.fail td:first-child { color: #a8331f; }
-    #results tr.fail { background: #fbeae6; }
-    #results td:last-child { color: #5e6c7a; width: 46%; word-break: break-all; }
-    #results pre { white-space: pre-wrap; color: #a8331f; }
-  </style>
+  <link rel="stylesheet" href="./harness.css">
 </head>
 <body>
   <div id="results">运行中…</div>

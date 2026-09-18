@@ -8,6 +8,7 @@
 import { el, mount, clear, append } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
+import { fieldError, fieldErrors } from '../components/form.js';
 import { confirmModal, openModal } from '../components/modal.js';
 import {
   contextTitle,
@@ -139,8 +140,14 @@ function openPositionModal(position, onSaved) {
     class: 'textarea',
     id: 'position-jd',
     value: position?.jd ?? '',
+    maxlength: '10000',
     placeholder: '写清职责、要求与团队情况。AI 依据这段文字出题，写得越具体，题目越贴合。',
   });
+
+  // 键名与后端 detail.fields[].field 一致
+  const nameError = fieldError();
+  const jdError = fieldError();
+  const errors = fieldErrors({ name: nameError, jd: jdError });
 
   const editor = buildDimensionEditor(position?.evaluation_dimensions ?? ['沟通能力', '专业能力']);
 
@@ -154,12 +161,14 @@ function openPositionModal(position, onSaved) {
       { class: 'field' },
       el('label', { class: 'field-label', for: 'position-name', text: '岗位名称' }),
       nameInput,
+      nameError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'position-jd', text: '岗位描述（JD）' }),
       jdInput,
+      jdError,
     ),
     el('div', { class: 'field' }, el('span', { class: 'field-label', text: '评估维度' }), editor.node),
   );
@@ -175,13 +184,15 @@ function openPositionModal(position, onSaved) {
   });
 
   submit.addEventListener('click', async () => {
+    errors.clear();
+
     if (!nameInput.value.trim()) {
-      toast.error('请填写岗位名称');
+      errors.show('name', '请填写岗位名称');
       nameInput.focus();
       return;
     }
     if (!jdInput.value.trim()) {
-      toast.error('请填写岗位描述');
+      errors.show('jd', '请填写岗位描述');
       jdInput.focus();
       return;
     }
@@ -206,7 +217,8 @@ function openPositionModal(position, onSaved) {
       onSaved();
     } catch (error) {
       handle.setBusy(false);
-      toast.error(error.message);
+      // 400 落到字段；409（岗位名已存在）等仍用后端文案提示
+      if (!errors.fromServer(error)) toast.error(error.message);
     }
   });
 }

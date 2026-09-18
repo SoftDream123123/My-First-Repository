@@ -230,6 +230,8 @@ export async function render(container, params) {
     const textarea = el('textarea', {
       class: 'textarea',
       id: 'answer-input',
+      // 与后端 content ≤ 10000 对齐
+      maxlength: '10000',
       placeholder: editable ? '边听边记。留空表示候选人未作答，评估时按 0 分处理。' : '',
       readOnly: !editable,
       value: question.answer ?? '',
@@ -257,7 +259,15 @@ export async function render(container, params) {
           el('button', {
             class: 'btn btn--quiet',
             text: '清空',
-            onClick: () => {
+            onClick: async () => {
+              // 清空会立刻把已录入的回答保存为空，且没有撤销 ——
+              // 与删除岗位 / 题目一样属于「拿走东西」，所以先问一句
+              const ok = await confirmModal({
+                title: '清空这道题的回答？',
+                message: '清空后会立即保存为空，等同于候选人未作答（评估按 0 分计）。原来的内容无法恢复。',
+                confirmLabel: '清空',
+              });
+              if (!ok) return;
               textarea.value = '';
               saveAnswer(question, textarea, stateNode);
             },

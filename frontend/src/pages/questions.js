@@ -8,6 +8,7 @@
 import { el, mount, clear } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
+import { fieldError, fieldErrors } from '../components/form.js';
 import { confirmModal, openModal } from '../components/modal.js';
 import {
   contextTitle,
@@ -19,6 +20,17 @@ import {
 } from '../components/shell.js';
 
 const DIFFICULTY_LABELS = { easy: '易', medium: '中', hard: '难' };
+
+const MAX_TAGS = 10;
+const MAX_TAG_LENGTH = 20;
+
+/** 标签用顿号或逗号分隔 —— 与后端 tags 数组对应。 */
+function parseTags(raw) {
+  return raw
+    .split(/[、,，]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 /* ------------------------------ 表单弹窗 ------------------------------ */
 
@@ -69,8 +81,10 @@ function openQuestionModal(positions, question, onSaved) {
     class: 'textarea',
     id: 'question-content',
     value: question?.content ?? '',
+    maxlength: '2000',
     placeholder: '写具体一点。好的面试题通常指向一个真实场景，而不是让人背诵定义。',
   });
+  const contentError = fieldError();
 
   const categoryInput = el('input', {
     class: 'input',
@@ -78,6 +92,7 @@ function openQuestionModal(positions, question, onSaved) {
     value: question?.category ?? '通用',
     maxlength: '50',
   });
+  const categoryError = fieldError();
 
   const difficultySelect = el(
     'select',
@@ -96,6 +111,14 @@ function openQuestionModal(positions, question, onSaved) {
     id: 'question-tags',
     value: (question?.tags ?? []).join('、'),
     placeholder: '用顿号或逗号分隔，最多 10 个',
+  });
+  const tagsError = fieldError();
+
+  // 键名与后端 detail.fields[].field 一致
+  const errors = fieldErrors({
+    content: contentError,
+    category: categoryError,
+    tags: tagsError,
   });
 
   const body = el(
@@ -120,12 +143,14 @@ function openQuestionModal(positions, question, onSaved) {
       el('label', { class: 'field-label', for: 'question-content', text: '题干' }),
       contentInput,
       el('p', { class: 'field-note', text: '5–2000 字。' }),
+      contentError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'question-category', text: '分类' }),
       categoryInput,
+      categoryError,
     ),
     el(
       'div',
@@ -138,6 +163,8 @@ function openQuestionModal(positions, question, onSaved) {
       { class: 'field' },
       el('label', { class: 'field-label', for: 'question-tags', text: '标签' }),
       tagsInput,
+      el('p', { class: 'field-note', text: '用顿号或逗号分隔。最多 10 个，每个不超过 20 字。' }),
+      tagsError,
     ),
   );
 
@@ -154,23 +181,34 @@ function openQuestionModal(positions, question, onSaved) {
   });
 
   submit.addEventListener('click', async () => {
-    if (!contentInput.value.trim() || contentInput.value.trim().length < 5) {
-      toast.error('题干至少 5 个字');
+    errors.clear();
+
+    const content = contentInput.value.trim();
+    if (content.length < 5) {
+      errors.show('content', '题干至少 5 个字');
       contentInput.focus();
       return;
     }
 
-    const tags = tagsInput.value
-      .split(/[、,，]/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tags = parseTags(tagsInput.value);
+    if (tags.length > MAX_TAGS) {
+      errors.show('tags', `标签最多 ${MAX_TAGS} 个，当前 ${tags.length} 个`);
+      tagsInput.focus();
+      return;
+    }
+    const tooLong = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
+    if (tooLong) {
+      errors.show('tags', `单个标签不能超过 ${MAX_TAG_LENGTH} 个字符：${tooLong}`);
+      tagsInput.focus();
+      return;
+    }
 
     handle.setBusy(true);
     try {
       const payload = {
         position_id: Number(positionSelect.value),
         dimension: dimensionSelect.value,
-        content: contentInput.value.trim(),
+        content,
         category: categoryInput.value.trim() || '通用',
         difficulty: difficultySelect.value,
         tags,
@@ -185,7 +223,10 @@ function openQuestionModal(positions, question, onSaved) {
       onSaved();
     } catch (error) {
       handle.setBusy(false);
-      toast.error(error.message);
+      // 字段格式类 400（content 越界等）走 detail.fields，落到字段下方；
+      // 维度不属岗位返回的是 detail.{dimension,allowed}，不含 fields，
+      // 所以落到 else 分支，用后端那句「该维度不属于岗位的评估维度」提示。
+      if (!errors.fromServer(error)) toast.error(error.message);
     }
   });
 }

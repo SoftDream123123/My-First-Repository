@@ -124,7 +124,11 @@ const results = [];
 const errors = [];
 
 function check(name, condition, detail = '') {
-  results.push({ name, pass: Boolean(condition), detail });
+  // 条件允许传函数（惰性求值）。
+  // 必须先判类型再调用 —— `Boolean(函数)` 恒为 true，
+  // 直接 Boolean(condition) 会让惰性条件的断言**永远通过**（踩过一次）。
+  const pass = Boolean(typeof condition === 'function' ? condition() : condition);
+  results.push({ name, pass, detail });
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 25));

@@ -104,13 +104,13 @@ frontend/
     auth.js                   登录态语义（isAdmin / logout / refreshUser）
     sse.js                    SSE 客户端 + 纯函数解析器（splitBlocks / parseEventBlock / parseChunk）
     dom.js                    DOM 助手 —— 把 XSS 约束结构化
-    components/               shell（外壳 + 状态轨）· radar · modal · toast
+    components/               shell（外壳 + 状态轨）· radar · modal · toast · form（字段级报错）
     pages/                    7 个页面
     styles/                   tokens / base / components / pages
     __tests__/                sse.test.js · radar.test.js
   standalone.html             原型期冻结的单文件快照（见下）
   mock/                       Mock 联调测试（浏览器端，见「单测」一节）
-  .screenshots/               设计记录（9 张）
+  .screenshots/               设计记录（10 张）
 ```
 
 ### 关于 `standalone.html`
@@ -157,27 +157,45 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 
 ```bash
 npm run dev
-# 打开 http://localhost:5173/mock/users-harness.html
+# 然后打开其中之一：
+#   http://localhost:5173/mock/users-harness.html        用户管理
+#   http://localhost:5173/mock/evaluation-harness.html   评估页（SSE）
+#   http://localhost:5173/mock/forms-harness.html        五个页面的表单
 ```
 
-`mock/users-harness.js` 拦截 `window.fetch` 当假后端，然后**驱动页面里的真实代码**
-（`src/pages/users.js`），把每条断言的结果渲染到右上角面板，并写进 `document.title`
-（`MOCK-ALL-PASS 45` / `MOCK-FAIL n/m`），因此 headless 浏览器也能直接抓结果：
+每个 harness 拦截 `window.fetch` 当假后端，然后**驱动页面里的真实代码**，
+把每条断言的结果渲染到右上角面板，并写进 `document.title`
+（`MOCK-ALL-PASS n` / `MOCK-FAIL n/m`），因此 headless 浏览器也能直接抓结果：
 
 ```bash
-msedge --headless=new --virtual-time-budget=20000 \
-  --dump-dom http://localhost:5173/mock/users-harness.html
+msedge --headless=new --virtual-time-budget=30000 \
+  --dump-dom http://localhost:5173/mock/evaluation-harness.html
 ```
 
-为什么不用 jsdom：module-07 §8.1 明确不引入 DOM 测试框架，而本模块的价值恰恰在
+| harness | 断言 | 覆盖 |
+|---|---:|---|
+| `users-harness` | 45 | 列表、自身行保护、字段级校验、400/409、二次确认 |
+| `evaluation-harness` | 29 | SSE 分帧**真跑**（真 `ReadableStream`）、断线重连、雷达图生长、报告 |
+| `forms-harness` | 45 | 登录 / 岗位 / 题库 / 面试 / 面试详情：内联报错、maxlength、清空确认 |
+
+为什么不用 jsdom：module-07 §8.1 明确不引入 DOM 测试框架，而这些断言的价值恰恰在
 DOM 行为（二次确认、字段级报错、按钮禁用）。这个做法不新增依赖，又比手工点一遍可靠。
 
 `mock/` 不参与 `npm run build`，不会进入 `dist/`。
 
-> 它抓到的第一个真 bug 不在用户模块，而在 `components/modal.js`：
-> `close()` 在 `busy` 时直接 return，而没有任何地方把 `busy` 复位，
-> 于是**四个页面的创建/编辑弹窗在提交成功后都关不掉**（按钮还被禁用了，只能刷新）。
-> 已修：`close()` 不再受 `busy` 影响，只有用户发起的关闭（Esc / 点遮罩）才挡。
+**每个修复都做过变异检查**（沿用后端测试报告 §5.2 的手法）：把缺陷植回去，
+断言必须失败。例如把 `modal.js` 的 `busy` 守卫改回来 → `MOCK-FAIL 5/45`；
+还原 → `MOCK-ALL-PASS 45`。
+
+> 这套测试抓到的前两个真 bug：
+>
+> 1. **不在任何模块里，而在 `components/modal.js`** —— `close()` 在 `busy` 时直接
+>    return，而没有任何地方把 `busy` 复位，于是**四个页面的创建/编辑弹窗在提交成功后
+>    都关不掉**（按钮还被禁用了，只能刷新）。
+> 2. **评估页重连时事件重复累加** —— 点「重新连接」没有清空 `state.questions`，
+>    服务端从头重放后逐题行翻倍、进度显示 16/8（API 文档 §9.2 专门警告过这一点）。
+>
+> 两者都不靠"看一眼"能发现 —— 第一个要提交成功后才显形，第二个要先断线再重连。
 
 ---
 

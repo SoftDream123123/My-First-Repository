@@ -79,11 +79,27 @@ export async function render(container, params) {
     questions: [],
     dimensions: [],
     report: null,
+    questionScores: [],
     errorMessage: '',
     total: detail.question_count,
     // 默认取文档约定的固定路径；触发评估后以服务端返回的 stream_url 为准
     streamUrl: `/api/interviews/${interviewId}/evaluation/stream`,
   };
+
+  /**
+   * 清掉已累积的流数据。
+   *
+   * 服务端在重连时会**从头重放**全部事件（API 文档 §9.2），所以重连前必须把
+   * 上一轮收到的逐题 / 维度 / 报告清空 —— 否则重放的事件会被再 push 一遍：
+   * 逐题行翻倍、进度显示 16/8。触发评估（retry）与重新连接两条路都要过这里。
+   */
+  function resetStreamState() {
+    state.questions = [];
+    state.dimensions = [];
+    state.report = null;
+    state.questionScores = [];
+    state.errorMessage = '';
+  }
 
   /* ------------------------------ 容器 ------------------------------ */
 
@@ -143,6 +159,12 @@ export async function render(container, params) {
       ),
     );
 
+    // 雷达图逐维度「生长」（module-07 §5.4）：每收到一个 dimension 事件就重绘一次，
+    // 还没到达的维度按 0 处理并灰显 —— drawRadar 的 revealed 正是为此准备的。
+    const radarBox = el('div', { class: 'report-radar' });
+    appendRadar(radarBox, streamingAxes(), { revealed: state.dimensions.length });
+    progressSlot.append(el('div', { class: 'panel', style: 'margin-bottom:24px' }, radarBox));
+
     if (state.questions.length) {
       progressSlot.append(
         el(
@@ -152,6 +174,30 @@ export async function render(container, params) {
         ),
       );
     }
+  }
+
+  /**
+   * 评估进行中的雷达轴：轴固定是岗位的评估维度，分数取已到达的那几个。
+   * 用维度名对齐而不是按到达顺序 —— 服务端的事件顺序不该成为前端的隐含依赖。
+   */
+  function streamingAxes() {
+    const arrived = new Map(state.dimensions.map((item) => [item.dimension, item.score]));
+    return detail.evaluation_dimensions.map((dimension) => ({
+      dimension,
+      score: arrived.get(dimension) ?? 0,
+    }));
+  }
+
+  /** 维度不足 3 个画不出多边形 —— 给降级文案（module-07 §4.4）。 */
+  function appendRadar(slot, axes, options) {
+    if (axes.length < 3) {
+      slot.append(el('p', { class: 'hint', text: '维度不足 3 个，无法绘制雷达图。' }));
+      return;
+    }
+
+    const canvas = el('canvas', { 'aria-label': '各维度得分雷达图' });
+    slot.append(canvas);
+    drawRadar(canvas, axes, options);
   }
 
   function buildLiveList() {
@@ -177,14 +223,17 @@ export async function render(container, params) {
   /* ---------------------------- 报告区 ---------------------------- */
 
   function paintReport() {
-    if (state.phase !== 'done') return;
-
+    // 先清空再判断：重新评估时 phase 回到 connecting，上一份报告必须让位给进度区，
+    // 否则旧报告会和新进度条同时留在屏幕上（paintProgress 就是这么做的）
     clear(reportSlot);
+    if (state.phase !== 'done') return;
 
     const report = state.report;
     const dimensions = state.dimensions.length
       ? state.dimensions
       : detail.evaluation_dimensions.map((dimension) => ({ dimension, score: 0, comment: '' }));
+
+    const radarSlot = el('div', { class: 'report-radar' });
 
     // 英雄区：总分 + 雷达并置。分数用衬线，颜色编码通过与否。
     const hero = el(
@@ -212,7 +261,7 @@ export async function render(container, params) {
             text: `评估于 ${formatDateTime(report.evaluated_at)}`,
           }),
         ),
-        el('div', { class: 'report-radar' }, el('canvas', { 'aria-label': '各维度得分雷达图' })),
+        radarSlot,
       ),
     );
 
@@ -297,9 +346,8 @@ export async function render(container, params) {
 
     reportSlot.append(hero, dimensionPanel, findingsPanel, detailPanel);
 
-    // 雷达图要等元素进 DOM 才量得到尺寸
-    const canvas = reportSlot.querySelector('canvas');
-    if (canvas) drawRadar(canvas, dimensions);
+    // 画布要等元素进 DOM 才量得到尺寸
+    appendRadar(radarSlot, dimensions);
   }
 
   function buildQuestionScores() {
@@ -397,6 +445,8 @@ export async function render(container, params) {
             class: 'btn btn--primary',
             text: '重新连接',
             onClick: () => {
+              // 服务端会从头重放，先清空 —— 否则逐题行会翻倍
+              resetStreamState();
               state.phase = 'connecting';
               paintAll();
               connect();
@@ -428,6 +478,7 @@ export async function render(container, params) {
 
     if (name === 'dimension') {
       state.dimensions.push(payload);
+      paintProgress(); // 让雷达图当场长出一个维度
       return;
     }
 
@@ -450,23 +501,31 @@ export async function render(container, params) {
     }
   }
 
-  async function finish() {
-    // done 之后不重新拉取报告 —— 事件里已含全部数据，再请求只会多一次往返并可能闪烁。
-    // 但需要把逐题明细补齐（逐题事件里没有题干与回答）。
-    try {
-      const scores = await api.get(`/interviews/${interviewId}/report`);
-      state.questionScores = scores.question_scores;
-      state.dimensions = scores.dimension_scores;
-      state.report = {
-        overall_score: scores.overall_score,
-        conclusion: scores.conclusion,
-        strengths: scores.strengths,
-        weaknesses: scores.weaknesses,
-        evaluated_at: scores.evaluated_at,
+  /**
+   * done 之后**不再请求** `GET /report`（module-07 §5.4 与 §10 验收标准：
+   * 「done 后不重复请求造成闪烁」）。
+   *
+   * 汇总数据 SSE 的 report 事件已经给了；逐题明细缺的只是题干与回答，
+   * 而进入页面时的 `GET /interviews/{id}` 里就有 —— 按 interview_question_id
+   * 合并即可。省掉一次往返，也省掉它带来的时序闪烁。
+   */
+  function finish() {
+    const byId = new Map(
+      detail.questions.map((question) => [question.interview_question_id, question]),
+    );
+
+    state.questionScores = state.questions.map((scored) => {
+      const question = byId.get(scored.interview_question_id);
+      return {
+        interview_question_id: scored.interview_question_id,
+        seq: scored.seq,
+        content: question?.content ?? '',
+        dimension: scored.dimension,
+        answer: question?.answer ?? null,
+        score: scored.score,
+        comment: scored.comment,
       };
-    } catch {
-      state.questionScores = [];
-    }
+    });
 
     detail.status = 'evaluated';
     paintAll();
@@ -501,9 +560,7 @@ export async function render(container, params) {
       if (run?.stream_url) state.streamUrl = run.stream_url;
 
       state.phase = 'connecting';
-      state.questions = [];
-      state.dimensions = [];
-      state.report = null;
+      resetStreamState();
       paintAll();
       connect();
     } catch (error) {

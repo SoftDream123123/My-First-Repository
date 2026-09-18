@@ -8,6 +8,7 @@
 import { el, mount } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
+import { fieldError, fieldErrors } from '../components/form.js';
 import { openModal } from '../components/modal.js';
 import {
   createShell,
@@ -99,13 +100,23 @@ async function openCreateModal(onCreated) {
   const nameInput = el('input', {
     class: 'input',
     id: 'new-interview-name',
+    maxlength: '100',
     placeholder: '候选人的姓名',
   });
+  const nameError = fieldError();
 
   const contactInput = el('input', {
     class: 'input',
     id: 'new-interview-contact',
+    maxlength: '200',
     placeholder: '邮箱或手机号（可不填）',
+  });
+  const contactError = fieldError();
+
+  // 键名与后端 detail.fields[].field 一致
+  const errors = fieldErrors({
+    candidate_name: nameError,
+    candidate_contact: contactError,
   });
 
   const submit = el('button', { class: 'btn btn--primary', text: '创建并出题', disabled: loadFailed || !positions.length });
@@ -135,12 +146,14 @@ async function openCreateModal(onCreated) {
       { class: 'field' },
       el('label', { class: 'field-label', for: 'new-interview-name', text: '候选人姓名' }),
       nameInput,
+      nameError,
     ),
     el(
       'div',
       { class: 'field' },
       el('label', { class: 'field-label', for: 'new-interview-contact', text: '联系方式' }),
       contactInput,
+      contactError,
     ),
   );
 
@@ -158,8 +171,10 @@ async function openCreateModal(onCreated) {
   });
 
   submit.addEventListener('click', async () => {
+    errors.clear();
+
     if (!nameInput.value.trim()) {
-      toast.error('请填写候选人姓名');
+      errors.show('candidate_name', '请填写候选人姓名');
       nameInput.focus();
       return;
     }
@@ -181,7 +196,8 @@ async function openCreateModal(onCreated) {
       // 后端已整体回滚，可以安全重试 —— 弹窗保持打开
       handle.setBusy(false);
       submit.textContent = '创建并出题';
-      toast.error(error.message);
+      // 400 落到字段；502（AI 出题失败）等仍用后端文案
+      if (!errors.fromServer(error)) toast.error(error.message);
     }
   });
 }
