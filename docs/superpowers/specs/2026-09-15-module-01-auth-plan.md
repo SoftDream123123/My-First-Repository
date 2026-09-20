@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§4.1（用户与鉴权）、§5.2（`user` 实体）、§8（auth API）、§9（安全）
 **前置依赖**：core（[2026-09-15-module-00-core-plan.md](./2026-09-15-module-00-core-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：新增第三个角色 `candidate`、候选人自助注册、多角色守卫基座（`require_roles`）。本文档的 §1.1、§1.2、§3.1、§4.1、§4.5、§5.3、§10 已按增量同步修正；**增量部分的完整契约以 [module-09 auth 候选人侧](./2026-09-20-module-09-auth-plan.md) 为准**。角色守卫逐路由落地见 [module-16](./2026-09-20-module-16-permission-guard-plan.md)。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -35,12 +37,15 @@
 | 初始管理员 | 通过脚本 seed 内置 admin | §4.1 |
 | 用户管理 | admin 创建用户、查询列表、改角色、启用/禁用 | §4.1 |
 | **数据隔离基座** | 提供「当前用户可见数据范围」的统一判定，供所有业务模块复用 | §4.1 |
+| **候选人角色**（MVP-2） | `candidate` 角色的定义、迁移与账号创建路径 | §4.1、§4.6 |
+| **多角色守卫基座**（MVP-2） | `require_roles(*roles)`：支持多角色判定的依赖工厂，HR 侧守卫的地基 | §4.1 |
 
 ### 1.2 边界（明确不做）
 
 | 不做 | 理由 |
 |---|---|
-| **自助注册** | PRD §4.1 明确「普通 HR 不可自行注册」，用户只能由 admin 创建 |
+| **HR / admin 自助注册** | PRD §4.1 明确「普通 HR 不可自行注册」，HR 与 admin 只能由 admin 创建。**MVP-2 起存在一处例外**：候选人可自助注册，但只产出 `candidate` 角色、只带刷题权限——该约束本身不变（见 [module-09](./2026-09-20-module-09-auth-plan.md)） |
+| **admin 创建 candidate**（MVP-2 补充） | PRD §4.1 只允许 admin 指定 `admin`/`hr`。候选人账号只能来自自助注册或凭邀请激活，保证其与刷题或某场面试有真实关联 |
 | **找回密码 / 改密码** | 不在 PRD 范围 |
 | **Refresh Token** | 见 core 模块计划书 §5.3——PRD §9「JWT 过期与刷新」默认按「过期后重新登录」落地，**该决策待评审确认** |
 | **审计日志** | 不在 PRD 范围 |
@@ -94,7 +99,7 @@ core ✗→ auth（get_current_user 内延迟导入 User，见 core 计划书 §
 | `id` | BIGINT | PK, AUTO_INCREMENT | 主键 |
 | `username` | VARCHAR(50) | NOT NULL, **UNIQUE**, INDEX | 登录名 |
 | `password_hash` | VARCHAR(255) | NOT NULL | bcrypt 哈希，**永不返回给客户端** |
-| `role` | ENUM('admin','hr') | NOT NULL, DEFAULT `'hr'` | 角色（PRD §4.1） |
+| `role` | ENUM('admin','hr','candidate') | NOT NULL, DEFAULT `'hr'` | 角色（PRD §4.1）；第三个取值 `candidate` 为 **MVP-2 新增** |
 | `is_active` | BOOLEAN | NOT NULL, DEFAULT TRUE | 禁用后不可登录 |
 | `created_at` | DATETIME | NOT NULL, DEFAULT NOW | — |
 
@@ -124,6 +129,7 @@ core ✗→ auth（get_current_user 内延迟导入 User，见 core 计划书 §
 | 方法 | 路径 | 说明 | 权限 | 成功码 |
 |---|---|---|---|---|
 | POST | `/api/auth/login` | 登录，返回 JWT | **公开** | 200 |
+| POST | `/api/auth/register` | **MVP-2 新增**：候选人自助注册（只产出 candidate 角色，仅刷题） | **公开** | 201 |
 | GET | `/api/auth/me` | 当前用户信息 | 登录 | 200 |
 | POST | `/api/users` | 创建用户 | **admin** | 201 |
 | GET | `/api/users` | 用户列表 | **admin** | 200 |
@@ -196,6 +202,7 @@ core ✗→ auth（get_current_user 内延迟导入 User，见 core 计划书 §
 |---|---|
 | `get_current_user(db: Session, token: str) -> User` | `decode_token` → `get_user_by_id` → 不存在或 `is_active=False` → `UnauthorizedError` |
 | `require_role(role: str) -> Callable` | 依赖工厂；`user.role != role` → `ForbiddenError` |
+| `require_roles(*roles: str) -> Callable` | **MVP-2 新增**：依赖工厂，多角色判定；`user.role not in roles` → `ForbiddenError`。`require_role` 改为对它的薄封装。用法与「精确匹配、无角色层级」规则见 [module-09 §4.5、§5.3](./2026-09-20-module-09-auth-plan.md) |
 
 ---
 
@@ -236,6 +243,9 @@ PRD §4.1 要求「普通 HR 只能访问自己创建的数据；admin 可访问
 |---|---|---|
 | admin | `None` | **不过滤**，返回全部数据（PRD §4.1） |
 | hr | `user.id` | 追加 `WHERE created_by = :owner_id`（PRD §4.1） |
+| candidate（**MVP-2**） | — | **抛 `ForbiddenError`**：候选人不拥有任何 HR 数据，不得落入 owner 分支。改动与理由见 [module-16 §4](./2026-09-20-module-16-permission-guard-plan.md) |
+
+> **候选人的可见范围不由本函数表达**：候选人的判据是「是否持有该面试的有效邀请」（数据在 `interview_invitation`），因此候选人**不能**复用 `created_by`——候选人不是面试的创建者，按 `created_by` 过滤会让其看不到任何自己的面试（PRD §4.1 的原话即为此意）。该判据由 `interview` 模块实现（见 [module-12](./2026-09-20-module-12-interview-invitation-plan.md)）；刷题取题则明确**不做** `created_by` 过滤（见 [module-10 §5.5](./2026-09-20-module-10-question-plan.md)）。
 
 **访问单条数据时的统一模式**：
 
@@ -420,3 +430,5 @@ PRD §4.1 要求「普通 HR 只能访问自己创建的数据；admin 可访问
 | 用户列表是否分页 | **不分页** | 内部系统用户量小（YAGNI） |
 | 初始 admin 是否放 Alembic 数据迁移 | **不放，独立脚本** | 迁移应只承载结构变更；生产不应在迁移中静默创建已知密码的账号 |
 | 数据隔离返回 403 还是 404 | **403** | 语义明确；内部系统可接受信息暴露。多租户场景应改 404 |
+| **（MVP-2）第三角色引入后存量路由无守卫** | 新建独立文档 [module-16](./2026-09-20-module-16-permission-guard-plan.md) 逐路由补全，且**必须与 module-09 同批发布** | 加入 `candidate` 后，只校验「已登录」的 HR 路由会被候选人越权调用。该风险不属于 auth 模块内部，但由本次角色扩展引入，故在此登记 |
+| **（MVP-2）MySQL ENUM 收回取值会静默损坏数据** | 迁移的 `downgrade()` 检测到 candidate 行即抛错 | 见 [module-09 §3.3](./2026-09-20-module-09-auth-plan.md) |

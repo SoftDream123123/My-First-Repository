@@ -7,6 +7,8 @@
 **所属包**：`backend/app/core/`（应用装配入口为 `backend/app/main.py`）
 **上游 PRD**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
 
+> **MVP-2 增量（2026-09-20）**：本文档的 §3 配置项表新增 `CANDIDATE_SELF_REGISTER`，§7 依赖注入新增 `require_roles`。其余章节为 MVP-1 记录，仍然有效。新增能力的完整契约见 [module-09](./2026-09-20-module-09-auth-plan.md)。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -124,6 +126,7 @@ core ✗→ 任何业务模块
 | `BCRYPT_ROUNDS` | int | 否 | `12` | bcrypt 代价因子 |
 | `ADMIN_USERNAME` | str | 否 | `admin` | seed 初始管理员用（PRD §4.1） |
 | `ADMIN_PASSWORD` | str | 否 | `admin12345` | seed 初始管理员用；**生产必须覆盖** |
+| `CANDIDATE_SELF_REGISTER` | bool | 否 | `true` | **MVP-2 新增**：候选人自助注册开关（PRD §4.1）；关闭后候选人只能凭邀请码建号 |
 
 **设计约定**
 
@@ -251,6 +254,7 @@ PRD §9 原文为「**JWT 过期与刷新**」。「刷新」有两种实现路�
 | `get_token` | `(authorization: str = Header(...)) -> str` | 解析 `Authorization: Bearer <token>`；缺失或格式错误 → `UnauthorizedError` |
 | `get_current_user` | `(db: Session, token: str) -> User` | `decode_token` → 查 User → 校验启用状态 → 返回 User |
 | `require_role` | `(role: str) -> Callable[[User], User]` | 依赖工厂：校验 `user.role == role`，否则 `ForbiddenError` |
+| `require_roles` | `(*roles: str) -> Callable[[User], User]` | **MVP-2 新增**：依赖工厂，支持**多角色**判定；`user.role not in roles` → `ForbiddenError`。`require_role` 改为它的薄封装（既有调用点行为不变）。契约见 [module-09 §4.5](./2026-09-20-module-09-auth-plan.md)，逐路由落地见 [module-16](./2026-09-20-module-16-permission-guard-plan.md) |
 
 **设计要点**
 

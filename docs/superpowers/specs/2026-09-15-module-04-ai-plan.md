@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§6（AI Provider 接口契约）、§3.3（依赖方向）、§7（AI 调用失败处理）
 **前置依赖**：core（[module-00](./2026-09-15-module-00-core-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：`AIProvider` 新增三个抽象方法 —— `generate_reference_answer`、`grade_practice_answer`、`generate_candidate_feedback`（共 7 个方法），并新增全项目唯一的判分阈值常量 `PASS_THRESHOLD = 6.5`。本文档的 §3.2、§10 已按增量同步修正；**增量部分的完整契约（含 Mock 确定性规则、真实 Provider prompt、测试点、以及需同步修改的测试替身）以 [module-11 ai 刷题判分与候选人反馈](./2026-09-20-module-11-ai-plan.md) 为准**。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -129,7 +131,7 @@ ai ✗→ 任何业务模块（position / question / interview / evaluation）
 
 > **`strengths` / `weaknesses` 为何用列表而非段落文本**：报告页需要按条目渲染（序号 / 图标），结构化列表比在前端按换行符切分更可靠。落库时存为 JSON 列（对应 PRD §5.2 的 `report` 字段）。
 
-### 3.2 抽象基类方法签名（对应 PRD §6 的四个接口）
+### 3.2 抽象基类方法签名（对应 PRD §6 的接口；**MVP-2 起共 7 个方法**）
 
 | 方法签名 | 返回 | PRD §6 对应 |
 |---|---|---|
@@ -137,6 +139,16 @@ ai ✗→ 任何业务模块（position / question / interview / evaluation）
 | `evaluate_answer(dimension: str, question: str, answer: str \| None) -> QuestionScoreResult` | 结果 | 单题打分 + 评语 |
 | `evaluate_dimensions(dims: list[str], qa_pairs: list[QAPair]) -> list[DimensionScoreResult]` | 列表 | 综合多维打分 + 评语 |
 | `summarize_report(dims: list[str], dimension_scores: list[DimensionScoreResult], question_scores: list[QuestionScoreResult]) -> ReportResult` | 结果 | 汇总总分/结论/优点/待改进 |
+
+**MVP-2 新增的三个方法**（完整契约见 [module-11 §3](./2026-09-20-module-11-ai-plan.md)）
+
+| 方法签名 | 返回 | PRD §6 对应 |
+|---|---|---|
+| `generate_reference_answer(question_type: str, content: str, options: list[str], dimension: str) -> ReferenceAnswerResult` | 结果 | 补参考答案（§4.3） |
+| `grade_practice_answer(question_type: str, content: str, reference_answer: str, user_answer: str) -> PracticeGradeResult` | 结果 | 刷题判分 + 解析（§4.7） |
+| `generate_candidate_feedback(level: str, conclusion: str, strengths: list[str], weaknesses: list[str], overall_score: float) -> CandidateFeedbackResult` | 结果 | 候选人脱敏反馈（§4.9） |
+
+> ⚠️ **新增抽象方法会打断既有测试替身**：`backend/tests/test_interview.py` 中的 `FailingProvider` 直接继承 `AIProvider`，必须补齐三个方法，否则既有用例将因无法实例化而集体失败。其余替身（`PartialDimensionProvider` 继承自 `MockProvider`、`FailingProvider`/`GatedProvider` 为普通类）经核实不受影响。清单见 module-11 §2。
 
 ### 3.3 与 PRD §6 参数形态的差异说明（**不改变能力范围**）
 
@@ -148,6 +160,8 @@ ai ✗→ 任何业务模块（position / question / interview / evaluation）
 | `summarize_report(all_scores, dims)` | `summarize_report(dims, dimension_scores, question_scores)` | 拆开 `all_scores`：汇总需要**区分**维度分与逐题分（前者定结论，后者做明细引用） |
 
 **PRD §6 的能力清单（四个方法、两个实现、可配置切换）完全保留**，上述仅为参数形态调整。
+
+**MVP-2 的三个新方法沿用同一手法**：PRD §6 写作 `generate_reference_answer(question)` / `grade_practice_answer(question, user_answer)` / `generate_candidate_feedback(report, level)`，本设计一律替换为原始值参数（逐一对照见 [module-11 §3.4](./2026-09-20-module-11-ai-plan.md)），原因与本节相同。
 
 ### 3.4 「传原始值」的设计约束（**本模块最重要的边界规则**）
 
@@ -547,3 +561,6 @@ PRD §7 要求 AI 失败「**不阻塞其他功能**」。本设计据此要求�
 | 真实 Provider 的 JSON 解析容错做到什么程度 | 围栏剥离 + 子串提取 + 字段兜底 | 大模型输出不完全可控，容错不足会让评估频繁失败（PRD §7 的失败回退虽能兜底，但体验差） |
 | Provider 是否持有数据库 Session | **不持有** | 保持纯函数式；落库归 interview / evaluation（PRD §3.2 分层） |
 | 是否做结果缓存 | **不做** | MVP YAGNI；缓存会引入失效策略与额外状态 |
+| **（MVP-2）新增抽象方法打断测试替身** | 补齐 `tests/test_interview.py` 的 `FailingProvider`；其余替身经核实不受影响 | 它是唯一直接继承 `AIProvider` 的替身；不改则既有用例因无法实例化而集体失败 |
+| **（MVP-2）判分阈值出现第二处定义** | 收敛为 `ai.base.PASS_THRESHOLD = 6.5`，前端 6.5 由 module-15 加注释互相指向 | 前端已用 6.5 判及格（`shell.js` 的 `scoreClass`、`radar.js` 的 `isPass`）。若刷题用别的阈值，会出现「判你答对但报告显示需关注」的矛盾 |
+| **（MVP-2）Mock 的规则判分被误当作评分质量基准** | 明确声明 Mock 只保证可演示、可测试、确定性 | Mock 的职责不是模拟 LLM 的判断力；把它当基准会导致对真实评分质量的误判 |

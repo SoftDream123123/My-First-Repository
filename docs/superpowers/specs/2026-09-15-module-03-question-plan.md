@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§4.3（题库管理）、§5.2（`question` 实体）、§8（question API）
 **前置依赖**：core（[module-00](./2026-09-15-module-00-core-plan.md)）、auth（[module-01](./2026-09-15-module-01-auth-plan.md)）、position（[module-02](./2026-09-15-module-02-position-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：题目新增**题型（单选/简答）、选项、参考答案、解析**四个字段，新增按题型筛选与「AI 补参考答案」端点，并新增**对刷题的供给契约**（含 `PracticeQuestionOut` 剥离答案的对外视图）。本文档的 §3.1、§3.3、§4.1、§4.2、§4.3、§4.4、§10 已按增量同步修正；**增量部分的完整契约以 [module-10 question 题型与参考答案](./2026-09-20-module-10-question-plan.md) 为准**。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -99,6 +101,12 @@ PRD §5.2 列出字段：`id, position_id, category, dimension, content, difficu
 | `source` | ENUM('bank','ai') | NOT NULL, DEFAULT `'bank'`, INDEX | 来源 | PRD §5.2 |
 | `created_by` | BIGINT | NOT NULL, FK → `user.id`, INDEX | **创建人，数据隔离依据** | **本设计新增** |
 | `created_at` | DATETIME | NOT NULL, DEFAULT NOW | — | **本设计新增** |
+| `question_type` | ENUM('single_choice','short_answer') | NOT NULL, DEFAULT `'short_answer'`, INDEX | **题型**（MVP-2） | PRD §4.3 |
+| `options` | JSON | NOT NULL, DEFAULT `[]` | **选项列表**，简答题必须为空数组（MVP-2） | PRD §4.3 |
+| `reference_answer` | TEXT | **NULL** | **参考答案**（MVP-2）；单选题必填且须为某个选项 | PRD §4.3 |
+| `explanation` | TEXT | **NULL** | **解析**（MVP-2） | PRD §4.3 |
+
+> MVP-2 四个新字段的迁移写法、校验规则与 API 契约见 [module-10](./2026-09-20-module-10-question-plan.md)；其中 `options` 的迁移**必须分三步**（加可空列 → 回填 → 改 NOT NULL），原因见 module-10 §3.3。
 
 **为何必须新增 `created_by`**：PRD §4.1 要求「普通 HR 只能访问自己创建的数据」。`question` 若要参与数据隔离，就必须有归属字段。`created_at` 则为其余所有实体一致的审计字段。
 
@@ -110,6 +118,7 @@ PRD §5.2 列出字段：`id, position_id, category, dimension, content, difficu
 | `ix_question_dimension` | (`dimension`) | INDEX | 按维度筛选（PRD §4.3） |
 | `ix_question_source` | (`source`) | INDEX | 按来源筛选 |
 | `ix_question_created_by` | (`created_by`) | INDEX | 数据隔离过滤（PRD §4.1） |
+| `ix_question_type` | (`question_type`) | INDEX | **MVP-2**：刷题按题型取题（PRD §4.7） |
 
 ### 3.2 设计要点
 
@@ -135,6 +144,10 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | `difficulty` | 可选；缺省 `medium`；取值 `easy`/`medium`/`hard` | 400 |
 | `tags` | 可选；缺省 `[]`；**≤ 10 个**；单个 1–20 字符；strip 后去重 | 400 |
 | `source` | **客户端不可指定**，由服务端决定（见 §5.4） | — |
+| `question_type`（MVP-2） | 可选；缺省 `short_answer`；取值 `single_choice` / `short_answer` | 400 |
+| `options`（MVP-2） | 单选：2–10 个、单个 1–200 字符、strip 后去重且去重后仍 ≥ 2；简答：**必须为空数组** | 400 |
+| `reference_answer`（MVP-2） | 单选：**必填**且 strip 后须等于 `options` 中某一项（精确匹配）；简答：可空；≤ 2000 字符 | 400 |
+| `explanation`（MVP-2） | 可空；≤ 2000 字符 | 400 |
 
 > **`dimension` 必须属于岗位维度**这一校验是本模块最重要的数据质量防线：它保证「题目 → 岗位 → 维度」三者自洽，是后续「多维评分」能正确归集数据的前提（PRD §4.5）。
 
@@ -146,11 +159,14 @@ PRD §4.3 未定义字段边界，本设计补齐：
 
 | 方法 | 路径 | 说明 | 权限 | 成功码 |
 |---|---|---|---|---|
-| POST | `/api/questions` | 创建题目 | 登录 + 岗位可见 | 201 |
-| GET | `/api/questions` | 题目列表（支持多维筛选） | 登录 | 200 |
-| GET | `/api/questions/{id}` | 题目详情 | 登录 + 可见 | 200 |
-| PUT | `/api/questions/{id}` | 更新题目 | 登录 + 可见 | 200 |
-| DELETE | `/api/questions/{id}` | 删除题目 | 登录 + 可见 | **204** |
+| POST | `/api/questions` | 创建题目 | admin, hr + 岗位可见 | 201 |
+| GET | `/api/questions` | 题目列表（支持多维筛选，**MVP-2 起含按题型筛选**） | admin, hr | 200 |
+| GET | `/api/questions/{id}` | 题目详情 | admin, hr + 可见 | 200 |
+| PUT | `/api/questions/{id}` | 更新题目（**MVP-2 起含题型、参考答案、解析**） | admin, hr + 可见 | 200 |
+| DELETE | `/api/questions/{id}` | 删除题目 | admin, hr + 可见 | **204** |
+| POST | `/api/questions/{id}/reference-answer` | **MVP-2 新增**：调 AI 生成参考答案与解析并落库 | admin, hr + 可见 | 200 |
+
+> **「权限」列自 MVP-2 起为角色的显式校验**：原表述「登录」在引入 `candidate` 角色后不再安全——候选人 token 也能满足「登录」。角色守卫的补全属 [module-16](./2026-09-20-module-16-permission-guard-plan.md)，必须与 module-09 同批发布。本模块**不注册任何候选人可见的路由**。
 
 ### 4.2 请求 / 响应结构
 
@@ -168,6 +184,12 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | `source` | str | `bank` \| `ai` |
 | `created_by` | int | — |
 | `created_at` | datetime | ISO 8601 |
+| `question_type` | str | **MVP-2**：`single_choice` \| `short_answer` |
+| `options` | list[str] | **MVP-2**：简答为空数组 |
+| `reference_answer` | str \| null | **MVP-2** |
+| `explanation` | str \| null | **MVP-2** |
+
+> **`QuestionOut` 是 HR 视图**（含参考答案）。候选人刷题用的是另一份视图 **`PracticeQuestionOut`**，它**剥离** `reference_answer`、`explanation`、`source`、`created_by`、`created_at`，但**必须保留 `options`**（否则单选框无内容可渲染）。两份视图的分离是「参考答案不得在取题阶段下发」这条安全规则的落点，定义见 [module-10 §4.2](./2026-09-20-module-10-question-plan.md)。
 
 **POST `/api/questions`**
 
@@ -179,6 +201,10 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | 请求 | `content` | str | 必填，5–2000 字符 |
 | 请求 | `difficulty` | str \| 可选 | 缺省 `medium` |
 | 请求 | `tags` | list[str] \| 可选 | 缺省 `[]` |
+| 请求 | `question_type` | str \| 可选 | **MVP-2**：缺省 `short_answer` |
+| 请求 | `options` | list[str] \| 可选 | **MVP-2**：缺省 `[]`；单选 2–10 个、strip 后去重 |
+| 请求 | `reference_answer` | str \| null \| 可选 | **MVP-2**：单选**必填**且须为某个选项；≤ 2000 字符 |
+| 请求 | `explanation` | str \| null \| 可选 | **MVP-2**：≤ 2000 字符 |
 
 **GET `/api/questions` 查询参数**（PRD §4.3 要求支持按岗位 / 分类 / 维度筛选）
 
@@ -189,6 +215,7 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | `dimension` | str \| 可选 | 精确匹配 | PRD §4.3 |
 | `source` | str \| 可选 | `bank` \| `ai` | 本设计补充 |
 | `keyword` | str \| 可选 | 按 `content` 模糊匹配 | 本设计补充 |
+| `question_type` | str \| 可选 | **MVP-2**：`single_choice` \| `short_answer` | PRD §4.3 |
 
 多个参数为 **AND** 关系。MVP 不分页。
 
@@ -209,8 +236,10 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | `delete_question(db, user: User, question_id: int) -> None` | — | 被面试引用时由外键拒绝 → `BusinessError` |
 | `list_candidates_for_position(db, owner_id: int \| None, position_id: int) -> list[Question]` | 列表 | **供 interview 出题使用**（§5.6） |
 | `bulk_create_from_ai(db, user: User, position_id: int, items: list[GeneratedQuestion]) -> list[Question]` | 列表 | **供 interview 使用**：AI 题目入库（§5.4） |
+| `generate_reference_answer(db, user: User, question_id: int) -> Question` | Question | **MVP-2**：可见性校验 → 调 AI 补参考答案与解析 → 写回 |
+| `list_practice_questions(db, filters: PracticeFilters, limit: int) -> list[Question]` | 列表 | **MVP-2**：**供 practice 刷题取题**（§5.7） |
 
-`QuestionFilters` 字段：`position_id: int | None`、`category: str | None`、`dimension: str | None`、`source: str | None`、`keyword: str | None`。
+`QuestionFilters` 字段：`position_id: int | None`、`category: str | None`、`dimension: str | None`、`source: str | None`、`keyword: str | None`、**`question_type: str | None`（MVP-2）**。
 
 ### 4.4 repository 层方法签名
 
@@ -223,6 +252,7 @@ PRD §4.3 未定义字段边界，本设计补齐：
 | `update(db, question: Question, **fields) -> Question` | Question | — |
 | `delete(db, question: Question) -> None` | — | 捕获 `IntegrityError` → 抛 `BusinessError` |
 | `bulk_insert(db, items: list[dict]) -> list[Question]` | 列表 | AI 题目批量入库 |
+| `list_practice_candidates(db, filters: PracticeFilters, limit: int) -> list[Question]` | 列表 | **MVP-2**：刷题取题，**按 `id` 升序**；**不接 `owner_id`**（有意放宽，见 §5.7） |
 
 ---
 
@@ -289,6 +319,26 @@ list_candidates_for_position(db, owner_id, position_id)
 
 **职责边界**：round-robin 抽取、跳过不合规维度、取满 N 题、AI 补齐——**全部在 interview 模块实现**（PRD §5.3 ①）。question 模块只保证「按稳定顺序返回候选集」。
 
+### 5.7 刷题取题（对 practice 的供给契约，**MVP-2 新增**）
+
+```
+list_practice_candidates(db, filters, limit)
+  → 按 position_id / category / dimension / difficulty / question_type 过滤
+  → **不按 created_by 过滤**（有意放宽，见下）
+  → 按 id 升序（可复现）
+  → limit 必须有上限（由 practice 指定，建议 20）
+```
+
+**这是一处对数据隔离的有意放宽**，必须显式记录：
+
+| 项 | 说明 |
+|---|---|
+| 为何放宽 | 候选人不是题目的创建者（`question.created_by` 是 HR）。若沿用 `scope_owner_id`（module-01 §5.3）判据，候选人将取不到任何题目，刷题功能直接不可用 |
+| 泄露面 | 仅题干、选项与维度；`PracticeQuestionOut` 已剥离参考答案、解析、来源与建题人，因此**答案不会泄露** |
+| 未来若需收窄 | 需引入「题目发布状态」或按岗位归属过滤。**本 MVP 明确不做** |
+
+**职责边界**：取几题、如何组织会话、判分与错题本——**全部在 practice 模块实现**（module-13）。question 模块只返回候选集与「剥离答案」的对外视图。
+
 ---
 
 ## 6. 错误处理（对应 PRD §7）
@@ -305,6 +355,11 @@ list_candidates_for_position(db, owner_id, position_id)
 | `tags` 超 10 个 / 单项超长 | `VALIDATION_ERROR` | 400 | — |
 | `difficulty` 取值非法 | `VALIDATION_ERROR` | 400 | — |
 | **删除被面试引用的题目** | `BUSINESS_ERROR` | 409 | 该题目已被面试引用，无法删除 |
+| **（MVP-2）单选题选项不足 2 项 / 有重复** | `VALIDATION_ERROR` | 400 | 单选题至少需要 2 个选项 / 选项不能重复 |
+| **（MVP-2）简答题带了选项** | `VALIDATION_ERROR` | 400 | 简答题不应包含选项 |
+| **（MVP-2）单选题缺参考答案，或答案不在选项内** | `VALIDATION_ERROR` | 400 | 单选题必须提供参考答案 / 参考答案必须是选项之一（`detail` 含选项列表） |
+| **（MVP-2）AI 生成的答案不在选项内** | `BUSINESS_ERROR` | 409 | AI 生成的答案不在选项中，请手工确认（**不落库**） |
+| **（MVP-2）补参考答案时 AI 调用失败** | `AI_PROVIDER_ERROR` | 502 | AI 服务调用失败，请稍后重试（**不落库**） |
 
 ---
 
@@ -480,3 +535,8 @@ list_candidates_for_position(db, owner_id, position_id)
 | 是否建标签表 | **不建，用 JSON 数组** | YAGNI，标签无需反向查询 |
 | 题目是否支持排序字段 | **不支持** | 题目在面试中的顺序由 `interview_question.seq` 决定，属面试实例的属性 |
 | 列表是否分页 | **不分页** | 内部系统数据量小；多维筛选已足够 |
+| **（MVP-2）刷题取题不按 `created_by` 过滤** | **有意放宽**，已显式记录（§5.7） | 候选人非题目创建者，沿用 owner 判据会导致无题可取；泄露面仅题干与维度，参考答案已由 `PracticeQuestionOut` 剥离 |
+| **（MVP-2）存量题目全是简答题** | 接受，不自动改造 | 迁移把存量题定为「简答」是唯一符合事实的选择；选择题刷题体验需 HR 新录或由演示脚本补题 |
+| **（MVP-2）MySQL JSON 列不能一步加为 NOT NULL** | 迁移分三步（加可空 → 回填 → 改 NOT NULL） | 对已有数据的表直接加无默认值的 NOT NULL JSON 列会失败；见 [module-10 §3.3](./2026-09-20-module-10-question-plan.md) |
+| **（MVP-2）参考答案存文本而非选项下标** | 存文本 | 存下标会在选项重排后静默指向另一个选项——静默的错误答案比报错更危险 |
+| **（MVP-2）每题题型与选项的边界值** | 单选 2–10 个选项、单个 1–200 字符；答案/解析 ≤ 2000 字符 | PRD 只定义字段名，未定义边界；与 module-00 §7.2-15「各类字段的边界值」同一处理 |
