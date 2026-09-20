@@ -602,6 +602,128 @@ a:hover { text-decoration: underline; }
 }
 .split-item-pos { margin-left: var(--s1); font-size: var(--t-xs); color: var(--muted); }
 
+/* ---- 面试详情：题目导航 + 单题编辑 ----
+   真实面试是一题一题走的，长滚动列表是错的：HR 要随时知道「问到第几题了」。 */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 268px 1fr;
+  gap: var(--s5);
+  align-items: start;
+  margin-top: var(--s5);
+}
+
+.qnav {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+}
+.qnav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.qnav-count {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 400;
+  color: var(--muted);
+}
+.qnav-list { max-height: 60vh; overflow-y: auto; }
+
+.qnav-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--line-soft);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.qnav-item:last-child { border-bottom: none; }
+.qnav-item:hover { background: #f7fafc; }
+.qnav-item.is-current { background: var(--brand-wash); border-left-color: var(--brand); }
+.qnav-num {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--faint);
+}
+.qnav-item.is-current .qnav-num { color: var(--brand); }
+.qnav-dim {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qnav-mark { font-size: var(--t-xs); color: var(--faint); }
+.qnav-item.is-answered .qnav-mark { color: var(--pass); font-weight: 600; }
+
+.editor {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  padding: var(--s5);
+}
+.editor-head { display: flex; align-items: center; gap: var(--s2); }
+.editor-seq {
+  min-width: 32px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--brand);
+}
+.editor-question {
+  margin-top: var(--s3);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.65;
+  max-width: 46em;
+}
+.editor-answer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s6) 0 var(--s2);
+}
+.editor .textarea { min-height: 180px; }
+.textarea[readonly] { resize: none; background: #fafcfe; color: var(--ink-soft); }
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.editor-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.save-state { font-size: var(--t-xs); color: var(--faint); }
+.save-state.is-saving { color: var(--muted); }
+.save-state.is-saved { color: var(--pass); }
+.save-state.is-failed { color: var(--danger); font-weight: 600; }
+
 /* ---- 单选题的选项（只读视图：标出参考答案是哪一项） ---- */
 .option-list {
   border: 1px solid var(--line-soft);
@@ -800,7 +922,7 @@ a:hover { text-decoration: underline; }
 }
 .rail-step.is-done .rail-label { color: var(--ink-soft); }
 .rail-step.is-done .rail-index { color: var(--muted); }
-.rail-step.is-done .rail-bar { background: var(--brand-deep); }
+.rail-step.is-done .rail-bar { background: var(--brand); }
 .rail-step.is-current { background: var(--brand-wash); }
 .rail-step.is-current .rail-label { color: var(--brand-deep); font-weight: 700; }
 .rail-step.is-current .rail-index { color: var(--brand); }
@@ -1996,6 +2118,112 @@ __modules['./mock.js'] = function (exports, __require) {
     return located.error || ok(interviewDetail(located.row));
   });
 
+  /* ---- 状态迁移与作答 ---- */
+
+  const STATUS_LABELS = {
+    draft: '草稿', ongoing: '进行中', completed: '已完成',
+    evaluating: '评估中', evaluated: '已评估',
+  };
+  /* 与后端 _ALLOWED_TRANSITIONS 逐条一致 —— 注意「评估中」不能直接回退到「进行中」。 */
+  const ALLOWED_TRANSITIONS = {
+    draft: ['ongoing'],
+    ongoing: ['completed'],
+    completed: ['evaluating', 'ongoing'],
+    evaluating: ['evaluated', 'completed'],
+    evaluated: ['evaluating', 'ongoing'],
+  };
+
+  function assertTransition(from, to) {
+    if ((ALLOWED_TRANSITIONS[from] || []).includes(to)) return null;
+    return fail(
+      409, 'BUSINESS_ERROR',
+      `不允许从「${STATUS_LABELS[from] ?? from}」迁移到「${STATUS_LABELS[to] ?? to}」`,
+      { from, to },
+    );
+  }
+
+  on('PATCH', '/interviews/:id', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+    // 评估中或已评估时不允许改候选人信息 —— 报告已经引用了它
+    if (located.row.status === 'evaluating' || located.row.status === 'evaluated') {
+      return fail(409, 'BUSINESS_ERROR', '评估中或已评估的面试不可修改候选人信息');
+    }
+
+    const fields = [];
+    const name = String(body?.candidate_name ?? '').trim();
+    const contact = String(body?.candidate_contact ?? '').trim();
+    if (!name) fields.push({ field: 'candidate_name', message: '请填写候选人姓名' });
+    else if (name.length > 100) fields.push({ field: 'candidate_name', message: '候选人姓名不能超过 100 个字符' });
+    if (contact.length > 200) fields.push({ field: 'candidate_contact', message: '联系方式不能超过 200 个字符' });
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    located.row.candidate_name = name;
+    located.row.candidate_contact = contact || null;
+    return ok(interviewDetail(located.row));
+  });
+
+  on('POST', '/interviews/:id/answers', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    // 只有进行中才可改作答 —— 保证评估依据不被篡改（HR 交卷后仍可改，候选人侧才锁定）
+    if (located.row.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '当前状态下不可修改回答，请先回退到进行中');
+    }
+
+    const item = (located.row.questions || [])
+      .find((q) => q.interview_question_id === Number(body?.interview_question_id));
+    if (!item) return fail(404, 'NOT_FOUND', '题目不属于该面试');
+    if (String(body?.content ?? '').length > 10000) {
+      return fail(400, 'VALIDATION_ERROR', '回答不能超过 10000 个字符');
+    }
+
+    const content = String(body?.content ?? '');
+    item.answer = content === '' ? null : content;
+    item.recorded_at = content === '' ? null : new Date().toISOString();
+    // answer_source 保留「最初从哪条通道进来」——HR 覆盖候选人作答后来源仍是 candidate
+    item.answer_source = item.answer_source || 'hr';
+
+    return ok({ ...item, match_reason: item.match_reason ?? null });
+  });
+
+  on('POST', '/interviews/:id/complete', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const bad = assertTransition(located.row.status, 'completed');
+    if (bad) return bad;
+
+    located.row.status = 'completed';
+    located.row.completed_at = new Date().toISOString();
+    return ok(interviewDetail(located.row));
+  });
+
+  on('POST', '/interviews/:id/rollback', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const bad = assertTransition(located.row.status, 'ongoing');
+    if (bad) return bad;
+
+    located.row.status = 'ongoing';
+    located.row.completed_at = null;
+    return ok(interviewDetail(located.row));
+  });
+
   /* ---- fetch 拦截 ---- */
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -2071,7 +2299,7 @@ __modules['./router.js'] = function (exports, __require) {
   const routes = [
     { path: '/login',                     key: 'login',           side: 'hr', isPublic: true,  label: '登录' },
     { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试' },
-    { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情', pending: true },
+    { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情' },
     { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告', pending: true },
     { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备', pending: true },
     { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
@@ -4142,7 +4370,8 @@ __modules['./pages/interviews.js'] = function (exports, __require) {
       return;
     }
 
-    const create = () => openCreateModal(() => render(container));
+    // 详情页已实现 → 创建成功就进这场面试开始记录，而不是留在列表上
+    const create = () => openCreateModal((detail) => navigate(`/interviews/${detail.id}`));
 
     mount(
       main,
@@ -4173,6 +4402,313 @@ __modules['./pages/interviews.js'] = function (exports, __require) {
               el('button', { class: 'btn btn--primary', text: '创建面试', onClick: create })),
       ),
     );
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/interview-detail.js —— 面试详情（核心屏）
+   布局上做了一处明确判断：不用「8 道题的长滚动列表」，而是
+   「题目导航 + 单题编辑」。真实面试是一题一题走的，HR 需要随时知道
+   「问到第几题了」，而不是在长页面里滚动找位置。
+   ========================================================================== */
+__modules['./pages/interview-detail.js'] = function (exports, __require) {
+  const { el, mount, clear } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal } = __require('./components/modal.js');
+  const {
+    contextTitle, createShell, emptyState, formatDateTime, loadingBlock,
+    navigate, sourceTag, dimTag, statusRail,
+  } = __require('./components/shell.js');
+
+  const SAVE_LABELS = { idle: '未修改', saving: '保存中…', saved: '已保存', failed: '保存失败' };
+
+  /** 打开时定位到第一道未答的题 —— HR 关心的永远是「下一题是什么」。 */
+  function pickInitialIndex(questions) {
+    const index = questions.findIndex((q) => !q.answer);
+    return index === -1 ? 0 : index;
+  }
+
+  async function render(container, params) {
+    const interviewId = params.id;
+    const { root, main } = createShell(contextTitle('面试'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载面试…'));
+
+    let detail;
+    try {
+      detail = await api.get(`/interviews/${interviewId}`);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '返回列表', onClick: () => navigate('/interviews') }))));
+      return;
+    }
+
+    if (!detail.questions.length) {
+      mount(main, el('div', { class: 'panel' }, emptyState('这场面试没有题目',
+        '题目在创建面试时生成。如果这里为空，说明出题那一步没有落库。')));
+      return;
+    }
+
+    const editable = detail.status === 'ongoing';
+    let currentIndex = pickInitialIndex(detail.questions);
+    const saveStates = {};
+
+    /* --------------------------- 状态操作 --------------------------- */
+
+    async function transition(action, successMessage) {
+      try {
+        await api.post(`/interviews/${interviewId}/${action}`);
+        toast.success(successMessage);
+        render(container, params);
+      } catch (error) {
+        toast.error(error.message); // 状态机不允许的迁移，文案来自后端
+      }
+    }
+
+    function buildActions() {
+      const buttons = [];
+
+      if (detail.status === 'ongoing') {
+        buttons.push(el('button', {
+          class: 'btn btn--primary',
+          text: '标记完成',
+          onClick: () => transition('complete', '已标记完成'),
+        }));
+      }
+
+      if (detail.status === 'completed') {
+        buttons.push(
+          el('button', {
+            class: 'btn btn--ghost',
+            text: '回退到进行中',
+            onClick: () => transition('rollback', '已回退到进行中'),
+          }),
+          el('button', {
+            class: 'btn btn--primary',
+            text: '开始评估',
+            onClick: () => navigate(`/interviews/${interviewId}/evaluation`),
+          }),
+        );
+      }
+
+      if (detail.status === 'evaluating') {
+        buttons.push(el('button', {
+          class: 'btn btn--primary',
+          text: '查看评估进度',
+          onClick: () => navigate(`/interviews/${interviewId}/evaluation`),
+        }));
+      }
+
+      if (detail.status === 'evaluated') {
+        buttons.push(
+          el('button', {
+            class: 'btn btn--ghost',
+            text: '回退到进行中',
+            onClick: () => transition('rollback', '已回退到进行中'),
+          }),
+          el('button', {
+            class: 'btn btn--primary',
+            text: '查看报告',
+            onClick: () => navigate(`/interviews/${interviewId}/evaluation`),
+          }),
+        );
+      }
+
+      return buttons;
+    }
+
+    /* ---------------------------- 题目导航 ---------------------------- */
+
+    const navColumn = el('div', {});
+    const editorColumn = el('div', {});
+
+    function buildNav() {
+      const answered = detail.questions.filter((q) => q.answer).length;
+      return el(
+        'aside',
+        { class: 'qnav', 'aria-label': '题目导航' },
+        el('div', { class: 'qnav-head' },
+          el('span', { text: '题目' }),
+          el('span', { class: 'qnav-count', text: `${answered} / ${detail.questions.length}` })),
+        el('ol', { class: 'qnav-list' },
+          detail.questions.map((question, index) =>
+            el('li', {},
+              el('button', {
+                class: ['qnav-item',
+                  index === currentIndex ? 'is-current' : '',
+                  question.answer ? 'is-answered' : ''].filter(Boolean).join(' '),
+                type: 'button',
+                'aria-current': index === currentIndex ? 'true' : null,
+                onClick: () => { currentIndex = index; repaint(); },
+              },
+                el('span', { class: 'qnav-num', text: String(question.seq) }),
+                el('span', { class: 'qnav-dim', text: question.dimension, title: question.content }),
+                el('span', { class: 'qnav-mark', text: question.answer ? '已答' : '待答' }),
+              ),
+            ),
+          )),
+      );
+    }
+
+    /* ---------------------------- 单题编辑 ---------------------------- */
+
+    function saveAnswer(question, textarea, stateNode) {
+      saveStates[question.interview_question_id] = 'saving';
+      stateNode.className = 'save-state is-saving';
+      stateNode.textContent = SAVE_LABELS.saving;
+
+      api.post(`/interviews/${interviewId}/answers`, {
+        interview_question_id: question.interview_question_id,
+        content: textarea.value,
+      })
+        .then((updated) => {
+          question.answer = updated.answer;
+          question.recorded_at = updated.recorded_at;
+          question.answer_source = updated.answer_source;
+          saveStates[question.interview_question_id] = 'saved';
+          stateNode.className = 'save-state is-saved';
+          stateNode.textContent = SAVE_LABELS.saved;
+          // 只重画导航 —— 重画编辑区会把光标从输入框里踢出去
+          clear(navColumn);
+          navColumn.append(buildNav());
+        })
+        .catch((error) => {
+          saveStates[question.interview_question_id] = 'failed';
+          stateNode.className = 'save-state is-failed';
+          stateNode.textContent = SAVE_LABELS.failed;
+          toast.error(error.message);
+        });
+    }
+
+    function buildEditor() {
+      const question = detail.questions[currentIndex];
+      const state = saveStates[question.interview_question_id] || 'idle';
+
+      const stateNode = el('span', {
+        class: `save-state${state === 'saved' ? ' is-saved' : ''}`,
+        text: SAVE_LABELS[state],
+      });
+
+      const textarea = el('textarea', {
+        class: 'textarea',
+        id: 'answer-input',
+        maxlength: '10000', // 与后端 content ≤ 10000 对齐
+        placeholder: editable ? '边听边记。留空表示候选人未作答，评估时按 0 分处理。' : '',
+        readOnly: !editable,
+        value: question.answer ?? '',
+      });
+
+      if (editable) {
+        // 失焦保存即可 —— 不做输入防抖，避免高频请求
+        textarea.addEventListener('blur', () => {
+          if (textarea.value === (question.answer ?? '')) return; // 没改就不发请求
+          saveAnswer(question, textarea, stateNode);
+        });
+      }
+
+      const actions = editable
+        ? el('div', { class: 'editor-actions' },
+            el('button', {
+              class: 'btn btn--ghost',
+              text: '保存回答',
+              onClick: () => saveAnswer(question, textarea, stateNode),
+            }),
+            el('button', {
+              class: 'btn btn--quiet',
+              text: '清空',
+              onClick: async () => {
+                // 清空会立刻把已录入的回答存成空，且没有撤销 ——
+                // 与删除岗位 / 题目一样属于「拿走东西」，先问一句
+                const ok = await confirmModal({
+                  title: '清空这道题的回答？',
+                  message: '清空后会立即保存为空，等同于候选人未作答（评估按 0 分计）。原来的内容无法恢复。',
+                  confirmLabel: '清空',
+                });
+                if (!ok) return;
+                textarea.value = '';
+                saveAnswer(question, textarea, stateNode);
+              },
+            }),
+            el('span', { class: 'hint', text: '离开输入框时会自动保存' }),
+            el('span', { style: 'margin-left:auto' }, stateNode))
+        : el('div', { class: 'editor-actions' },
+            // 「评估中」不允许回退到进行中（后端状态机如此），所以这句话要对状态负责
+            el('span', { class: 'hint', text: detail.status === 'evaluating'
+              ? '评估进行中，回答已锁定；等评估结束后可回退到进行中再修改。'
+              : '需先回退到进行中才能修改回答' }));
+
+      return el('section', { class: 'editor' },
+        el('div', { class: 'editor-head' },
+          el('span', { class: 'editor-seq', text: String(question.seq) }),
+          dimTag(question.dimension),
+          sourceTag(question.source),
+        ),
+
+        el('p', { class: 'editor-question', text: question.content }),
+
+        el('div', { class: 'editor-answer-head' },
+          el('label', { class: 'field-label', for: 'answer-input', text: '候选人回答' }),
+          el('span', { class: 'hint' },
+            question.recorded_at ? `最后录入 ${formatDateTime(question.recorded_at)}` : ''),
+        ),
+        textarea,
+        actions,
+
+        el('div', { class: 'editor-pager' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm',
+            text: '上一题',
+            disabled: currentIndex === 0,
+            onClick: () => { currentIndex -= 1; repaint(); },
+          }),
+          el('button', {
+            class: 'btn btn--ghost btn--sm',
+            text: '下一题',
+            disabled: currentIndex === detail.questions.length - 1,
+            onClick: () => { currentIndex += 1; repaint(); },
+          }),
+        ),
+      );
+    }
+
+    /* ------------------------------- 组装 ------------------------------- */
+
+    function repaint() {
+      clear(navColumn);
+      clear(editorColumn);
+      navColumn.append(buildNav());
+      editorColumn.append(buildEditor());
+    }
+
+    mount(
+      main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: detail.candidate_name }),
+          el('p', { class: 'page-lede' },
+            detail.candidate_contact
+              ? `${detail.position_name} · ${detail.candidate_contact}`
+              : detail.position_name),
+          el('p', { class: 'meta' },
+            detail.completed_at
+              ? `创建于 ${formatDateTime(detail.created_at)}，完成于 ${formatDateTime(detail.completed_at)}`
+              : `创建于 ${formatDateTime(detail.created_at)}`),
+        ),
+        el('div', { class: 'page-head-actions' },
+          el('button', { class: 'btn btn--ghost', text: '返回列表', onClick: () => navigate('/interviews') }),
+          buildActions()),
+      ),
+
+      // 状态由状态轨表达，不再另加一个状态标签 —— 那会把同一件事说两遍
+      statusRail(detail.status),
+
+      el('div', { class: 'detail-layout' }, navColumn, editorColumn),
+    );
+
+    repaint();
   }
 
   exports.render = render;
@@ -4227,6 +4763,7 @@ __modules['./main.js'] = function (exports, __require) {
   registerPages({
     login: __require('./pages/login.js'),
     interviews: __require('./pages/interviews.js'),
+    interviewDetail: __require('./pages/interview-detail.js'),
     positions: __require('./pages/positions.js'),
     questions: __require('./pages/questions.js'),
     users: __require('./pages/users.js'),
