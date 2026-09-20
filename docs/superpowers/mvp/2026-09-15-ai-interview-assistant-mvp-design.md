@@ -17,8 +17,8 @@
 
 **HR / 面试官端** —— 帮助真人面试官：
 
-1. 录入候选人简历（粘贴纯文本）
-2. 根据岗位（JD + 评估维度）生成面试题，可按候选人简历从题库匹配相关题目
+1. 查看候选人在线提交的简历
+2. 根据岗位（JD + 评估维度）生成面试题，并可按候选人简历从题库补题
 3. 在面试过程中记录候选人回答（HR 手工录入，或由候选人在线作答）
 4. 面试前生成准备提纲、考察重点与问题预案
 5. 面试结束后自动评估候选人（逐题评分 + 多维评分）
@@ -36,10 +36,10 @@
 
 - 打通「创建面试 → 出题 → 记录 → 评估 → 报告」完整闭环
 - 打通「发邀请 → 在线作答 → 交卷 → 反馈」候选人闭环
-- 打通「录简历 → 匹配题目 → 准备 → 面试 → 评估 → 报告 → 导出」的简历驱动链路
+- 打通「创建面试 → 发邀请 → 候选人录简历 → 按简历补题 → 准备 → 面试 → 评估 → 报告 → 导出」的简历驱动链路
 - 提供可复用的题库，同时服务 HR 出题与候选人刷题
 - 提供候选人刷题练习闭环：取题 → 判分 → 解析 → 错题本 → 统计
-- 简历为跨端共用资产：HR 侧驱动出题，候选人侧驱动刷题推荐
+- 简历由**候选人单侧录入**，同时服务两个方向：HR 侧驱动补题，候选人侧驱动刷题推荐
 - 面试前提供可编辑的准备提纲，降低 HR 临场负担
 - AI 能力通过抽象接口接入，无大模型 Key 也能以 Mock 方式演示和测试
 
@@ -77,7 +77,11 @@
 
 > 单机部署带来两条实现约束：前端限流类能力用**进程内计数**实现；同一 origin 下两端登录态必须**按端分 key**存储（见 9 非功能需求）。
 
-**MVP-3 新增依赖（仅一项）**：`python-docx`，用于后端生成 DOCX 报告（见 4.12）。两条规避路径：PDF 导出走前端浏览器打印（`window.print()` + `@media print`），因此**不引入任何 PDF 生成库**；简历为纯文本粘贴，因此**不引入任何文件解析库**。
+**MVP-3 新增依赖（仅一项）**：`python-docx`（解析后实际装 `python-docx 1.2.0` + `lxml 6.1.3`，约 4.3 MB），用于后端生成 DOCX 报告（见 4.12）。两条规避路径：PDF 导出走前端浏览器打印（`window.print()` + `@media print`），因此**不引入任何 PDF 生成库**；简历为纯文本粘贴，因此**不引入任何文件解析库**。
+
+> ⚠️ **安装必须走镜像**：本机直连 `pypi.org` / `files.pythonhosted.org` 会超时（已实测，5 次重试均 0 字节），直连索引还会把 `python-docx` 误解析到 2021 年的 `0.8.11`。可用清华镜像：
+> `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple python-docx`（已实测可解析到 1.2.0 与 cp313-win_amd64 的 lxml wheel）
+> `requirements.txt` 中照常写 `python-docx>=1.1`，镜像只影响安装命令、不影响依赖声明。
 
 ---
 
@@ -107,7 +111,7 @@ repository → 数据访问：CRUD，对接 MySQL
 | `auth` | 用户、登录、JWT、角色（admin/hr/candidate）、数据隔离、候选人注册 | — |
 | `position` | 岗位：名称、JD、评估维度 | auth |
 | `question` | 题库：题目 CRUD、分类、标签、关联岗位、题型与参考答案 | auth, position |
-| `resume` | 简历：纯文本录入、编辑、归属隔离（HR 与候选人双侧共用） | auth |
+| `resume` | 简历：候选人侧纯文本增删改查，HR 侧经面试只读 | auth |
 | `interview` | 面试：实例、候选人信息、出题组装、回答记录、状态机、作答邀请、面试前准备助手 | auth, position, question, resume, ai |
 | `evaluation` | 评估：逐题评分、多维评分、报告、流式评估、候选人反馈视图、报告导出 | auth, interview, ai |
 | `practice` | 刷题：练习会话、逐题作答、判分与解析、错题本、练习统计、按简历推荐 | auth, question, resume, ai |
@@ -118,7 +122,7 @@ repository → 数据访问：CRUD，对接 MySQL
 - `ai` 是基础设施，被 `interview`（出题 / 准备提纲）、`evaluation`（评估）、`practice`（判分 / 推荐）调用
 - `evaluation` 读取 `interview` 的回答数据生成报告
 - `practice` 依赖 `question` 取题、依赖 `ai` 判分与推荐、依赖 `resume` 取简历；**不依赖 `interview`**（刷题与真实面试解耦）
-- `resume` 是双侧共用的独立资产：`interview` 与 `practice` 均**单向依赖** `resume`，`resume` 不反向依赖任何业务模块——否则会把 `practice ↔ interview` 的循环依赖引进来
+- `resume` 由**候选人单侧写入**，被两个方向消费：`interview`（HR 读取 + 匹配补题）与 `practice`（刷题推荐）均**单向依赖** `resume`，`resume` 不反向依赖任何业务模块——否则会把 `practice ↔ interview` 的循环依赖引进来
 - 各业务模块均依赖 `auth` 做鉴权与数据隔离
 
 ---
@@ -161,10 +165,12 @@ repository → 数据访问：CRUD，对接 MySQL
 
 ### 4.4 面试管理（interview）
 
-- 创建面试：选择岗位、填写候选人信息（姓名、联系方式）、可选关联一份简历（`resume_id`，见 4.10）
-- 出题组装（同步）：题库抽取 N 题（默认 5）+ **按简历从题库匹配 K 题（默认 3，仅在关联了简历时执行）** + AI 按 JD/维度补充 M 题（默认 3），合并成题目列表并写内容快照
+- 创建面试：选择岗位、填写候选人信息（姓名、联系方式）
+- 出题组装（同步）：题库抽取 N 题（默认 5）+ AI 按 JD/维度补充 M 题（默认 3），合并成题目列表并写内容快照
+- **简历关联（候选人侧）**：候选人凭邀请激活并绑定某场面试后，可为该场面试关联自己的一份简历（见 4.13）
+- **按简历补题（HR 侧）**：候选人关联简历后，HR 可触发一次 AI 匹配，从题库追加 K 题（默认 3，见 4.14）。这是简历进入出题流程的**唯一通路**——简历由候选人提交，时间上晚于创建面试，因此匹配不发生在创建时
 - 简历匹配产出的题目在 `interview_question.source_snapshot` 记为 `resume_match`，AI 给出的匹配理由写入 `match_reason`（非匹配来源的题为 `null`），供前端展示「为什么选这道题」
-- **出题组装后不提供换题 / 删题 / 加题接口**（沿用既有约束），因此简历匹配只在创建面试时发生一次
+- 与既有约束的关系：**出题组装后不提供换题 / 删题接口**（沿用既有约束）；「按简历补题」是唯一的加题例外，且**只追加、不改动既有题目**
 - 记录回答（两条通道，共用同一份作答数据）：
   - **HR 手工录入**：HR 逐题录入候选人回答，可随时编辑
   - **候选人在线作答**：候选人凭邀请码进入后逐题作答（见 4.8）
@@ -231,13 +237,16 @@ repository → 数据访问：CRUD，对接 MySQL
 
 - 简历以**纯文本粘贴**方式录入，不做文件上传与格式解析（见 1.3）
 - 字段：标题、简历正文（纯文本）、候选人姓名（可选）、联系方式（可选）
-- 双侧共用同一实体与同一套业务语义，通过**双 router 分离权限**（与 `question` / `interview` / `evaluation` 现有模式一致，共用同一套 service / repository）：
-  - HR 侧 `/resumes` → 权限 admin / hr
-  - 候选人侧 `/candidate/resumes` → 权限 candidate
-- 支持增删改查；数据隔离沿用 `created_by`——HR 只见自己录入的简历，候选人只见自己的简历，admin 见全部
+- **写入方只有候选人**：候选人在 `/candidate/resumes` 自助录入与维护
+- **HR 不提供简历 CRUD**：HR 只读，且只读**与某场自己名下面试关联**的简历（见 4.13 / 4.14）
+- 数据隔离：
+  - 候选人只能读写自己的简历（`created_by` 判据）
+  - HR 只能读取与自己名下某场面试关联的简历——判据沿用 4.1 既有的「持有该面试的有效邀请」这条既有校验路径，**不引入新机制**
+  - admin 见全部
 - 简历**不绑定**某场面试或某次练习：同一份简历可被多场面试、多次练习复用；`interview.resume_id` 与 `practice_session.resume_id` 只记录引用
-- **HR 简历与候选人简历是两条互不关联的记录**，即使同属一人：HR 为某候选人录入的简历写在 HR 名下（`created_by=HR`），候选人自建的简历写在自己名下。双侧靠 `created_by` 隔离，系统**不做「候选人上传 → HR 可见」的简历交接**（那需要跨端可见性机制，与现有隔离模型冲突）。HR 需要候选人的简历文本时，由 HR 自行录入
-- 删除简历时若已被面试或练习引用 → 拒绝（409），与 `position` 的删除校验同构
+- 候选人可为不同面试关联不同简历（例如投不同岗位），关联动作见 4.13
+- 简历的两种消费方式：HR 侧按简历补题（见 4.14）、候选人侧刷题推荐（见 4.7）
+- 删除简历时若已被面试或练习关联 → 拒绝（409）
 - 简历正文长度上限 20000 字符（避免超长文本打爆 AI 上下文）
 
 ### 4.11 面试前准备助手（interview）
@@ -262,6 +271,34 @@ repository → 数据访问：CRUD，对接 MySQL
   - 雷达图直接沿用页面上已渲染的图形，所见即所得
   - 不提供后端 PDF 生成接口，因此**不支持脱离浏览器的批量 / 后台导出**
 - 两条路径共用同一份数据来源，不额外落库导出记录
+
+### 4.13 候选人关联简历到面试（interview / candidate）
+
+- 简历由候选人提供，因此关联动作也由候选人发起：候选人凭邀请激活并绑定某场面试后，为该场面试指定一份自己的简历
+- 接口：`PUT /candidate/interviews/{id}/resume`，body `{resume_id}`（传 `null` 解除关联）→ 写 `interview.resume_id`
+- 约束：
+  - 只能关联**属于本人**的简历（`created_by` 为本人），否则 403
+  - 只能在**本人已接受邀请**的面试上操作，否则 403（沿用既有候选人隔离判据）
+  - 一场面试只关联一份简历；同一份简历可被多场面试关联
+  - 面试 `completed` 及之后拒绝变更关联（409）——简历是面试的输入，面试结束即冻结
+- **这是 HR 读取候选人简历的唯一通路**：没有这条关联，HR 看不到候选人的任何简历
+- 候选人可在面试进行中随时改关联（例如换一份更贴合的简历），改后 HR 需重新触发补题才会生效（见 4.14）
+
+### 4.14 简历匹配补题（interview）
+
+- 目的：在既有出题结果之上，按候选人简历**追加**一批更贴合其经历的题目
+- 触发：HR 在面试详情页点「按简历补题」，接口 `POST /interviews/{id}/questions/match`
+- 前置条件（不满足对应报错）：
+  - 面试处于 `ongoing` → 否则 409（`draft` 尚未出题，无追加对象；`completed` 及之后冻结）
+  - `interview.resume_id` 非空 → 否则 409「该面试尚未关联简历」
+- 行为：
+  1. 取岗位（JD + 评估维度）+ 该面试关联的简历 + 目标岗位的题库候选池
+  2. 调 `ai.match_questions_by_resume`，返回题目 id 与匹配理由（**只挑不生成**，见 6）
+  3. 追加为新 `interview_question`：`seq` 续接本场最大值，`source_snapshot='resume_match'`，`match_reason` 写入 AI 给出的理由
+- **幂等**：本场已有的 `question_id` 跳过，不重复追加。HR 连点不会产生重复题目
+- 可重复触发：候选人换了简历、或 HR 想再补几题，都可再次调用；每次只追加本场尚不存在的题
+- AI 调用失败 → 降级为「本次补题未生效」，不改变面试状态、不动既有题目（见 7）
+- 补题完成后**不提供撤销接口**：追加的题目与既有题目一样不可删（沿用既有约束）
 
 ---
 
@@ -326,20 +363,19 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 - **错题本不建表**，由 `practice_item.is_correct=false` 派生查询。
 - **`practice_item` 带题目快照**：会话开始时即按筛选条件取题生成待答项（`user_answer` 为空），并写入 `content_snapshot` / `options_snapshot` / `reference_answer_snapshot`；题库删改不影响进行中与历史练习的复看。逐题提交只回填 `user_answer` / `is_correct` / `score` / `explanation` / `answered_at`。
 - `question` 复用为刷题题源，不另建练习题库表 —— 单一题库同时服务 HR 出题与候选人刷题。
-- **`resume` 是双侧共用资产**：HR 与候选人写的是同一张表，靠 `created_by` 区分归属。不设 `owner_type` 字段——归属判据与现有 `position` / `question` / `interview` 完全一致，无需新机制。
+- **`resume` 只有候选人一个写入方**：`created_by` 恒为候选人用户 id。HR 的读取权限不在本表上判定，而在「该简历是否关联到自己名下的某场面试」上判定——判据复用 4.1 既有的邀请链，因此不需要 `owner_type` 之类的额外字段。
 - **简历只存纯文本**：不存原文件、不存解析产物。`content` 完全由用户粘贴，因此不存在解析失败分支。
-- **`interview.resume_id` / `practice_session.resume_id` 只记录引用**，不复制简历内容。删除简历前会校验引用（4.10），因此不存在悬空引用导致匹配逻辑取不到简历的情况。**简历更新后不影响已出好的题**——题目内容与匹配理由已快照在 `interview_question` 中。
+- **`interview.resume_id` 由候选人侧写入**（4.13），不是 HR 创建面试时写入。`interview.resume_id` / `practice_session.resume_id` 都只记录引用、不复制简历内容。删除简历前会校验引用（4.10），因此不存在悬空引用。**简历更新后不影响已补的题**——题目内容与匹配理由已快照在 `interview_question` 中。
 - **`interview_question.match_reason` 与 `source_snapshot='resume_match'` 成对出现**：前者存 AI 给出的匹配理由，后者标记来源。非简历匹配来源的题 `match_reason` 为 `null`。
 - **`interview_prep` 一场面试唯一**（`interview_id` 加唯一约束）：重新生成即覆盖，不做版本历史；三个 JSON 字段整体替换，不做字段级合并。
 
 ### 5.3 五条核心流程
 
 **① 创建面试 + 出题（同步）**
-1. HR 选岗位 + 填候选人信息（可选关联一份简历）
+1. HR 选岗位 + 填候选人信息
 2. 系统从题库按岗位/维度抽取 N 题
-3. 若关联了简历，调 `ai.match_questions_by_resume` 从题库候选中匹配 K 题（只挑不生成）
-4. 调 `ai` Provider 出题接口，按 JD + 评估维度补充 M 题
-5. 合并生成题目列表并写内容快照，面试进入 `ongoing`
+3. 调 `ai` Provider 出题接口，按 JD + 评估维度补充 M 题
+4. 合并生成题目列表并写内容快照，面试进入 `ongoing`
 
 **② 面试进行（HR 手动录入）**
 1. HR 逐题录入候选人回答，回答实时保存到 `answer`
@@ -364,13 +400,14 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 3. 判分结果回填 `practice_item`（`user_answer`、`is_correct`、`score`、`explanation`），并更新会话计数
 4. 结束练习 → 会话置完成，展示小结；错题本与统计由 `practice_item` 派生
 
-**⑥ 简历匹配出题（HR 侧）**
-1. HR 先录入候选人简历（`POST /resumes`，粘贴纯文本）
-2. 创建面试时关联该简历（`resume_id`）
-3. 出题组装三路合并：题库抽 N 题 → 按简历匹配 K 题（AI 打分排序，返回题目 id 与理由）→ AI 按 JD 生成 M 题
-4. 写入 `interview_question`，匹配来源的题写 `source_snapshot='resume_match'` 与 `match_reason`
-5. 面试进入 `ongoing`，前端在题目上展示匹配理由
-6. AI 匹配失败 → 该路整体跳过，出题组装按另外两路正常完成（见 7）
+**⑥ 简历关联与按简历补题**
+1. 走流程 ④ 的 1–2 步：HR 生成邀请码 → 候选人激活并绑定该面试
+2. 候选人在候选人端录入自己的简历（`POST /candidate/resumes`），再关联到该面试（`PUT /candidate/interviews/{id}/resume`）→ 写 `interview.resume_id`
+3. HR 在面试详情页看到简历，点「按简历补题」→ `POST /interviews/{id}/questions/match`
+4. 后端取岗位 + 简历 + 题库候选池，调 `ai.match_questions_by_resume`（只挑不生成，返回题目 id 与理由）
+5. 追加为新 `interview_question`：`seq` 续接，`source_snapshot='resume_match'`，写 `match_reason`；本场已有的 `question_id` 跳过
+6. 前端在题目上展示匹配理由
+7. AI 失败 → 本次补题不生效，不动既有题目、不改面试状态（见 7）
 
 **⑦ 面试前准备（HR 侧）**
 1. HR 在面试详情页点「生成准备提纲」
@@ -430,9 +467,14 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
   - 刷题限流（进程内计数，单机规模）→ 超限返回业务错误
 - **MVP-3 新增**：
   - 简历不存在 / 非本人所有 → 404 / 403（沿用现有 `ensure_resource_visible` 语义：资源存在但无权访问）
-  - 删除已被面试或练习引用的简历 → 409（冲突）
+  - 候选人把非本人的简历关联到面试 → 403
+  - 候选人在未接受邀请的面试上关联简历 → 403
+  - 删除已被面试或练习关联的简历 → 409（冲突）
   - 简历正文超长（> 20000 字符）→ 422
-  - **简历匹配 AI 调用失败 → 降级**：跳过该路，出题组装仍以「题库抽题 + AI 生成」两路完成，不阻塞创建面试；响应中标记 `resume_match_skipped=true`，前端提示「简历匹配未生效」
+  - **面试未关联简历时触发补题 → 409**（「该面试尚未关联简历」，前端据此隐藏或禁用「按简历补题」按钮）
+  - **面试非 `ongoing` 时触发补题 → 409**（`draft` 无追加对象、`completed` 及之后冻结）
+  - **补题时 AI 调用失败 → 降级**：本次补题不生效，**不动既有题目、不改面试状态**，返回业务错误由 HR 重试；不阻塞面试的任何其他操作
+  - 面试 `completed` 及之后候选人变更简历关联 → 409
   - 候选人刷题按简历推荐时 AI 失败 → 降级为原筛选取题，不阻塞开始练习
   - 面试状态为 `completed` 及之后调用准备助手生成 / 编辑 → 409
   - 准备助手尚未生成时读取 → 404（前端据此显示「生成准备提纲」按钮）
@@ -473,19 +515,10 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | DELETE | `/questions/{id}` | 删除题目 | admin, hr |
 | POST | `/questions/{id}/reference-answer` | 调 AI 生成参考答案与解析并落库（补齐 §4.3「可由 AI 生成后由 HR 确认」） | admin, hr |
 
-### resume（HR 侧）
-| 方法 | 路径 | 说明 | 权限 |
-|---|---|---|---|
-| POST | `/resumes` | 新建简历（粘贴纯文本） | admin, hr |
-| GET | `/resumes` | 我的简历列表 | admin, hr |
-| GET | `/resumes/{id}` | 简历详情 | admin, hr |
-| PUT | `/resumes/{id}` | 更新简历 | admin, hr |
-| DELETE | `/resumes/{id}` | 删除简历（被面试或练习引用则 409） | admin, hr |
-
 ### interview
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| POST | `/interviews` | 创建面试（含同步出题；请求体可选 `resume_id` 触发按简历匹配出题，见 4.10） | admin, hr |
+| POST | `/interviews` | 创建面试（含同步出题；**不接受 `resume_id`**，简历由候选人事后关联，见 4.13） | admin, hr |
 | GET | `/interviews` | 面试列表（按用户隔离） | admin, hr |
 | GET | `/interviews/{id}` | 面试详情（含题目+回答） | admin, hr |
 | PATCH | `/interviews/{id}` | 更新候选人信息（**不含状态**，状态走动词端点） | admin, hr |
@@ -500,6 +533,8 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | POST | `/interviews/{id}/prep` | 生成 / 重新生成面试前准备提纲（整体覆盖） | admin, hr |
 | GET | `/interviews/{id}/prep` | 查看准备提纲（未生成则 404） | admin, hr |
 | PUT | `/interviews/{id}/prep` | 编辑准备提纲（整体覆盖 outline / focus_points / question_plan） | admin, hr |
+| GET | `/interviews/{id}/resume` | 读取该面试关联的候选人简历（未关联则 404） | admin, hr |
+| POST | `/interviews/{id}/questions/match` | 按简历从题库补题（追加、幂等；前置条件见 4.14） | admin, hr |
 
 ### evaluation
 | 方法 | 路径 | 说明 | 权限 |
@@ -517,11 +552,12 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | POST | `/candidate/interviews/{id}/answers` | 保存/更新我的作答（交卷后拒绝） |
 | POST | `/candidate/interviews/{id}/submit` | 交卷（幂等） |
 | GET | `/candidate/interviews/{id}/feedback` | 查看面向候选人的脱敏反馈 |
+| PUT | `/candidate/interviews/{id}/resume` | 为本人已接受的面试关联 / 解除关联我的一份简历（`{resume_id}`，传 `null` 解除） |
 | POST | `/candidate/resumes` | 新建我的简历（粘贴纯文本） |
 | GET | `/candidate/resumes` | 我的简历列表 |
 | GET | `/candidate/resumes/{id}` | 简历详情（仅本人） |
 | PUT | `/candidate/resumes/{id}` | 更新我的简历 |
-| DELETE | `/candidate/resumes/{id}` | 删除我的简历（被练习引用则 409） |
+| DELETE | `/candidate/resumes/{id}` | 删除我的简历（被面试或练习关联则 409） |
 
 ### practice（候选人侧）
 | 方法 | 路径 | 说明 |
@@ -538,13 +574,13 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 
 > candidate 与 practice 两组接口权限均为 `candidate`，数据隔离为「仅本人数据（含本人简历）+ 本人已接受的邀请所对应面试」。
 >
-> **`resume` 是 MVP-3 唯一有双 router 的模块**：HR 侧 `/resumes` 与候选人侧 `/candidate/resumes` 共用同一套 service / repository，仅路径与权限不同。这样既满足两端共用，又不破坏「候选人 token 调 HR 接口 → 403」的既定守卫规则。
+> **`resume` 在 API 层只有候选人侧一组 CRUD**（`/candidate/resumes`）。HR 侧不提供简历 CRUD：HR 通过 `GET /interviews/{id}/resume` 只读候选人关联的简历，读取权限的判据是「该简历关联到自己名下的某场面试」，复用 4.1 既有的邀请链校验路径，而非 `created_by`。
 
 ---
 
 ## 9. 非功能需求
 
-- **数据隔离（三端）**：admin 见全部；普通 HR 仅见自己创建的数据（含自己录入的简历）；candidate 仅见自己的练习数据、自己的简历，以及自己已接受的邀请所对应面试的题目与自己的作答
+- **数据隔离（三端）**：admin 见全部；普通 HR 仅见自己创建的数据，外加**与自己名下某场面试关联的候选人简历**（只读）；candidate 仅见自己的练习数据、自己的简历，以及自己已接受的邀请所对应面试的题目与自己的作答
 - **权限守卫**：HR 侧全部接口显式校验角色（admin/hr），候选人侧接口校验 candidate；权限工具支持多角色判定。这是本期新增强制项，不是可选项
 - **候选人可见性**：反馈默认脱敏（仅综合结论/优点/待改进）；逐题分、维度分、雷达图默认不下发，由配置项 `CANDIDATE_FEEDBACK_LEVEL` 控制
 - **单机约束适配**：
@@ -553,7 +589,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 - **安全**：密码哈希存储（bcrypt/argon2）；JWT 过期与刷新；参数校验防注入；邀请码具备足够熵、不可枚举、有效期默认 7 天、一次性接受、可撤销
 - **可测试性**：三层可独立测试；AI Provider 可 Mock（刷题判分同样可在无 Key 下确定性复现）
 - **可维护性**：模块边界清晰，依赖单向，每个 package 可独立理解与修改；`practice` 不依赖 `interview`，刷题与真实面试解耦
-- **简历的跨端共用不破坏分层（MVP-3）**：`resume` 不依赖任何业务模块，`interview` 与 `practice` 各自单向依赖它；**不得让 `resume` 反向引用面试或练习**，否则会把 `practice ↔ interview` 的循环依赖引进来
+- **简历的跨端流不破坏分层（MVP-3）**：`resume` 由候选人单侧写入、不依赖任何业务模块，`interview` 与 `practice` 各自单向依赖它；**不得让 `resume` 反向引用面试或练习**，否则会把 `practice ↔ interview` 的循环依赖引进来。HR 读取候选人简历的判据（邀请链）由 `interview` 实现，`resume` 只提供纯数据读取，不感知调用方身份
 - **新增依赖受控（MVP-3）**：仅新增 `python-docx`。PDF 与简历解析分别以「浏览器打印」「纯文本粘贴」实现从而不引依赖；新增任何依赖都需先更新本节与 §2
 
 ---
@@ -569,8 +605,9 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | 权限 | 候选人 token 调 HR 接口 → 403；HR 调候选人接口 → 403；候选人 A 访问候选人 B 的面试 / 练习 → 403；访问未被邀请或未接受的面试 → 403 |
 | 流程 | 邀请生命周期（pending → accepted / revoked / expired）、交卷锁定与 HR 覆盖、候选人重复交卷幂等 |
 | 集成 | 出题组装、状态机流转、评估落库 三条主流程；在线答题、刷题练习 两条新增主流程；简历匹配出题、面试前准备 两条 MVP-3 主流程 |
-| resume（MVP-3） | 双 router 权限（候选人 token 调 `/resumes` → 403、HR 调 `/candidate/resumes` → 403）；`created_by` 隔离；被面试或练习引用时删除 → 409；正文超长 → 422 |
-| 简历匹配（MVP-3） | 关联简历出题 → 三路合并且 `source_snapshot='resume_match'`、`match_reason` 非空；未关联简历 → 该路跳过且出题正常；AI 失败 → 降级且 `resume_match_skipped=true`；候选人按简历推荐 → AI 失败时退回原筛选取题 |
+| resume（MVP-3） | 候选人 `created_by` 隔离（A 看不到 B 的简历）；HR 只能经 `GET /interviews/{id}/resume` 读到关联到自己名下某场的简历，读他人面试的简历 → 403；删除被关联的简历 → 409；正文超长 → 422 |
+| 简历关联（MVP-3） | 候选人关联非本人简历 → 403；在未接受邀请的面试上关联 → 403；面试 `completed` 后变更 → 409；传 `null` 解除关联 |
+| 简历补题（MVP-3） | 未关联简历 → 409；非 `ongoing` → 409；正常补题 → 追加且 `source_snapshot='resume_match'`、`match_reason` 非空、`seq` 续接；重复调用 → 已有 `question_id` 跳过（幂等）；AI 失败 → 不动既有题目、不改状态；候选人换简历后再次补题 → 只追加新增的题 |
 | 准备助手（MVP-3） | 生成 / 重新生成覆盖 / 编辑；`completed` 状态生成或编辑 → 409；未生成时读取 → 404；`draft` 且本场无题目时仍可生成 |
 | 导出（MVP-3） | DOCX 端点的鉴权与数据隔离、生成失败返回业务错误；PDF 为前端浏览器行为，后端无对应端点（不在后端测试范围） |
 
@@ -592,11 +629,11 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 - 前端：同一 Vite 工程内新增候选人路由与页面；登录态按端分 key
 
 ### MVP-3 简历驱动与报告导出（2026-09-20 追加，本文档范围）
-- `resume`：新模块 —— 纯文本简历、双侧共用（双 router）、`created_by` 隔离
-- `interview`：出题组装新增「按简历匹配题库」一路（写 `source_snapshot='resume_match'` 与 `match_reason`）；面试前准备助手（生成 / 查看 / 编辑，落库 `interview_prep`）
+- `resume`：新模块 —— 候选人侧纯文本 CRUD；HR 侧经面试只读（判据复用邀请链）
+- `interview`：候选人关联简历到面试（4.13）；HR 按简历补题（4.14，写 `source_snapshot='resume_match'` 与 `match_reason`）；面试前准备助手（生成 / 查看 / 编辑，落库 `interview_prep`）
 - `practice`：开始练习时可按简历推荐题目
-- `evaluation`：报告 DOCX 导出（`python-docx`，唯一新增依赖）
-- 前端：简历管理页（双侧）、报告与准备助手的打印导出样式（`@media print`）
+- `evaluation`：报告 DOCX 导出（`python-docx`，唯一新增依赖；安装需走镜像，见 §2）
+- 前端：候选人侧简历管理页、HR 侧面试详情内的简历只读区与「按简历补题」按钮、报告与准备助手的打印导出样式（`@media print`）
 - ⚠️ **迁移说明**：本批次新增 / 变更的表结构（`resume`、`interview_prep`、`interview.resume_id`、`interview_question.match_reason`、`practice_session.resume_id`）与 MVP-2 一致，**只改模型、不写迁移**，待统一收口
 
 ### V1.1（规划，不在本次范围）
