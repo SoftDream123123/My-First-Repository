@@ -3347,6 +3347,9 @@ __modules['./mock.js'] = function (exports, __require) {
    * 是 HR 的决策，应当由 HR 另行沟通 —— 让一个人在自助页面上读到「不建议推进」
    * 既生硬也不是这个页面的职责。这里只讲这场发挥的总体情况：强在哪、弱在哪。
    * （优缺点的条目仍与 HR 报告逐条一致，便于两处对照，故不在此重写。）
+   *
+   * 措辞与后端 `MockProvider._candidate_conclusion`（`app/ai/mock_provider.py`）
+   * **逐字一致** —— 原型要和真实运行是同一件事，而不是「看着像」。
    */
   function candidateConclusion(strong, weak) {
     const names = (list) => list.map((d) => d.dimension).join('、');
@@ -3358,7 +3361,7 @@ __modules['./mock.js'] = function (exports, __require) {
     const gap = weak.length
       ? `${names(weak)}是还需要补强的地方`
       : '各维度表现比较均衡，没有明显短板';
-    return `感谢你参与本次面试。以下是这场面试的反馈，供你参考：${good}，${gap}。`;
+    return `感谢你参与本次面试。以下是本次面试的反馈，供你参考。${good}，${gap}。`;
   }
 
   /** 落库的反馈**是一份中性文案**：不带档位、不带总分。

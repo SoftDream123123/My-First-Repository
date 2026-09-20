@@ -8,6 +8,7 @@ import logging
 import re
 
 from app.ai.base import (
+    CANDIDATE_FEEDBACK_LEAD,
     DIFFICULTIES,
     FEEDBACK_LEVEL_FULL,
     FEEDBACK_LEVEL_SUMMARY,
@@ -63,7 +64,36 @@ _REFERENCE_EXPLANATIONS = (
 
 _REFERENCE_SNIPPET_LEN = 20
 
-_FEEDBACK_PREFIX = "感谢你参与本次面试。以下是本次面试的反馈，供你参考："
+# 没有明显强项 / 弱项时的两句兜底，保证结论读起来是完整的一句
+_FEEDBACK_NO_STRONG = "各个维度上还没有体现出明显突出的部分"
+_FEEDBACK_NO_WEAK = "各维度表现比较均衡，没有明显短板"
+
+
+def _candidate_conclusion(dimension_scores: list[DimensionScoreResult]) -> str:
+    """由维度得分重写一句**面向候选人本人**的综合结论。
+
+    只点出强项与弱项**是哪几个维度**，理由交给报告里那两条优缺点列表 ——
+    结论里再复述一遍理由，会和紧接着的条目逐字重复，读起来像同一句话说了两遍。
+
+    判强弱的阈值用 `PASS_THRESHOLD`，与 `summarize_report` 同一把尺；
+    调用方因此不必自己再算一套「哪些算强项」。
+    """
+    strong = [
+        item.dimension for item in dimension_scores if item.score >= PASS_THRESHOLD
+    ]
+    weak = [
+        item.dimension for item in dimension_scores if item.score < PASS_THRESHOLD
+    ]
+
+    good = (
+        f"你在{'、'.join(strong)}上的表现比较扎实"
+        if strong
+        else _FEEDBACK_NO_STRONG
+    )
+    gap = (
+        f"{'、'.join(weak)}是还需要补强的地方" if weak else _FEEDBACK_NO_WEAK
+    )
+    return f"{CANDIDATE_FEEDBACK_LEAD}{good}，{gap}。"
 
 # ---- 按简历匹配（module-18 §4.1）----
 #
@@ -436,10 +466,10 @@ class MockProvider(AIProvider):
     def generate_candidate_feedback(
         self,
         level: str,
-        conclusion: str,
+        overall_score: float,
         strengths: list[str],
         weaknesses: list[str],
-        overall_score: float,
+        dimension_scores: list[DimensionScoreResult],
     ) -> CandidateFeedbackResult:
         if level not in FEEDBACK_LEVELS:
             # 退化为 summary 是「给得更少」这一安全方向，但配置写错必须留痕
@@ -447,7 +477,8 @@ class MockProvider(AIProvider):
             level = FEEDBACK_LEVEL_SUMMARY
 
         return CandidateFeedbackResult(
-            conclusion=f"{_FEEDBACK_PREFIX}{conclusion.strip()}",
+            # 由维度得分**重写**，不是报告结论的复述 —— 报告那句含去留判断（PRD §4.9）
+            conclusion=_candidate_conclusion(dimension_scores),
             # 只 strip，不改变条目数量与顺序 —— 便于 HR 与候选人逐条对照
             strengths=[item.strip() for item in strengths],
             weaknesses=[item.strip() for item in weaknesses],

@@ -6,7 +6,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.ai.base import CandidateFeedbackResult
+from app.ai.base import CandidateFeedbackResult, DimensionScoreResult
 from app.ai.mock_provider import MockProvider
 from app.core.config import Settings, get_settings
 from app.core.exceptions import AIProviderError
@@ -69,9 +69,11 @@ class _SpyFeedbackProvider(MockProvider):
         self._error = error
 
     def generate_candidate_feedback(
-        self, level, conclusion, strengths, weaknesses, overall_score
+        self, level, overall_score, strengths, weaknesses, dimension_scores
     ):
-        self.calls.append((level, conclusion, strengths, weaknesses, overall_score))
+        self.calls.append(
+            (level, overall_score, strengths, weaknesses, dimension_scores)
+        )
         if self._error is not None:
             raise self._error
         return self._result or CandidateFeedbackResult(
@@ -322,14 +324,16 @@ class TestGenerationAndCache:
             _url(evaluated_interview["interview_id"]), headers=candidate_headers
         )
 
-        level, conclusion, strengths, weaknesses, overall_score = spy.calls[0]
+        level, overall_score, strengths, weaknesses, dimension_scores = spy.calls[0]
         assert isinstance(level, str)
-        assert isinstance(conclusion, str)
+        assert isinstance(overall_score, float)
         assert isinstance(strengths, list) and all(isinstance(s, str) for s in strengths)
         assert isinstance(weaknesses, list)
-        assert isinstance(overall_score, float)
-        # 不是 ORM 对象
-        assert not hasattr(conclusion, "overall_score")
+        # 维度得分是 ai 层的 dataclass —— 不是 ORM 行（ORM 行带 interview_id）
+        assert dimension_scores
+        assert all(isinstance(item, DimensionScoreResult) for item in dimension_scores)
+        assert not hasattr(dimension_scores[0], "interview_id")
+        # 报告那句结论**不在入参里**：它含招聘方的去留判断（PRD §4.9）
 
     def test_generation_failure_returns_502_and_no_row(
         self, db, client, candidate_headers, evaluated_interview, monkeypatch

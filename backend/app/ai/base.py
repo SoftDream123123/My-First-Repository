@@ -34,6 +34,11 @@ FEEDBACK_LEVEL_SUMMARY = "summary"
 FEEDBACK_LEVEL_FULL = "full"
 FEEDBACK_LEVELS = (FEEDBACK_LEVEL_SUMMARY, FEEDBACK_LEVEL_FULL)
 
+# 面向候选人的反馈开头。两个 Provider 共用一句 —— 它是这份文案的语气，不是某个
+# Provider 的实现细节。**真实 Provider 生成不出结论时也用它兜底**：宁可兜一句
+# 没有信息量的话，也不能退回报告那句结论，那里面含去留判断（PRD §4.9）。
+CANDIDATE_FEEDBACK_LEAD = "感谢你参与本次面试。以下是本次面试的反馈，供你参考。"
+
 # 判分及格线 —— **全项目唯一**，practice 与 evaluation 都必须用它，不另定义。
 #
 # 前端 components/shell.js 的 scoreClass() 与 components/radar.js 的 isPass
@@ -272,12 +277,25 @@ class AIProvider(ABC):
     def generate_candidate_feedback(
         self,
         level: str,
-        conclusion: str,
+        overall_score: float,
         strengths: list[str],
         weaknesses: list[str],
-        overall_score: float,
+        dimension_scores: list[DimensionScoreResult],
     ) -> CandidateFeedbackResult:
-        """由报告结论生成面向候选人的脱敏反馈。
+        """由**评分事实**重写出面向候选人的脱敏反馈。
+
+        ⚠️ 这里**刻意不接收报告的综合结论**（PRD §4.9，2026-09-21 修正）。
+
+        报告那句结论里含招聘方的去留判断（「建议进入下一轮 / 不建议继续推进」），
+        那是 HR 的决策，该由 HR 另行沟通，不该出现在候选人自助页面上。不把它传进来，
+        是**结构上**保证它漏不出去 —— 与 `CandidateFeedbackOut` 用白名单模型保证
+        分数不下发是同一手法。若只靠一句「不要复述」的提示约束模型，就退回到
+        「把分数发给浏览器再要求它别看」那种靠自觉的做法了。
+
+        因此本方法拿到的是：`dimension_scores`（维度与得分，用于判断强项 / 弱项 ——
+        阈值用 `PASS_THRESHOLD`，与 `summarize_report` 同一把尺，不在调用方另算一套）、
+        以及报告里那两条**原样**的优缺点列表（**条目与顺序必须保持不变**，
+        便于 HR 与候选人逐条对照）。
 
         level 同时决定返回的 overall_score 是否为 None：
         'summary' → None（默认档，候选人看不到分数）；'full' → 保留原值。

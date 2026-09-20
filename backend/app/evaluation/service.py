@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.ai.base import FEEDBACK_LEVEL_FULL, QAPair
+from app.ai.base import FEEDBACK_LEVEL_FULL, QAPair, DimensionScoreResult
 from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
@@ -278,12 +278,25 @@ def _generate_and_cache_feedback(
     这与刷题判分返回 200 不同：反馈是**读接口**，读不到就是读不到；而刷题那边
     作答已成功保存，报错会与事实不符。
     """
+    # 维度得分是**重写结论**的依据。判强弱的阈值（PASS_THRESHOLD）留在 ai 层，
+    # 这里不另算一套「哪些算强项」，否则两处迟早不一致。
+    dimension_scores = [
+        DimensionScoreResult(
+            dimension=row.dimension,
+            score=float(row.score),
+            comment=row.comment,
+        )
+        for row in repository.list_dimension_scores(db, interview_id)
+    ]
+
+    # 报告那句 conclusion **不传**：它含招聘方的去留判断，不该到候选人那边
+    # （PRD §4.9）。不传是结构上的保证，而不是靠一句「不要复述」的提示。
     result = get_provider().generate_candidate_feedback(
         level,
-        report.conclusion,
+        float(report.overall_score),
         list(report.strengths),
         list(report.weaknesses),
-        float(report.overall_score),
+        dimension_scores,
     )
 
     payload = {

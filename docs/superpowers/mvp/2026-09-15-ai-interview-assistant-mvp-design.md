@@ -1,6 +1,6 @@
 # AI 智能面试助手 — MVP 需求文档
 
-> 状态：MVP-1 已评审通过（2026-09-15）；2026-09-20 追加 MVP-2「面试者（候选人）侧」需求；**2026-09-20 追加 MVP-3「简历驱动与报告导出」需求**
+> 状态：MVP-1 已评审通过（2026-09-15）；2026-09-20 追加 MVP-2「面试者（候选人）侧」需求；**2026-09-20 追加 MVP-3「简历驱动与报告导出」需求**；**2026-09-21 修正 §4.9：候选人反馈的「综合结论」不带招聘方的去留判断**
 > 定位：单机部署的双端 Web 应用
 > - **HR / 面试官端**：AI 辅助真人面试官完成「出题 → 记录 → 评估 → 报告」闭环
 > - **面试者（候选人）端**：账号与权限、刷题练习题库、在线答题、查看脱敏反馈
@@ -187,7 +187,7 @@ repository → 数据访问：CRUD，对接 MySQL
 - 汇总报告：总分、综合结论、优点、待改进
 - 报告可导出为 DOCX / PDF（见 4.12）；导出的是 HR 报告全文，不含候选人脱敏视图
 - 评估以 SSE 流式返回（见 5.3）
-- **面向候选人的反馈视图**：在 HR 报告之外提供候选人可见的脱敏视图，仅含综合结论、优点、待改进；总分、逐题分、维度分与雷达图默认不下发，由配置项开放（见 4.9）
+- **面向候选人的反馈视图**：在 HR 报告之外提供候选人可见的脱敏视图，仅含综合结论、优点、待改进；总分、逐题分、维度分与雷达图默认不下发，由配置项开放；**结论的口径与报告不同（不带去留判断）**，见 4.9
 
 ### 4.6 面试者账号与权限（candidate）
 
@@ -231,6 +231,11 @@ repository → 数据访问：CRUD，对接 MySQL
 - 默认仅下发：综合结论、优点、待改进
 - 默认不下发：总分、逐题分、维度分、雷达图
 - 是否放开评分明细由配置项 `CANDIDATE_FEEDBACK_LEVEL` 控制（`summary` 默认 / `full`）
+- **综合结论不带招聘方的去留判断**（2026-09-21 修正）：只讲这一场的表现——强在哪、弱在哪，
+  不出现「建议进入下一轮 / 不建议继续推进」这类结论。报告里的那句是 HR 的决策，应由 HR
+  另行沟通，而不是让当事人在自助页面上读到。**因此 `generate_candidate_feedback` 不是报告
+  结论的复述，而是面向本人的重写**；优点 / 待改进的**条目**仍与 HR 报告逐条一致（便于两处
+  对照），只重写结论这一项
 - HR 端报告视图保持不变
 
 ### 4.10 简历管理（resume）
@@ -432,7 +437,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | `summarize_report(all_scores, dims)` | 汇总总分/结论/优点/待改进 | evaluation（报告） |
 | `generate_reference_answer(question)` | 为缺参考答案的题目生成参考答案与解析 | question / practice |
 | `grade_practice_answer(question, user_answer)` | 刷题作答判分 + 解析（简答题） | practice |
-| `generate_candidate_feedback(report, level)` | 由报告生成面向候选人的脱敏反馈 | evaluation |
+| `generate_candidate_feedback(report, level)` | 由报告**重写**出面向候选人的脱敏反馈：结论只讲本场表现、不带去留判断（§4.9）；优点 / 待改进的条目与报告逐条一致 | evaluation |
 | `match_questions_by_resume(resume_text, position, dims, bank_questions, count)` | 按简历从题库候选中挑选并排序相关题目，返回题目 id 与匹配理由（**只挑不生成**） | interview（简历匹配出题）/ practice（按简历推荐） |
 | `generate_interview_prep(position, dims, candidate, resume_text, questions)` | 生成面试提纲、考察重点与问题预案 | interview（准备助手） |
 
@@ -447,6 +452,8 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 
 - `match_questions_by_resume` **只从传入的题库候选中挑选，不生成新题**。这样保证匹配到的题目都有参考答案与解析，且不引入新题质量风险。调用方（`interview` / `practice`）负责先按岗位或筛选条件取出候选题目池再传入。
 - `resume_text` 在两个方法中均为**可选**：未关联简历时 `match_questions_by_resume` 整体不参与（出题少一路、推荐走原筛选逻辑），`generate_interview_prep` 仍可仅凭岗位与候选人信息生成。
+
+`generate_candidate_feedback` 另有一条口径约束（2026-09-21 修正）：**结论是面向本人的重写，不是报告结论的复述**，不得出现「建议进入下一轮 / 不建议继续推进」这类去留判断（§4.9）；`strengths` / `weaknesses` 的条目仍按原样下发，便于 HR 与候选人逐条对照。这条约束与 level 无关 —— 放开总分（`full`）也不放开去留判断。
 
 ---
 
@@ -612,6 +619,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | 简历补题（MVP-3） | 未关联简历 → 409；非 `ongoing` → 409；正常补题 → 追加且 `source_snapshot='resume_match'`、`match_reason` 非空、`seq` 续接；重复调用 → 已有 `question_id` 跳过（幂等）；AI 失败 → 不动既有题目、不改状态；候选人换简历后再次补题 → 只追加新增的题 |
 | 准备助手（MVP-3） | 生成 / 重新生成覆盖 / 编辑；`completed` 状态生成或编辑 → 409；未生成时读取 → 404；`draft` 且本场无题目时仍可生成 |
 | 导出（MVP-3） | DOCX 端点的鉴权与数据隔离、生成失败返回业务错误；PDF 为前端浏览器行为，后端无对应端点（不在后端测试范围） |
+| 候选人反馈（MVP-2） | 白名单序列化：响应里**结构上**不含逐题分 / 维度分 / 雷达图；`summary` 档 `overall_score` 为 null、`full` 档为 0–10；**结论不含「建议进入下一轮 / 不建议继续推进」这类去留判断**，且 `strengths` / `weaknesses` 条目与报告逐条一致；未评估 → 409 |
 
 ---
 

@@ -4,13 +4,25 @@
 这是「ai 不依赖业务模块」这一约束带来的直接收益。
 """
 
+import inspect
+
 import pytest
 
-from app.ai.base import QAPair
+from app.ai.base import AIProvider, DimensionScoreResult, QAPair
 from app.ai.mock_provider import MockProvider
 from app.core.exceptions import AIProviderError
 
 DIMS = ["沟通能力", "专业能力", "逻辑思维"]
+
+# 候选人反馈的入参：维度得分决定结论里点哪几个维度（阈值 PASS_THRESHOLD = 6.5）
+FEEDBACK_DIMS = [
+    DimensionScoreResult("沟通能力", 7.3, "评语"),
+    DimensionScoreResult("文化契合", 5.1, "评语"),
+]
+
+
+def _dims(*pairs: tuple[str, float]) -> list[DimensionScoreResult]:
+    return [DimensionScoreResult(name, score, "评语") for name, score in pairs]
 
 
 @pytest.fixture
@@ -439,21 +451,23 @@ class TestGradeThresholdBoundary:
 
 
 class TestGenerateCandidateFeedback:
+    """候选人脱敏反馈（PRD §4.9）。"""
+
     def test_summary_hides_score(self, provider):
         result = provider.generate_candidate_feedback(
-            "summary", "结论", ["优点一"], ["待改进一"], 7.3
+            "summary", 7.3, ["优点一"], ["待改进一"], FEEDBACK_DIMS
         )
         assert result.overall_score is None
 
     def test_full_keeps_score(self, provider):
         result = provider.generate_candidate_feedback(
-            "full", "结论", ["优点一"], ["待改进一"], 7.3
+            "full", 7.3, ["优点一"], ["待改进一"], FEEDBACK_DIMS
         )
         assert result.overall_score == 7.3
 
     def test_unknown_level_defaults_to_summary(self, provider):
         result = provider.generate_candidate_feedback(
-            "detailed", "结论", ["优点一"], ["待改进一"], 7.3
+            "detailed", 7.3, ["优点一"], ["待改进一"], FEEDBACK_DIMS
         )
         assert result.overall_score is None
 
@@ -461,7 +475,7 @@ class TestGenerateCandidateFeedback:
         strengths = ["优点一", "优点二", "优点三"]
         weaknesses = ["待改进一", "待改进二"]
         result = provider.generate_candidate_feedback(
-            "summary", "结论", strengths, weaknesses, 5.0
+            "summary", 5.0, strengths, weaknesses, FEEDBACK_DIMS
         )
         assert len(result.strengths) == len(strengths)
         assert len(result.weaknesses) == len(weaknesses)
@@ -469,10 +483,50 @@ class TestGenerateCandidateFeedback:
         assert result.strengths[2] == "优点三"
 
     def test_is_deterministic(self, provider):
-        args = ("summary", "结论", ["优点一"], ["待改进一"], 7.3)
+        args = ("summary", 7.3, ["优点一"], ["待改进一"], FEEDBACK_DIMS)
         assert provider.generate_candidate_feedback(*args) == (
             provider.generate_candidate_feedback(*args)
         )
+
+    def test_conclusion_names_strong_and_weak_dimensions(self, provider):
+        """结论只点出**是哪几个维度**，理由交给那两条列表 —— 免得逐字重复。"""
+        result = provider.generate_candidate_feedback(
+            "summary",
+            6.2,
+            ["沟通能力（7.3）：表现较好"],
+            ["文化契合（5.1）：有待提升"],
+            _dims(("沟通能力", 7.3), ("文化契合", 5.1)),
+        )
+        assert "沟通能力" in result.conclusion
+        assert "文化契合" in result.conclusion
+
+    def test_conclusion_carries_no_hiring_verdict(self, provider):
+        """PRD §4.9（2026-09-21 修正）：结论不带招聘方的去留判断。
+
+        `_conclusion` 在**每个**分数段给的都是去留建议，所以逐段扫一遍 ——
+        只要有人把报告结论接回来，这个断言立刻失败。
+        """
+        verdicts = (
+            "建议暂不推进",
+            "建议针对薄弱维度追加考察",
+            "建议结合岗位要求综合评估",
+            "建议进入下一轮",
+        )
+        for overall in (2.0, 5.0, 7.0, 9.0):
+            result = provider.generate_candidate_feedback(
+                "summary", overall, ["优点一"], ["待改进一"], FEEDBACK_DIMS
+            )
+            for verdict in verdicts:
+                assert verdict not in result.conclusion
+
+    def test_interface_does_not_accept_report_conclusion(self):
+        """结构性保证：接口上就没有「报告结论」这个入参。
+
+        不是靠叮嘱「不要复述」，而是根本不给它 —— 与 `CandidateFeedbackOut`
+        用白名单保证分数不下发是同一手法（PRD §4.9）。
+        """
+        params = inspect.signature(AIProvider.generate_candidate_feedback).parameters
+        assert "conclusion" not in params
 
 
 # ========================= 契约一致性 =========================

@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from app.ai.base import (
+    CANDIDATE_FEEDBACK_LEAD,
     DIFFICULTIES,
     DIFFICULTY_MEDIUM,
     FEEDBACK_LEVEL_FULL,
@@ -468,10 +469,10 @@ class OpenAIProvider(AIProvider):
     def generate_candidate_feedback(
         self,
         level: str,
-        conclusion: str,
+        overall_score: float,
         strengths: list[str],
         weaknesses: list[str],
-        overall_score: float,
+        dimension_scores: list[DimensionScoreResult],
     ) -> CandidateFeedbackResult:
         if level not in FEEDBACK_LEVELS:
             logger.warning("未知的候选人反馈档位 %r，已按 summary 处理", level)
@@ -482,17 +483,25 @@ class OpenAIProvider(AIProvider):
             if level == FEEDBACK_LEVEL_FULL
             else "总分：**不得**向候选人提及\n"
         )
+        dim_text = json.dumps(
+            [{"维度": item.dimension, "得分": item.score} for item in dimension_scores],
+            ensure_ascii=False,
+        )
 
+        # 报告那句综合结论**不进 prompt**（PRD §4.9）：它含招聘方的去留判断。
+        # 不传是结构上的保证 —— 只叮嘱「不要复述」，等于把不该给的东西给了再要求别看。
         system = (
-            "你是一位面向候选人的沟通者，负责把面试评估结论转写成建设性的反馈。"
-            "措辞要具体、尊重、可改进，**不得**给出录用与否的判断。"
+            "你是一位面向候选人的沟通者，负责把面试的评分事实转写成建设性的反馈。"
+            "措辞要具体、尊重、可改进。你**拿不到**招聘方的录用结论，也不要据此"
+            "推断录用与否；只讲候选人这一场的表现：强在哪、弱在哪。"
         )
         user = (
-            f"面试综合结论：{conclusion}\n"
+            f"各维度得分（满分 10）：{dim_text}\n"
             f"优点：{json.dumps(strengths, ensure_ascii=False)}\n"
             f"待改进：{json.dumps(weaknesses, ensure_ascii=False)}\n"
             f"{score_text}\n"
-            "请改写为面向候选人本人的反馈，保持优点的**条目数量与顺序**不变。\n"
+            "请写一段面向候选人本人的综合结论（2–3 句，只讲本场表现，"
+            "不要复述下面两条列表里的原话），并保持优缺点的**条目数量与顺序**不变。\n"
             "输出 JSON 对象，字段：\n"
             '- "conclusion"：综合结论\n'
             '- "strengths"：优点（字符串数组）\n'
@@ -505,7 +514,10 @@ class OpenAIProvider(AIProvider):
             raise AIProviderError("AI 返回的候选人反馈不是 JSON 对象")
 
         return CandidateFeedbackResult(
-            conclusion=str(raw.get("conclusion") or "").strip() or conclusion,
+            # 模型没给结论时兜一句没有信息量的话 —— **不能**退回报告那句结论，
+            # 那里面有去留判断（PRD §4.9）
+            conclusion=str(raw.get("conclusion") or "").strip()
+            or CANDIDATE_FEEDBACK_LEAD,
             strengths=self._str_list(raw.get("strengths")),
             weaknesses=self._str_list(raw.get("weaknesses")),
             # 是否下发总分由档位决定，不由模型决定

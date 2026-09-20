@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from app.ai.base import QAPair, QuestionBrief
+from app.ai.base import CANDIDATE_FEEDBACK_LEAD, DimensionScoreResult, QAPair, QuestionBrief
 from app.ai.openai_provider import OpenAIProvider
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError
@@ -454,7 +454,11 @@ class TestGradePracticeAnswer:
 class TestGenerateCandidateFeedback:
     def _feedback(self, handler, level="summary"):
         return _provider(handler).generate_candidate_feedback(
-            level, "综合结论", ["优点一"], ["待改进一"], 7.3
+            level,
+            7.3,
+            ["优点一"],
+            ["待改进一"],
+            [DimensionScoreResult("沟通能力", 7.3, "评语")],
         )
 
     def test_summary_omits_score(self):
@@ -495,6 +499,17 @@ class TestGenerateCandidateFeedback:
         result = self._feedback(handler)
         assert result.strengths == []
         assert result.weaknesses == []
+
+    def test_missing_conclusion_falls_back_without_verdict(self):
+        """模型没给结论时兜一句没有信息量的话。
+
+        **不能**退回报告那句结论 —— 那里面有招聘方的去留判断（PRD §4.9）。
+        """
+
+        def handler(request):
+            return _json_reply({"strengths": ["优点一"], "weaknesses": []})
+
+        assert self._feedback(handler).conclusion == CANDIDATE_FEEDBACK_LEAD
 
 
 # ------------------------- 按简历匹配题目 -------------------------
