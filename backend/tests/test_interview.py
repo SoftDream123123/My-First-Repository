@@ -208,6 +208,18 @@ class TestQuestionAssembly:
             def summarize_report(self, *a, **kw):  # pragma: no cover
                 raise AIProviderError()
 
+            # 本用例只用 generate_questions，但 AIProvider 是 ABC：
+            # 漏实现任何一个抽象方法都会让本类无法实例化，
+            # 表现为整个测试集体报 TypeError 而非这条断言失败。
+            def generate_reference_answer(self, *a, **kw):  # pragma: no cover
+                raise AIProviderError()
+
+            def grade_practice_answer(self, *a, **kw):  # pragma: no cover
+                raise AIProviderError()
+
+            def generate_candidate_feedback(self, *a, **kw):  # pragma: no cover
+                raise AIProviderError()
+
         monkeypatch.setattr(
             "app.interview.service.get_provider", lambda: FailingProvider()
         )

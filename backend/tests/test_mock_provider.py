@@ -264,3 +264,229 @@ class TestSummarizeReport:
         result = provider.summarize_report([], self._scores(provider, [8.0]), [])
         assert "8.0" in result.strengths[0]
         assert "表现较好" in result.strengths[0]
+
+
+# ======================= MVP-2：补参考答案 =======================
+
+
+class TestGenerateReferenceAnswer:
+    def test_short_answer_returns_non_empty(self, provider):
+        result = provider.generate_reference_answer(
+            "short_answer", "请描述一次你遇到的挑战", [], "沟通能力"
+        )
+        assert result.reference_answer.strip()
+        assert result.explanation.strip()
+
+    def test_is_deterministic(self, provider):
+        args = ("short_answer", "同一道题干内容", [], "沟通能力")
+        assert provider.generate_reference_answer(*args) == (
+            provider.generate_reference_answer(*args)
+        )
+
+    def test_differs_by_content(self, provider):
+        first = provider.generate_reference_answer(
+            "short_answer", "第一道题的题干内容", [], "沟通能力"
+        )
+        second = provider.generate_reference_answer(
+            "short_answer", "另一道完全不同的题干", [], "沟通能力"
+        )
+        assert first.reference_answer != second.reference_answer
+
+    def test_single_choice_answer_is_verbatim_option(self, provider):
+        options = ["选项甲", "选项乙", "选项丙"]
+        result = provider.generate_reference_answer(
+            "single_choice", "某道单选题的题干", options, "专业能力"
+        )
+        assert result.reference_answer in options
+
+    def test_single_choice_empty_options_raises(self, provider):
+        with pytest.raises(AIProviderError):
+            provider.generate_reference_answer(
+                "single_choice", "某道单选题的题干", [], "专业能力"
+            )
+
+
+# ======================= MVP-2：刷题判分 =======================
+
+
+class TestGradePracticeAnswer:
+    def test_empty_answer_scores_zero(self, provider):
+        result = provider.grade_practice_answer(
+            "short_answer", "题干", "参考答案", "   "
+        )
+        assert result.score == 0.0
+        assert result.is_correct is False
+        assert result.explanation == "未作答"
+
+    def test_identical_answer_scores_full(self, provider):
+        text = "参考答案的完整文本内容"
+        result = provider.grade_practice_answer("short_answer", "题干", text, text)
+        assert result.score == 10.0
+        assert result.is_correct is True
+
+    def test_disjoint_answer_scores_zero(self, provider):
+        result = provider.grade_practice_answer("short_answer", "题干", "wxyz", "abcd")
+        assert result.score == 0.0
+        assert result.is_correct is False
+
+    def test_score_has_at_most_one_decimal(self, provider):
+        result = provider.grade_practice_answer(
+            "short_answer", "题干", "abcdefghijklmnopqrstuvwxyz", "abcxyz"
+        )
+        assert round(result.score, 1) == result.score
+
+    def test_is_deterministic(self, provider):
+        args = ("short_answer", "题干", "参考答案内容", "考生作答内容")
+        assert provider.grade_practice_answer(*args) == (
+            provider.grade_practice_answer(*args)
+        )
+
+    def test_normalizes_whitespace(self, provider):
+        result = provider.grade_practice_answer(
+            "short_answer", "题干", "参考答案文本", "参考 答案 文本"
+        )
+        assert result.score == 10.0
+
+    def test_single_char_answer_does_not_raise(self, provider):
+        assert provider.grade_practice_answer(
+            "short_answer", "题干", "x", "y"
+        ).score == 0.0
+        # 单字符退化路径不抛异常，公式仍成立
+        assert provider.grade_practice_answer(
+            "short_answer", "题干", "x", "x"
+        ).score == 10.0
+
+    def test_single_choice_equal(self, provider):
+        result = provider.grade_practice_answer(
+            "single_choice", "题干", "选项甲", " 选项甲 "
+        )
+        assert result.score == 10.0
+        assert result.is_correct is True
+
+    def test_single_choice_not_equal(self, provider):
+        result = provider.grade_practice_answer(
+            "single_choice", "题干", "选项甲", "选项乙"
+        )
+        assert result.score == 0.0
+        assert result.is_correct is False
+
+    def test_short_answer_empty_reference_raises(self, provider):
+        with pytest.raises(AIProviderError):
+            provider.grade_practice_answer("short_answer", "题干", "", "考生作答")
+
+
+class TestGradeThresholdBoundary:
+    """阈值边界（PASS_THRESHOLD = 6.5）。
+
+    用「短串是长串前缀」构造精确的 Jaccard 比值：此时短串的二元组集合是长串的
+    子集，故 overlap = (len(短) - 1) / (len(长) - 1)。
+
+    两个字符串都取自同一段字符表的前缀，长度由切片给出并断言 —— 手数字符个数
+    很容易差一个，那样算出来的就是另一个分数了。
+    """
+
+    # 52 个互不相同的字符，保证任意前缀的相邻二元组都不重复
+    ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    def _grade(self, provider, short_len: int, long_len: int):
+        user = self.ALPHABET[:short_len]
+        reference = self.ALPHABET[:long_len]
+        assert len(user) == short_len and len(reference) == long_len
+        return provider.grade_practice_answer(
+            "short_answer", "题干", reference, user
+        )
+
+    def test_just_below_threshold_is_incorrect(self, provider):
+        # 16 / 25 = 0.64 → 6.4
+        result = self._grade(provider, short_len=17, long_len=26)
+        assert result.score == pytest.approx(6.4)
+        assert result.is_correct is False
+
+    def test_at_threshold_is_correct(self, provider):
+        # 13 / 20 = 0.65 → 6.5（边界必须判对）
+        result = self._grade(provider, short_len=14, long_len=21)
+        assert result.score == pytest.approx(6.5)
+        assert result.is_correct is True
+
+    def test_just_above_threshold_is_correct(self, provider):
+        # 33 / 50 = 0.66 → 6.6
+        result = self._grade(provider, short_len=34, long_len=51)
+        assert result.score == pytest.approx(6.6)
+        assert result.is_correct is True
+
+    def test_is_correct_consistent_with_score(self, provider):
+        """遍历多组输入，is_correct 恒等于 score >= PASS_THRESHOLD。"""
+        from app.ai.base import PASS_THRESHOLD
+
+        reference = self.ALPHABET[:26]
+        for user in (
+            "",
+            "zzzz",
+            "abc",
+            self.ALPHABET[:2],
+            self.ALPHABET[:10],
+            self.ALPHABET[:17],
+            self.ALPHABET[:14],
+            self.ALPHABET[:26],
+        ):
+            result = provider.grade_practice_answer(
+                "short_answer", "题干", reference, user
+            )
+            assert result.is_correct == (result.score >= PASS_THRESHOLD)
+
+
+# ==================== MVP-2：候选人脱敏反馈 ====================
+
+
+class TestGenerateCandidateFeedback:
+    def test_summary_hides_score(self, provider):
+        result = provider.generate_candidate_feedback(
+            "summary", "结论", ["优点一"], ["待改进一"], 7.3
+        )
+        assert result.overall_score is None
+
+    def test_full_keeps_score(self, provider):
+        result = provider.generate_candidate_feedback(
+            "full", "结论", ["优点一"], ["待改进一"], 7.3
+        )
+        assert result.overall_score == 7.3
+
+    def test_unknown_level_defaults_to_summary(self, provider):
+        result = provider.generate_candidate_feedback(
+            "detailed", "结论", ["优点一"], ["待改进一"], 7.3
+        )
+        assert result.overall_score is None
+
+    def test_preserves_item_count_and_order(self, provider):
+        strengths = ["优点一", "优点二", "优点三"]
+        weaknesses = ["待改进一", "待改进二"]
+        result = provider.generate_candidate_feedback(
+            "summary", "结论", strengths, weaknesses, 5.0
+        )
+        assert len(result.strengths) == len(strengths)
+        assert len(result.weaknesses) == len(weaknesses)
+        assert result.strengths[0] == "优点一"
+        assert result.strengths[2] == "优点三"
+
+    def test_is_deterministic(self, provider):
+        args = ("summary", "结论", ["优点一"], ["待改进一"], 7.3)
+        assert provider.generate_candidate_feedback(*args) == (
+            provider.generate_candidate_feedback(*args)
+        )
+
+
+# ========================= 契约一致性 =========================
+
+
+def test_mock_provider_implements_all_seven_methods():
+    """守门测试：漏实现任何抽象方法时，MockProvider() 会以 TypeError 失败。"""
+    from app.ai.base import AIProvider
+
+    assert len(AIProvider.__abstractmethods__) == 7
+    assert not MockProvider.__abstractmethods__
+
+
+def test_mock_provider_is_ai_provider(provider):
+    from app.ai.base import AIProvider
+
+    assert isinstance(provider, AIProvider)

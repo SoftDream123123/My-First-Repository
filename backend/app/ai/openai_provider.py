@@ -7,6 +7,7 @@
 """
 
 import json
+import logging
 import re
 from typing import Any
 
@@ -15,18 +16,28 @@ import httpx
 from app.ai.base import (
     DIFFICULTIES,
     DIFFICULTY_MEDIUM,
+    FEEDBACK_LEVEL_FULL,
+    FEEDBACK_LEVEL_SUMMARY,
+    FEEDBACK_LEVELS,
+    PASS_THRESHOLD,
+    QUESTION_TYPE_SINGLE_CHOICE,
     SCORE_MAX,
     SCORE_MIN,
     SOURCE_AI,
     AIProvider,
+    CandidateFeedbackResult,
     DimensionScoreResult,
     GeneratedQuestion,
+    PracticeGradeResult,
     QAPair,
     QuestionScoreResult,
+    ReferenceAnswerResult,
     ReportResult,
 )
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError
+
+logger = logging.getLogger(__name__)
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
@@ -329,3 +340,161 @@ class OpenAIProvider(AIProvider):
         if not isinstance(value, list):
             return []
         return [str(item).strip() for item in value if str(item).strip()]
+
+    # ------------------------ 补参考答案 ------------------------
+
+    def generate_reference_answer(
+        self,
+        question_type: str,
+        content: str,
+        options: list[str],
+        dimension: str,
+    ) -> ReferenceAnswerResult:
+        if question_type == QUESTION_TYPE_SINGLE_CHOICE:
+            if not options:
+                raise AIProviderError("缺少选项，无法生成参考答案")
+            options_text = "\n".join(
+                f"{i + 1}. {opt}" for i, opt in enumerate(options)
+            )
+            answer_rule = (
+                '本题是单选题，"reference_answer" 必须是上面选项中的**原文之一**，'
+                "不得改写、不得给出选项之外的内容。\n"
+            )
+        else:
+            options_text = "（本题为简答题，无选项）"
+            answer_rule = '本题是简答题，"reference_answer" 为完整的参考答案文本。\n'
+
+        system = "你是一位资深面试官与命题人，负责为面试题撰写标准答案与解析。"
+        user = (
+            f"考察维度：{dimension}\n"
+            f"题型：{question_type}\n"
+            f"题干：{content}\n"
+            f"选项：\n{options_text}\n\n"
+            f"请给出该题的标准答案与解析。{answer_rule}"
+            "输出 JSON 对象，字段：\n"
+            '- "reference_answer"：参考答案\n'
+            '- "explanation"：解析（说明为什么是这个答案）\n'
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.2, expect_list=False)
+        if not isinstance(raw, dict):
+            raise AIProviderError("AI 返回的参考答案不是 JSON 对象")
+
+        answer = str(raw.get("reference_answer") or "").strip()
+        if not answer:
+            # 不猜、不填默认值
+            raise AIProviderError("AI 返回内容缺少 reference_answer 字段")
+
+        # 注意：单选题的答案若不在 options 内，**不在此处纠正**。
+        # 静默吸附到某个选项等于伪造正确答案；那是题目数据自洽性问题，
+        # 由 question.service 判定并报 409（module-10 §5.2）。
+        return ReferenceAnswerResult(
+            reference_answer=answer,
+            explanation=str(raw.get("explanation") or "").strip() or "无解析",
+        )
+
+    # -------------------------- 刷题判分 --------------------------
+
+    def grade_practice_answer(
+        self,
+        question_type: str,
+        content: str,
+        reference_answer: str,
+        user_answer: str,
+    ) -> PracticeGradeResult:
+        text = (user_answer or "").strip()
+
+        # 空作答短路：不发网络请求
+        if not text:
+            return PracticeGradeResult(
+                score=SCORE_MIN, is_correct=False, explanation="未作答"
+            )
+
+        reference = (reference_answer or "").strip()
+        if not reference:
+            # 不为空答案去调模型 —— 那只会得到臆造的判分
+            raise AIProviderError("该题缺少参考答案，无法判分")
+
+        system = "你是一位严格但公允的判卷人，负责按参考答案评判考生作答。"
+        user = (
+            f"题型：{question_type}\n"
+            f"题干：{content}\n"
+            f"参考答案：{reference}\n"
+            f"候选人作答：{text}\n\n"
+            "请对候选人的作答打分，分值区间 0–10（可含 1 位小数），"
+            "衡量其与参考答案的要点吻合程度。\n"
+            "输出 JSON 对象，字段：\n"
+            '- "score"：分数（数值）\n'
+            '- "explanation"：面向候选人的解析，指出漏掉或答错的要点\n'
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.2, expect_list=False)
+        if not isinstance(raw, dict):
+            raise AIProviderError("AI 返回的判分结果不是 JSON 对象")
+        if "score" not in raw:
+            raise AIProviderError("AI 返回内容缺少 score 字段")
+
+        score = _clamp_score(raw.get("score"))
+
+        # is_correct 一律由本地按唯一阈值推导，忽略模型可能返回的同名字段 ——
+        # 否则「是否判对」会出现第二个判据（module-11 §5.2）
+        return PracticeGradeResult(
+            score=score,
+            is_correct=score >= PASS_THRESHOLD,
+            explanation=str(raw.get("explanation") or "").strip() or "无解析",
+        )
+
+    # ------------------------ 候选人反馈 ------------------------
+
+    def generate_candidate_feedback(
+        self,
+        level: str,
+        conclusion: str,
+        strengths: list[str],
+        weaknesses: list[str],
+        overall_score: float,
+    ) -> CandidateFeedbackResult:
+        if level not in FEEDBACK_LEVELS:
+            logger.warning("未知的候选人反馈档位 %r，已按 summary 处理", level)
+            level = FEEDBACK_LEVEL_SUMMARY
+
+        score_text = (
+            f"总分：{overall_score:.1f}（可以告知候选人）\n"
+            if level == FEEDBACK_LEVEL_FULL
+            else "总分：**不得**向候选人提及\n"
+        )
+
+        system = (
+            "你是一位面向候选人的沟通者，负责把面试评估结论转写成建设性的反馈。"
+            "措辞要具体、尊重、可改进，**不得**给出录用与否的判断。"
+        )
+        user = (
+            f"面试综合结论：{conclusion}\n"
+            f"优点：{json.dumps(strengths, ensure_ascii=False)}\n"
+            f"待改进：{json.dumps(weaknesses, ensure_ascii=False)}\n"
+            f"{score_text}\n"
+            "请改写为面向候选人本人的反馈，保持优点的**条目数量与顺序**不变。\n"
+            "输出 JSON 对象，字段：\n"
+            '- "conclusion"：综合结论\n'
+            '- "strengths"：优点（字符串数组）\n'
+            '- "weaknesses"：待改进（字符串数组）\n'
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.4, expect_list=False)
+        if not isinstance(raw, dict):
+            raise AIProviderError("AI 返回的候选人反馈不是 JSON 对象")
+
+        return CandidateFeedbackResult(
+            conclusion=str(raw.get("conclusion") or "").strip() or conclusion,
+            strengths=self._str_list(raw.get("strengths")),
+            weaknesses=self._str_list(raw.get("weaknesses")),
+            # 是否下发总分由档位决定，不由模型决定
+            overall_score=(
+                _clamp_score(overall_score)
+                if level == FEEDBACK_LEVEL_FULL
+                else None
+            ),
+        )

@@ -303,3 +303,195 @@ def test_request_contains_model_and_auth_header():
     assert captured["auth"] == "Bearer test-key"
     assert captured["body"]["model"] == "test-model"
     assert captured["body"]["messages"][0]["role"] == "system"
+
+
+# ======================= MVP-2：补参考答案 =======================
+
+
+class TestGenerateReferenceAnswer:
+    def test_parses_json(self):
+        def handler(request):
+            return _json_reply(
+                {"reference_answer": "标准答案文本", "explanation": "因为……"}
+            )
+
+        result = _provider(handler).generate_reference_answer(
+            "short_answer", "题干", [], "沟通能力"
+        )
+        assert result.reference_answer == "标准答案文本"
+        assert result.explanation == "因为……"
+
+    def test_bad_json_raises(self):
+        def handler(request):
+            return _reply("这不是 JSON")
+
+        with pytest.raises(AIProviderError):
+            _provider(handler).generate_reference_answer(
+                "short_answer", "题干", [], "沟通能力"
+            )
+
+    def test_missing_field_raises(self):
+        """缺 reference_answer 不填默认值，直接失败。"""
+
+        def handler(request):
+            return _json_reply({"explanation": "只有解析没有答案"})
+
+        with pytest.raises(AIProviderError):
+            _provider(handler).generate_reference_answer(
+                "short_answer", "题干", [], "沟通能力"
+            )
+
+    def test_single_choice_empty_options_makes_no_request(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply({"reference_answer": "x", "explanation": "y"})
+
+        with pytest.raises(AIProviderError):
+            _provider(handler).generate_reference_answer(
+                "single_choice", "题干", [], "沟通能力"
+            )
+        assert calls["n"] == 0
+
+    def test_answer_outside_options_is_returned_verbatim(self):
+        """不在选项内**不纠正** —— 静默吸附等于伪造正确答案（module-10 §5.2）。"""
+
+        def handler(request):
+            return _json_reply(
+                {"reference_answer": "选项之外的臆造答案", "explanation": "因为……"}
+            )
+
+        result = _provider(handler).generate_reference_answer(
+            "single_choice", "题干", ["选项甲", "选项乙"], "沟通能力"
+        )
+        assert result.reference_answer == "选项之外的臆造答案"
+
+
+# ======================= MVP-2：刷题判分 =======================
+
+
+class TestGradePracticeAnswer:
+    def _grade(self, handler, user_answer="考生作答内容"):
+        return _provider(handler).grade_practice_answer(
+            "short_answer", "题干", "参考答案内容", user_answer
+        )
+
+    def test_clamps_score_above_max(self):
+        def handler(request):
+            return _json_reply({"score": 15.0, "explanation": "越界"})
+
+        assert self._grade(handler).score == 10.0
+
+    def test_clamps_score_below_min(self):
+        def handler(request):
+            return _json_reply({"score": -3, "explanation": "越界"})
+
+        assert self._grade(handler).score == 0.0
+
+    def test_derives_is_correct_locally(self):
+        """模型说 false，但 7.0 >= 6.5 → 后端仍判 True。阈值必须唯一。"""
+
+        def handler(request):
+            return _json_reply(
+                {"score": 7.0, "is_correct": False, "explanation": "模型乱说"}
+            )
+
+        result = self._grade(handler)
+        assert result.score == 7.0
+        assert result.is_correct is True
+
+    def test_empty_reference_short_circuits_without_request(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply({"score": 5.0, "explanation": "x"})
+
+        with pytest.raises(AIProviderError):
+            _provider(handler).grade_practice_answer(
+                "short_answer", "题干", "   ", "考生作答内容"
+            )
+        assert calls["n"] == 0
+
+    def test_empty_answer_short_circuits_without_request(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply({"score": 5.0, "explanation": "x"})
+
+        result = _provider(handler).grade_practice_answer(
+            "short_answer", "题干", "参考答案内容", "   "
+        )
+        assert result.score == 0.0
+        assert result.is_correct is False
+        assert result.explanation == "未作答"
+        assert calls["n"] == 0
+
+    def test_missing_score_field_raises(self):
+        def handler(request):
+            return _json_reply({"explanation": "没有分数"})
+
+        with pytest.raises(AIProviderError):
+            self._grade(handler)
+
+    def test_retries_then_raises(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(500, json={"error": "boom"})
+
+        with pytest.raises(AIProviderError):
+            self._grade(handler)
+        assert calls["n"] == 2  # 1 次初始 + 1 次重试
+
+
+# ==================== MVP-2：候选人脱敏反馈 ====================
+
+
+class TestGenerateCandidateFeedback:
+    def _feedback(self, handler, level="summary"):
+        return _provider(handler).generate_candidate_feedback(
+            level, "综合结论", ["优点一"], ["待改进一"], 7.3
+        )
+
+    def test_summary_omits_score(self):
+        def handler(request):
+            return _json_reply(
+                {"conclusion": "改写后的结论", "strengths": ["优点一"], "weaknesses": ["待改进一"]}
+            )
+
+        result = self._feedback(handler, level="summary")
+        assert result.overall_score is None
+
+    def test_full_keeps_score(self):
+        def handler(request):
+            return _json_reply(
+                {"conclusion": "改写后的结论", "strengths": ["优点一"], "weaknesses": ["待改进一"]}
+            )
+
+        result = self._feedback(handler, level="full")
+        assert result.overall_score == 7.3
+
+    def test_unknown_level_defaults_to_summary(self):
+        def handler(request):
+            return _json_reply(
+                {"conclusion": "改写后的结论", "strengths": ["优点一"], "weaknesses": ["待改进一"]}
+            )
+
+        result = self._feedback(handler, level="detailed")
+        assert result.overall_score is None
+
+    def test_non_list_items_fall_back_to_empty(self):
+        """模型把数组写成字符串时，回落为空列表而不是抛错。"""
+
+        def handler(request):
+            return _json_reply(
+                {"conclusion": "结论", "strengths": "优点一", "weaknesses": None}
+            )
+
+        result = self._feedback(handler)
+        assert result.strengths == []
+        assert result.weaknesses == []

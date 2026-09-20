@@ -4,21 +4,32 @@
 字典序依赖。这是 Mock 能作为自动化测试基准的前提。
 """
 
+import logging
 import re
 
 from app.ai.base import (
     DIFFICULTIES,
+    FEEDBACK_LEVEL_FULL,
+    FEEDBACK_LEVEL_SUMMARY,
+    FEEDBACK_LEVELS,
+    PASS_THRESHOLD,
+    QUESTION_TYPE_SINGLE_CHOICE,
     SCORE_MAX,
     SCORE_MIN,
     SOURCE_AI,
     AIProvider,
+    CandidateFeedbackResult,
     DimensionScoreResult,
     GeneratedQuestion,
+    PracticeGradeResult,
     QAPair,
     QuestionScoreResult,
+    ReferenceAnswerResult,
     ReportResult,
 )
 from app.core.exceptions import AIProviderError
+
+logger = logging.getLogger(__name__)
 
 _DIGIT_RE = re.compile(r"\d")
 
@@ -28,18 +39,55 @@ _QUESTION_TEMPLATES = (
     "关于{dim}：请举例说明你如何衡量自己在{dim}方面的表现。",
 )
 
+# 参考答案模板：按题干长度取模选择，保证「同输入必得同输出」
+_REFERENCE_TEMPLATES = (
+    "围绕{dim}，一份合格的回答应当先交代背景与目标，再说明你采取的具体做法，"
+    "最后给出可量化的结果。参考要点：{snippet}……",
+    "就{dim}而言，理想的回答需要覆盖三个层次：现状判断、行动方案，"
+    "以及事后的复盘与改进。参考要点：{snippet}……",
+    "回答{dim}类问题时建议以「情境—任务—行动—结果」的结构展开，"
+    "并突出你本人在其中的独立贡献。参考要点：{snippet}……",
+)
+
+_REFERENCE_EXPLANATIONS = (
+    "本题考察{dim}。评分关注是否给出了具体事例、可否验证其结果，"
+    "以及表述是否有条理。",
+    "本题考察{dim}。只给结论而缺少过程与结果的回答，通常难以获得高分。",
+)
+
+_REFERENCE_SNIPPET_LEN = 20
+
+_FEEDBACK_PREFIX = "感谢你参与本次面试。以下是本次面试的反馈，供你参考："
+
 # 具体化标记 → 各 +0.5 分
 _BONUS_MARKERS = (r"\d", r"%|百分比", r"项目|案例", r"例如|比如")
 _BONUS_PER_MARKER = 0.5
 _BONUS_CAP = 1.5
 
-# 优势 / 待改进的分档阈值
-_STRENGTH_THRESHOLD = 6.5
-
 
 def _round1(value: float) -> float:
     """保留 1 位小数并夹到 [0, 10]。"""
     return round(min(max(value, SCORE_MIN), SCORE_MAX), 1)
+
+
+def _bigrams(text: str) -> set[str]:
+    """字符二元组集合。
+
+    先去空白再切分：中文没有词边界，不做分词；长度不足 2 时退化为单字符集合。
+    """
+    normalized = re.sub(r"\s+", "", text)
+    if len(normalized) < 2:
+        return set(normalized)
+    return {normalized[i : i + 2] for i in range(len(normalized) - 1)}
+
+
+def _similarity(left: str, right: str) -> float:
+    """字符二元组的 Jaccard 相似度 = |A ∩ B| / |A ∪ B|。并集为空时返回 0。"""
+    a, b = _bigrams(left), _bigrams(right)
+    union = a | b
+    if not union:
+        return 0.0
+    return len(a & b) / len(union)
 
 
 class MockProvider(AIProvider):
@@ -203,12 +251,12 @@ class MockProvider(AIProvider):
         strengths = [
             f"{item.dimension}（{item.score:.1f}）：表现较好"
             for item in dimension_scores
-            if item.score >= _STRENGTH_THRESHOLD
+            if item.score >= PASS_THRESHOLD
         ]
         weaknesses = [
             f"{item.dimension}（{item.score:.1f}）：有待提升"
             for item in dimension_scores
-            if item.score < _STRENGTH_THRESHOLD
+            if item.score < PASS_THRESHOLD
         ]
 
         return ReportResult(
@@ -229,3 +277,115 @@ class MockProvider(AIProvider):
         if overall < 8.0:
             return "整体表现良好，建议结合岗位要求综合评估。"
         return "整体表现优秀，建议进入下一轮。"
+
+    # ------------------------ 补参考答案 ------------------------
+
+    def generate_reference_answer(
+        self,
+        question_type: str,
+        content: str,
+        options: list[str],
+        dimension: str,
+    ) -> ReferenceAnswerResult:
+        if question_type == QUESTION_TYPE_SINGLE_CHOICE:
+            if not options:
+                # 调用方本应在 schema 层拦住；此处是防御性失败
+                raise AIProviderError("缺少选项，无法生成参考答案")
+
+            index = len(content) % len(options)
+            return ReferenceAnswerResult(
+                reference_answer=options[index],
+                explanation=(
+                    f"正确答案是选项中的第 {index + 1} 项，"
+                    f"它在{dimension}维度上最贴合题干要求。"
+                ),
+            )
+
+        snippet = content[:_REFERENCE_SNIPPET_LEN]
+        return ReferenceAnswerResult(
+            reference_answer=_REFERENCE_TEMPLATES[
+                len(content) % len(_REFERENCE_TEMPLATES)
+            ].format(dim=dimension, snippet=snippet),
+            explanation=_REFERENCE_EXPLANATIONS[
+                len(content) % len(_REFERENCE_EXPLANATIONS)
+            ].format(dim=dimension),
+        )
+
+    # -------------------------- 刷题判分 --------------------------
+
+    def grade_practice_answer(
+        self,
+        question_type: str,
+        content: str,
+        reference_answer: str,
+        user_answer: str,
+    ) -> PracticeGradeResult:
+        text = (user_answer or "").strip()
+
+        # 空作答短路：两个实现必须一致，且不发网络请求
+        if not text:
+            return PracticeGradeResult(
+                score=SCORE_MIN, is_correct=False, explanation="未作答"
+            )
+
+        reference = (reference_answer or "").strip()
+
+        if question_type == QUESTION_TYPE_SINGLE_CHOICE:
+            is_correct = text == reference
+            return PracticeGradeResult(
+                score=SCORE_MAX if is_correct else SCORE_MIN,
+                is_correct=is_correct,
+                explanation=(
+                    "回答正确。"
+                    if is_correct
+                    else f"回答不正确。正确答案：{reference}"
+                ),
+            )
+
+        if not reference:
+            # practice 在调用前就应判出这种情况并标记未判分（见 module-13 §5.2）
+            raise AIProviderError("该题缺少参考答案，无法判分")
+
+        score = round(10 * _similarity(reference, text), 1)
+        return PracticeGradeResult(
+            score=score,
+            is_correct=score >= PASS_THRESHOLD,
+            explanation=self._practice_explanation(score),
+        )
+
+    @staticmethod
+    def _practice_explanation(score: float) -> str:
+        if score >= 8.0:
+            return "回答与参考答案高度吻合，要点覆盖完整。"
+        if score >= PASS_THRESHOLD:
+            return "回答覆盖了主要要点，个别细节仍可补充。"
+        if score > 0.0:
+            return "回答与参考答案的要点重合较少，建议对照参考答案补充关键内容。"
+        return "回答与参考答案没有重合，建议重新作答。"
+
+    # ------------------------ 候选人反馈 ------------------------
+
+    def generate_candidate_feedback(
+        self,
+        level: str,
+        conclusion: str,
+        strengths: list[str],
+        weaknesses: list[str],
+        overall_score: float,
+    ) -> CandidateFeedbackResult:
+        if level not in FEEDBACK_LEVELS:
+            # 退化为 summary 是「给得更少」这一安全方向，但配置写错必须留痕
+            logger.warning("未知的候选人反馈档位 %r，已按 summary 处理", level)
+            level = FEEDBACK_LEVEL_SUMMARY
+
+        return CandidateFeedbackResult(
+            conclusion=f"{_FEEDBACK_PREFIX}{conclusion.strip()}",
+            # 只 strip，不改变条目数量与顺序 —— 便于 HR 与候选人逐条对照
+            strengths=[item.strip() for item in strengths],
+            weaknesses=[item.strip() for item in weaknesses],
+            overall_score=(
+                _round1(overall_score)
+                if level == FEEDBACK_LEVEL_FULL
+                else None
+            ),
+        )
