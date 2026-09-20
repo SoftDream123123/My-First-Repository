@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from app.ai.base import QAPair
+from app.ai.base import QAPair, QuestionBrief
 from app.ai.openai_provider import OpenAIProvider
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError
@@ -495,3 +495,233 @@ class TestGenerateCandidateFeedback:
         result = self._feedback(handler)
         assert result.strengths == []
         assert result.weaknesses == []
+
+
+# ------------------------- 按简历匹配题目 -------------------------
+
+MATCH_DIMS = ["沟通能力", "专业能力"]
+MATCH_POOL = [
+    QuestionBrief(question_id=1, content="请描述一次性能优化的经历", dimension="专业能力", category="技术"),
+    QuestionBrief(question_id=2, content="如何与非技术同事沟通", dimension="沟通能力", category="通用"),
+]
+
+
+def _match(handler, count=3, resume="五年 Python 后端开发经验"):
+    return _provider(handler).match_questions_by_resume(
+        resume, "后端工程师", "JD", MATCH_DIMS, MATCH_POOL, count
+    )
+
+
+class TestMatchQuestionsByResume:
+    def test_parses_valid_response(self):
+        def handler(request):
+            return _json_reply([{"question_id": 1, "reason": "与简历中的性能优化经历相关"}])
+
+        result = _match(handler)
+        assert len(result) == 1
+        assert result[0].question_id == 1
+        assert result[0].reason == "与简历中的性能优化经历相关"
+
+    def test_drops_unknown_ids(self):
+        """池外 id 一律丢弃 —— 「只挑不生成」的第二层保证。"""
+
+        def handler(request):
+            return _json_reply(
+                [
+                    {"question_id": 1, "reason": "有效"},
+                    {"question_id": 999, "reason": "编造的题"},
+                ]
+            )
+
+        result = _match(handler)
+        assert [item.question_id for item in result] == [1]
+
+    def test_dedupes_ids(self):
+        def handler(request):
+            return _json_reply(
+                [
+                    {"question_id": 1, "reason": "第一次"},
+                    {"question_id": 1, "reason": "重复"},
+                ]
+            )
+
+        result = _match(handler)
+        assert len(result) == 1
+        assert result[0].reason == "第一次"
+
+    def test_all_ids_invalid_raises(self):
+        """非空数组但 id 全无效 = 输出不合格，**不能**静默当作「无匹配」。"""
+
+        def handler(request):
+            return _json_reply([{"question_id": 888, "reason": "编造的题"}])
+
+        with pytest.raises(AIProviderError):
+            _match(handler)
+
+    def test_empty_array_returns_empty(self):
+        """空数组是正当结论：确实没有相关题目。与上一条必须可区分。"""
+
+        def handler(request):
+            return _json_reply([])
+
+        assert _match(handler) == []
+
+    def test_truncates_to_count(self):
+        def handler(request):
+            return _json_reply(
+                [
+                    {"question_id": 1, "reason": "一"},
+                    {"question_id": 2, "reason": "二"},
+                ]
+            )
+
+        assert len(_match(handler, count=1)) == 1
+
+    def test_strips_code_fence(self):
+        def handler(request):
+            return _reply(
+                '```json\n[{"question_id": 2, "reason": "沟通经历相关"}]\n```'
+            )
+
+        assert _match(handler)[0].question_id == 2
+
+    def test_blank_resume_raises_without_calling_api(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply([])
+
+        with pytest.raises(AIProviderError):
+            _match(handler, resume="   ")
+        assert calls["n"] == 0
+
+    def test_count_zero_returns_empty_without_calling_api(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply([])
+
+        assert _match(handler, count=0) == []
+        assert calls["n"] == 0
+
+
+# ------------------------- 面试前准备提纲 -------------------------
+
+
+def _prep_payload() -> dict:
+    return {
+        "outline": [
+            {"seq": 1, "phase": "开场", "duration_min": 5, "notes": "自我介绍"},
+            {"seq": 2, "phase": "能力考察", "duration_min": 40, "notes": "逐项验证"},
+        ],
+        "focus_points": [
+            {"dimension": "沟通能力", "point": "验证沟通", "reason": "岗位需要跨部门协作"}
+        ],
+        "question_plan": [
+            {
+                "question": "请做一下自我介绍",
+                "intent": "了解背景",
+                "follow_ups": ["为什么选择这行"],
+            }
+        ],
+    }
+
+
+def _prep(handler, dims=None, resume="五年 Python 后端开发经验", questions=()):
+    return _provider(handler).generate_interview_prep(
+        "后端工程师",
+        "JD",
+        dims if dims is not None else MATCH_DIMS,
+        "张三",
+        resume,
+        list(questions),
+    )
+
+
+class TestGenerateInterviewPrep:
+    def test_parses_valid_response(self):
+        def handler(request):
+            return _json_reply(_prep_payload())
+
+        result = _prep(handler)
+        assert [stage.phase for stage in result.outline] == ["开场", "能力考察"]
+        assert result.focus_points[0].dimension == "沟通能力"
+        assert result.question_plan[0].follow_ups == ["为什么选择这行"]
+
+    def test_empty_section_raises(self):
+        """三部分任一为空即整批失败 —— 缺一块的提纲不具备可用性。"""
+
+        payload = _prep_payload()
+        payload["outline"] = []
+
+        def handler(request):
+            return _json_reply(payload)
+
+        with pytest.raises(AIProviderError):
+            _prep(handler)
+
+    @pytest.mark.parametrize("bad", ["十分钟", 0, -3, None])
+    def test_invalid_duration_falls_back(self, bad):
+        payload = _prep_payload()
+        payload["outline"][0]["duration_min"] = bad
+
+        def handler(request):
+            return _json_reply(payload)
+
+        assert _prep(handler).outline[0].duration_min == 5
+
+    def test_seq_filled_when_missing(self):
+        payload = _prep_payload()
+        for stage in payload["outline"]:
+            stage.pop("seq")
+
+        def handler(request):
+            return _json_reply(payload)
+
+        assert [stage.seq for stage in _prep(handler).outline] == [1, 2]
+
+    def test_coerces_dimension(self):
+        payload = _prep_payload()
+        payload["focus_points"][0]["dimension"] = "沟通"
+
+        def handler(request):
+            return _json_reply(payload)
+
+        assert _prep(handler).focus_points[0].dimension == "沟通能力"
+
+    def test_follow_ups_sanitized(self):
+        payload = _prep_payload()
+        payload["question_plan"][0]["follow_ups"] = ["有效的追问", "", "   ", 123]
+
+        def handler(request):
+            return _json_reply(payload)
+
+        assert _prep(handler).question_plan[0].follow_ups == ["有效的追问", "123"]
+
+    def test_non_dict_raises(self):
+        def handler(request):
+            return _json_reply([{"outline": []}])
+
+        with pytest.raises(AIProviderError):
+            _prep(handler)
+
+    def test_empty_dims_raises_without_calling_api(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply(_prep_payload())
+
+        with pytest.raises(AIProviderError):
+            _prep(handler, dims=[])
+        assert calls["n"] == 0
+
+    def test_without_resume_still_calls_api(self):
+        """与 match 相反：无简历是**正常输入**，照常生成，不得短路成异常。"""
+
+        def handler(request):
+            return _json_reply(_prep_payload())
+
+        assert _prep(handler, resume=None).outline

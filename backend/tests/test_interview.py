@@ -192,33 +192,20 @@ class TestQuestionAssembly:
     def test_ai_failure_rolls_back_everything(
         self, client, hr_headers, db, hr_user, position, monkeypatch
     ):
-        from app.ai.base import AIProvider
+        from app.ai.mock_provider import MockProvider
         from app.core.exceptions import AIProviderError
 
-        class FailingProvider(AIProvider):
+        class FailingProvider(MockProvider):
+            """只把出题那一路打断，其余能力沿用 Mock。
+
+            继承 `MockProvider` 而不是直接实现 `AIProvider`：后者是 ABC，每新增
+            一个抽象方法（如 module-18 的两个简历驱动方法）都会让本类无法实例化，
+            表现为整个测试报 TypeError 而非这条断言失败 —— 与本用例要验证的
+            「AI 失败时事务回滚」毫无关系。继承 Mock 后，接口增长不再波及这里。
+            """
+
             def generate_questions(self, *a, **kw):
                 raise AIProviderError("模拟出题失败")
-
-            def evaluate_answer(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
-
-            def evaluate_dimensions(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
-
-            def summarize_report(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
-
-            # 本用例只用 generate_questions，但 AIProvider 是 ABC：
-            # 漏实现任何一个抽象方法都会让本类无法实例化，
-            # 表现为整个测试集体报 TypeError 而非这条断言失败。
-            def generate_reference_answer(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
-
-            def grade_practice_answer(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
-
-            def generate_candidate_feedback(self, *a, **kw):  # pragma: no cover
-                raise AIProviderError()
 
         monkeypatch.setattr(
             "app.interview.service.get_provider", lambda: FailingProvider()

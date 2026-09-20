@@ -121,14 +121,87 @@ class CandidateFeedbackResult:
     overall_score: float | None
 
 
+@dataclass
+class QuestionBrief:
+    """题目的精简形态 —— 两个简历驱动方法（匹配 / 准备提纲）共用。
+
+    名字刻意用中性的 `Brief` 而非 `Candidate`：本项目中 `Candidate` 专指
+    候选人（candidate 角色、candidate_name），拿它命名题库题目会造成严重误读。
+    `prep` 的需求（题干 + 维度）是 `match` 需求（再加 id + 分类）的子集，
+    因此共用一个 dataclass，不另建只少两个字段的第二份。
+    """
+
+    question_id: int
+    content: str
+    dimension: str
+    category: str
+
+
+@dataclass
+class MatchedQuestion:
+    """按简历匹配到的题目。
+
+    **只有 id 与理由，没有题面字段** —— 这让「编造一道题库外的新题」在
+    结构上无从表达（即使模型返回了题面也无处安放），而不只是靠 prompt 与
+    解析两层检查（module-18 §5.5）。
+    """
+
+    question_id: int
+    reason: str
+
+
+@dataclass
+class PrepOutlineStage:
+    """面试提纲的一个阶段。"""
+
+    seq: int
+    phase: str
+    duration_min: int
+    notes: str
+
+
+@dataclass
+class PrepFocusPoint:
+    """考察重点：应验证的能力项 + 理由。"""
+
+    dimension: str
+    point: str
+    reason: str
+
+
+@dataclass
+class PrepQuestionItem:
+    """问题预案的一条：建议提问 + 考察意图 + 可追问方向。"""
+
+    question: str
+    intent: str
+    follow_ups: list[str] = field(default_factory=list)
+
+
+@dataclass
+class InterviewPrepResult:
+    """面试前准备助手的三部分产出。
+
+    三个部分用具名 dataclass 而非 dict：它们会**原样序列化进 interview_prep
+    的三个 JSON 列**，前端按字段名渲染。用 dict 会失去字段名的编译期约束，
+    「follow_ups 写成 followups」这类错误要到前端才炸。
+    """
+
+    outline: list[PrepOutlineStage]
+    focus_points: list[PrepFocusPoint]
+    question_plan: list[PrepQuestionItem]
+
+
 class AIProvider(ABC):
     """AI 能力抽象基类。
 
-    七个方法覆盖两条业务线：
+    九个方法覆盖三条业务线：
       · HR 侧：出题 → 逐题评分 → 多维评分 → 汇总报告
       · 候选人侧：补参考答案 / 刷题判分 / 候选人脱敏反馈
+      · 简历驱动：按简历匹配题目 / 生成面试前准备提纲
 
-    全部方法**只接收原始值**（str / list[str] / float），不接收 ORM 对象。
+    全部方法**只接收原始值**（str / list[str] / float / 本模块的 dataclass），
+    不接收 ORM 对象。
     """
 
     @abstractmethod
@@ -209,4 +282,47 @@ class AIProvider(ABC):
         level 同时决定返回的 overall_score 是否为 None：
         'summary' → None（默认档，候选人看不到分数）；'full' → 保留原值。
         未知 level 一律按 'summary' 处理 —— 给得更少是安全方向。
+        """
+
+    @abstractmethod
+    def match_questions_by_resume(
+        self,
+        resume_text: str,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidates: list[QuestionBrief],
+        count: int,
+    ) -> list[MatchedQuestion]:
+        """从 candidates 中挑出与简历最相关的题目，按相关度降序返回至多 count 条。
+
+        **只挑不生成**（PRD §6）：返回的 question_id 恒来自 candidates，
+        池外 id 一律丢弃；本方法不产生任何新题。
+
+        ⚠️ `resume_text` 为空时**抛 AIProviderError**：调用方本应先判出「未关联
+        简历」并整条路都不调用本方法（PRD §6）。这与 `generate_interview_prep`
+        的同名参数行为**相反**，不可混淆。
+
+        `dims` 为空（岗位配置缺失）同样抛错；`candidates` 为空则返回空列表 ——
+        「题库里没有可匹配的题」是正常业务状态，由调用方决定要不要报错。
+        """
+
+    @abstractmethod
+    def generate_interview_prep(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidate_name: str,
+        resume_text: str | None,
+        questions: list[QuestionBrief],
+    ) -> InterviewPrepResult:
+        """生成面试提纲 / 考察重点 / 问题预案（PRD §4.11）。
+
+        ⚠️ `resume_text` 为 None 或空时**正常运行**，产出不含简历针对性的内容 ——
+        未关联简历也能生成提纲，这与 `match_questions_by_resume` 的行为相反。
+        `candidate_name` 为空时用「候选人」兜底，`questions` 为空时问题预案
+        全由评估维度生成。
+
+        一次生成即整批返回，**不做流式**（PRD §4.11）。
         """

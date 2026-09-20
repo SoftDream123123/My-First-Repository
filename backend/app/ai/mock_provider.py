@@ -21,8 +21,14 @@ from app.ai.base import (
     CandidateFeedbackResult,
     DimensionScoreResult,
     GeneratedQuestion,
+    InterviewPrepResult,
+    MatchedQuestion,
     PracticeGradeResult,
+    PrepFocusPoint,
+    PrepOutlineStage,
+    PrepQuestionItem,
     QAPair,
+    QuestionBrief,
     QuestionScoreResult,
     ReferenceAnswerResult,
     ReportResult,
@@ -59,6 +65,51 @@ _REFERENCE_SNIPPET_LEN = 20
 
 _FEEDBACK_PREFIX = "感谢你参与本次面试。以下是本次面试的反馈，供你参考："
 
+# ---- 按简历匹配（module-18 §4.1）----
+#
+# 打分权重：维度命中 > 题干重合 > 分类命中。维度是岗位的考察口径，最可信；
+# 分类较粗（「通用」这类），因此权重最低。
+_MATCH_WEIGHT_DIMENSION = 3.0
+_MATCH_WEIGHT_CATEGORY = 1.5
+_MATCH_WEIGHT_OVERLAP = 2.0
+
+# 仅用于 reason 的措辞分档，**不参与排序**（排序用连续分数），因此取值敏感性低。
+_MATCH_OVERLAP_MIN = 0.3
+
+_MATCH_REASON_HIGH = "简历中体现了{dim}相关经历，且本题题干与其表述有重合，属于高相关题目。"
+_MATCH_REASON_DIMENSION = "简历中体现了{dim}相关经历，本题直接考察该维度。"
+_MATCH_REASON_CATEGORY = "简历中的{category}方向与本题一致。"
+_MATCH_REASON_OVERLAP = "本题题干与简历表述有一定重合。"
+_MATCH_REASON_GENERIC = "本题与岗位评估维度相关，作为通用考察项。"
+
+# ---- 面试前准备（module-18 §4.2）----
+
+_PREP_DEFAULT_CANDIDATE = "候选人"
+_PREP_RESUME_SNIPPET_LEN = 40
+_PREP_MAX_QUESTIONS = 4
+
+_PREP_RESUME_FOCUS_DIMENSION = "简历核对"
+
+_PREP_FOCUS_TEMPLATES = (
+    ("重点验证{dim}的真实水平", "若只有结论而缺少过程，很难判断其实际深度。"),
+    ("确认{dim}相关的具体案例", "要求给出可核对的项目、数据或结果，避免泛泛而谈。"),
+    ("考察{dim}在压力下的表现", "追问失败或冲突场景，观察其复盘与改进方式。"),
+)
+
+_PREP_INTENT_TEMPLATES = (
+    "考察{dim}：是否具备与岗位要求相匹配的实际经验。",
+    "考察{dim}：判断其在该维度上的深度与边界。",
+    "考察{dim}：验证其判断依据是否可复核。",
+)
+
+_PREP_FOLLOW_UP_TEMPLATES = (
+    ("如果重来一次，你会怎么做？", "这个结果是如何量化的？"),
+    ("当时还有哪些方案？为什么没有选它们？", "过程中最大的阻力是什么？"),
+    ("这件事里你的独立贡献是什么？", "后续有没有做复盘与改进？"),
+)
+
+_PREP_SUGGEST_TEMPLATE = "关于{dim}：请结合一段具体经历，谈谈你的做法与最终结果。"
+
 # 具体化标记 → 各 +0.5 分
 _BONUS_MARKERS = (r"\d", r"%|百分比", r"项目|案例", r"例如|比如")
 _BONUS_PER_MARKER = 0.5
@@ -88,6 +139,23 @@ def _similarity(left: str, right: str) -> float:
     if not union:
         return 0.0
     return len(a & b) / len(union)
+
+
+def _resume_overlap(question_text: str, resume_text: str) -> float:
+    """题干二元组**被简历覆盖**的比例 = |A ∩ B| / |A|（A = 题干，B = 简历）。
+
+    刻意**不复用 `_similarity`（Jaccard）**：Jaccard 的分母是并集，而简历可达
+    2 万字、题干只有几十字，并集被简历完全主导，相似度会塌到 1e-3 量级 ——
+    任何阈值都失去分辨力，等于这个信号不存在。以题干自身大小作分母，量级稳定
+    在 [0, 1]，语义清晰：「这道题的用词有多大比例出现在简历里」。
+
+    刷题判分能用 Jaccard，是因为参考答案与考生作答的长度量级相当；
+    简历匹配不是同一场景，因此不共用同一个函数。
+    """
+    question_grams = _bigrams(question_text)
+    if not question_grams:
+        return 0.0
+    return len(question_grams & _bigrams(resume_text)) / len(question_grams)
 
 
 class MockProvider(AIProvider):
@@ -389,3 +457,202 @@ class MockProvider(AIProvider):
                 else None
             ),
         )
+
+    # ------------------------ 按简历匹配题目 ------------------------
+
+    def match_questions_by_resume(
+        self,
+        resume_text: str,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidates: list[QuestionBrief],
+        count: int,
+    ) -> list[MatchedQuestion]:
+        resume = (resume_text or "").strip()
+        if not resume:
+            # 调用方本应判出「未关联简历」并整条路都不调用本方法
+            raise AIProviderError("缺少简历内容，无法按简历匹配题目")
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法按简历匹配题目")
+        if count <= 0 or not candidates:
+            return []
+
+        scored = []
+        for item in candidates:
+            dim_hit = item.dimension in resume
+            cat_hit = item.category in resume
+            overlap = _resume_overlap(item.content, resume)
+            score = (
+                _MATCH_WEIGHT_DIMENSION * dim_hit
+                + _MATCH_WEIGHT_CATEGORY * cat_hit
+                + _MATCH_WEIGHT_OVERLAP * overlap
+            )
+            scored.append((score, item, dim_hit, cat_hit, overlap))
+
+        # 同分必须有序：按 question_id 升序兜底，否则结果会依赖传入顺序。
+        scored.sort(key=lambda row: (-row[0], row[1].question_id))
+
+        return [
+            MatchedQuestion(
+                question_id=item.question_id,
+                reason=self._match_reason(item, dim_hit, cat_hit, overlap),
+            )
+            for _score, item, dim_hit, cat_hit, overlap in scored[:count]
+        ]
+
+    @staticmethod
+    def _match_reason(
+        item: QuestionBrief, dim_hit: bool, cat_hit: bool, overlap: float
+    ) -> str:
+        if dim_hit and overlap >= _MATCH_OVERLAP_MIN:
+            return _MATCH_REASON_HIGH.format(dim=item.dimension)
+        if dim_hit:
+            return _MATCH_REASON_DIMENSION.format(dim=item.dimension)
+        if cat_hit:
+            return _MATCH_REASON_CATEGORY.format(category=item.category)
+        if overlap >= _MATCH_OVERLAP_MIN:
+            return _MATCH_REASON_OVERLAP
+        return _MATCH_REASON_GENERIC
+
+    # ------------------------ 面试前准备提纲 ------------------------
+
+    def generate_interview_prep(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidate_name: str,
+        resume_text: str | None,
+        questions: list[QuestionBrief],
+    ) -> InterviewPrepResult:
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法生成面试准备提纲")
+
+        name = (candidate_name or "").strip() or _PREP_DEFAULT_CANDIDATE
+        resume = (resume_text or "").strip()
+
+        return InterviewPrepResult(
+            outline=self._prep_outline(name, dims, has_resume=bool(resume)),
+            focus_points=self._prep_focus_points(dims, resume),
+            question_plan=self._prep_question_plan(dims, questions),
+        )
+
+    @staticmethod
+    def _prep_outline(
+        candidate_name: str, dims: list[str], has_resume: bool
+    ) -> list[PrepOutlineStage]:
+        """固定四阶段、合计 45 分钟；只有 notes 随输入变化。
+
+        时长硬编码：Mock 的职责是确定性与可演示，不是拟真 ——
+        真实 Provider 由模型按岗位自定。
+        """
+        if has_resume:
+            experience_notes = (
+                "围绕简历中的项目经历逐段核对，确认其本人在项目中的"
+                "实际职责与产出。"
+            )
+        else:
+            experience_notes = (
+                "候选人未提供简历，改为围绕岗位要求做开放式了解，"
+                "注意记录可核对的事实。"
+            )
+
+        return [
+            PrepOutlineStage(
+                seq=1,
+                phase="开场与自我介绍",
+                duration_min=5,
+                notes=f"请{candidate_name}做自我介绍，建立基本印象。",
+            ),
+            PrepOutlineStage(
+                seq=2, phase="经历核对", duration_min=10, notes=experience_notes
+            ),
+            PrepOutlineStage(
+                seq=3,
+                phase="能力考察",
+                duration_min=20,
+                notes=(
+                    f"按评估维度逐项验证：{'、'.join(dims)}。"
+                    "每个维度至少准备一个可追问的具体问题。"
+                ),
+            ),
+            PrepOutlineStage(
+                seq=4,
+                phase="候选人提问与收尾",
+                duration_min=10,
+                notes="留出时间回答候选人的提问，并说明后续流程与时间安排。",
+            ),
+        ]
+
+    @staticmethod
+    def _prep_focus_points(dims: list[str], resume: str) -> list[PrepFocusPoint]:
+        """每个维度一条（模板按索引取模），有简历时额外追加一条「简历核对」。"""
+        points = [
+            PrepFocusPoint(
+                dimension=dim,
+                point=_PREP_FOCUS_TEMPLATES[index % len(_PREP_FOCUS_TEMPLATES)][0].format(
+                    dim=dim
+                ),
+                reason=_PREP_FOCUS_TEMPLATES[index % len(_PREP_FOCUS_TEMPLATES)][1],
+            )
+            for index, dim in enumerate(dims)
+        ]
+
+        if resume:
+            snippet = resume[:_PREP_RESUME_SNIPPET_LEN]
+            points.append(
+                PrepFocusPoint(
+                    dimension=_PREP_RESUME_FOCUS_DIMENSION,
+                    point="核对简历经历的真实性",
+                    reason=(
+                        f"简历中提到「{snippet}」，请确认其本人在其中的实际贡献。"
+                    ),
+                )
+            )
+
+        return points
+
+    @staticmethod
+    def _prep_question_plan(
+        dims: list[str], questions: list[QuestionBrief]
+    ) -> list[PrepQuestionItem]:
+        """先纳入本场已有题目，再用维度建议补足到 4 条。
+
+        先取已有题目：那些是 HR 已经决定要问的，问题预案把它们纳入才
+        「和这场面试对得上」。上限 4 条是产品判断 —— 45 分钟的提纲里塞
+        10 个问题预案没有可执行性。
+        """
+        plan: list[PrepQuestionItem] = [
+            PrepQuestionItem(
+                question=item.content,
+                intent=_PREP_INTENT_TEMPLATES[
+                    index % len(_PREP_INTENT_TEMPLATES)
+                ].format(dim=item.dimension),
+                follow_ups=list(
+                    _PREP_FOLLOW_UP_TEMPLATES[index % len(_PREP_FOLLOW_UP_TEMPLATES)]
+                ),
+            )
+            for index, item in enumerate(questions[:_PREP_MAX_QUESTIONS])
+        ]
+
+        # dims 非空（方法入口已校验），因此循环必然能补满
+        index = 0
+        while len(plan) < _PREP_MAX_QUESTIONS:
+            dim = dims[index % len(dims)]
+            plan.append(
+                PrepQuestionItem(
+                    question=_PREP_SUGGEST_TEMPLATE.format(dim=dim),
+                    intent=_PREP_INTENT_TEMPLATES[
+                        index % len(_PREP_INTENT_TEMPLATES)
+                    ].format(dim=dim),
+                    follow_ups=list(
+                        _PREP_FOLLOW_UP_TEMPLATES[
+                            index % len(_PREP_FOLLOW_UP_TEMPLATES)
+                        ]
+                    ),
+                )
+            )
+            index += 1
+
+        return plan

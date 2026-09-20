@@ -28,8 +28,14 @@ from app.ai.base import (
     CandidateFeedbackResult,
     DimensionScoreResult,
     GeneratedQuestion,
+    InterviewPrepResult,
+    MatchedQuestion,
     PracticeGradeResult,
+    PrepFocusPoint,
+    PrepOutlineStage,
+    PrepQuestionItem,
     QAPair,
+    QuestionBrief,
     QuestionScoreResult,
     ReferenceAnswerResult,
     ReportResult,
@@ -43,6 +49,17 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 _EMPTY_STRENGTHS = "本次面试暂无明显优势维度"
 _EMPTY_WEAKNESSES = "本次面试暂无明显薄弱维度"
+
+# 匹配理由缺失时的兜底文案（不因理由为空而丢掉一道合法题目）
+_MATCH_FALLBACK_REASON = "与岗位评估维度相关。"
+
+# 准备提纲里 duration_min 非法时的回落值
+_PREP_DEFAULT_DURATION_MIN = 5
+
+# 无简历时写进 prompt 的**显式声明**。不省略该段：省略会让模型自行假设候选人
+# 有简历，产出「针对简历中提到的…」这类引用不存在内容的提纲。
+_NO_RESUME_TEXT = "（候选人未提供简历）"
+_NO_QUESTIONS_TEXT = "（无）"
 
 
 def _clamp_score(value: Any) -> float:
@@ -498,3 +515,223 @@ class OpenAIProvider(AIProvider):
                 else None
             ),
         )
+
+    # ------------------------ 按简历匹配题目 ------------------------
+
+    def match_questions_by_resume(
+        self,
+        resume_text: str,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidates: list[QuestionBrief],
+        count: int,
+    ) -> list[MatchedQuestion]:
+        resume = (resume_text or "").strip()
+        if not resume:
+            # 调用方本应先判出「未关联简历」并整条路都不调用本方法
+            raise AIProviderError("缺少简历内容，无法按简历匹配题目")
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法按简历匹配题目")
+        if count <= 0 or not candidates:
+            return []
+
+        # 池内 id 集合：解析阶段据此丢弃模型编造的 id（「只挑不生成」的第二层保证）
+        pool = {item.question_id for item in candidates}
+        listing = "\n".join(
+            f"- question_id={item.question_id}｜维度：{item.dimension}"
+            f"｜分类：{item.category}｜题干：{item.content}"
+            for item in candidates
+        )
+        system = "你是一位资深面试官，负责从已有题库中挑选与候选人简历最相关的题目。"
+        user = (
+            f"岗位名称：{position_name}\n"
+            f"岗位描述（JD）：\n{jd}\n\n"
+            f"评估维度：{json.dumps(dims, ensure_ascii=False)}\n\n"
+            f"候选人简历：\n{resume}\n\n"
+            f"可选题目清单（question_id 只能取自以下清单）：\n{listing}\n\n"
+            f"请从中挑选至多 {count} 道与简历最相关的题目，输出 JSON 数组，"
+            "每个元素包含：\n"
+            '- "question_id"：**必须是上面清单中的数值**，不得编造、不得改写\n'
+            '- "reason"：匹配理由，说明与简历中的哪段经历相关\n'
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.2, expect_list=True)
+        if not isinstance(raw, list):
+            raise AIProviderError("AI 返回的简历匹配结果不是 JSON 数组")
+
+        results: list[MatchedQuestion] = []
+        seen: set[int] = set()
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            try:
+                question_id = int(item.get("question_id"))  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+            if question_id not in pool or question_id in seen:
+                continue  # 池外 id 一律丢弃，绝不伪造
+            seen.add(question_id)
+            results.append(
+                MatchedQuestion(
+                    question_id=question_id,
+                    reason=str(item.get("reason") or "").strip()
+                    or _MATCH_FALLBACK_REASON,
+                )
+            )
+            if len(results) >= count:
+                break
+
+        # 「没有」与「坏了」必须可区分：返回空数组是正当结论（确实没有相关题目），
+        # 而非空数组却一条都没留下则是**输出不合格**。静默返 [] 会把 AI 故障
+        # 伪装成正常结论，线上只剩「匹配不出来」这一种症状，无法定位。
+        if raw and not results:
+            raise AIProviderError("AI 返回的题目 id 均不在候选题库内")
+
+        return results
+
+    # ------------------------ 面试前准备提纲 ------------------------
+
+    def generate_interview_prep(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        candidate_name: str,
+        resume_text: str | None,
+        questions: list[QuestionBrief],
+    ) -> InterviewPrepResult:
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法生成面试准备提纲")
+
+        resume = (resume_text or "").strip()
+        resume_block = resume or _NO_RESUME_TEXT
+        questions_text = (
+            "\n".join(
+                f"- {item.content}（考察维度：{item.dimension}）" for item in questions
+            )
+            or _NO_QUESTIONS_TEXT
+        )
+        name = (candidate_name or "").strip() or "候选人"
+
+        system = "你是一位资深面试官与招聘专家，正在为一场即将开始的面试准备提纲。"
+        user = (
+            f"岗位名称：{position_name}\n"
+            f"岗位描述（JD）：\n{jd}\n\n"
+            f"评估维度（dimension 只能从中选择）：{json.dumps(dims, ensure_ascii=False)}\n"
+            f"候选人姓名：{name}\n\n"
+            f"候选人简历：\n{resume_block}\n\n"
+            f"本场已有题目：\n{questions_text}\n\n"
+            "请生成面试准备提纲，输出 JSON 对象，字段：\n"
+            '- "outline"：面试提纲，数组，每项含 "seq"（序号）、"phase"（阶段名）、'
+            '"duration_min"（该阶段分钟数，正整数）、"notes"（该阶段要点）\n'
+            '- "focus_points"：考察重点，数组，每项含 "dimension"（必须是给定维度之一）、'
+            '"point"（应验证的能力项）、"reason"（为什么重点考察它）\n'
+            '- "question_plan"：问题预案，数组，每项含 "question"（建议提问）、'
+            '"intent"（考察意图）、"follow_ups"（可追问方向的**字符串数组**）\n'
+            "要求：若存在简历，focus_points 中至少有一条与简历经历直接相关；"
+            "若没有简历，不要凭空引用简历内容。\n"
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.3, expect_list=False)
+        if not isinstance(raw, dict):
+            raise AIProviderError("AI 返回的面试准备提纲不是 JSON 对象")
+
+        outline = self._parse_prep_outline(raw.get("outline"))
+        focus_points = self._parse_prep_focus_points(raw.get("focus_points"), dims)
+        question_plan = self._parse_prep_question_plan(raw.get("question_plan"))
+
+        # 三部分任一为空即整批失败：缺了「考察重点」或「问题预案」的提纲不具备
+        # 可用性，而重试成本只有一次点击。允许部分为空反而更糟 —— 前端会渲染出
+        # 三块里空两块的面板，HR 无法判断是 AI 没生成还是本来就该空。
+        if not outline or not focus_points or not question_plan:
+            raise AIProviderError(
+                "AI 返回的面试准备提纲不完整（提纲 / 考察重点 / 问题预案存在空项）"
+            )
+
+        return InterviewPrepResult(
+            outline=outline, focus_points=focus_points, question_plan=question_plan
+        )
+
+    @staticmethod
+    def _parse_prep_outline(value: Any) -> list[PrepOutlineStage]:
+        if not isinstance(value, list):
+            return []
+
+        stages: list[PrepOutlineStage] = []
+        for index, item in enumerate(value, start=1):
+            if not isinstance(item, dict):
+                continue
+            phase = str(item.get("phase") or "").strip()
+            if not phase:
+                continue
+            stages.append(
+                PrepOutlineStage(
+                    # seq 缺失时按数组下标补 1..n，保证顺序信息不丢
+                    seq=OpenAIProvider._positive_int(item.get("seq"), index),
+                    phase=phase,
+                    duration_min=OpenAIProvider._positive_int(
+                        item.get("duration_min"), _PREP_DEFAULT_DURATION_MIN
+                    ),
+                    notes=str(item.get("notes") or "").strip(),
+                )
+            )
+        return stages
+
+    @staticmethod
+    def _parse_prep_focus_points(
+        value: Any, dims: list[str]
+    ) -> list[PrepFocusPoint]:
+        if not isinstance(value, list):
+            return []
+
+        points: list[PrepFocusPoint] = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            dimension = OpenAIProvider._coerce_dimension(item.get("dimension"), dims)
+            if dimension is None:
+                continue  # 无从判断归属维度，丢弃该条
+            point = str(item.get("point") or "").strip()
+            if not point:
+                continue
+            points.append(
+                PrepFocusPoint(
+                    dimension=dimension,
+                    point=point,
+                    reason=str(item.get("reason") or "").strip(),
+                )
+            )
+        return points
+
+    @staticmethod
+    def _parse_prep_question_plan(value: Any) -> list[PrepQuestionItem]:
+        if not isinstance(value, list):
+            return []
+
+        plan: list[PrepQuestionItem] = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            question = str(item.get("question") or "").strip()
+            if not question:
+                continue
+            plan.append(
+                PrepQuestionItem(
+                    question=question,
+                    intent=str(item.get("intent") or "").strip(),
+                    follow_ups=OpenAIProvider._str_list(item.get("follow_ups")),
+                )
+            )
+        return plan
+
+    @staticmethod
+    def _positive_int(value: Any, fallback: int) -> int:
+        """正整数校验；非数值 / 非正数一律回落 fallback。"""
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            return fallback
+        return number if number > 0 else fallback

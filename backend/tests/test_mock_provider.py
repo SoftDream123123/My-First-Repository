@@ -478,11 +478,11 @@ class TestGenerateCandidateFeedback:
 # ========================= 契约一致性 =========================
 
 
-def test_mock_provider_implements_all_seven_methods():
+def test_mock_provider_implements_all_nine_methods():
     """守门测试：漏实现任何抽象方法时，MockProvider() 会以 TypeError 失败。"""
     from app.ai.base import AIProvider
 
-    assert len(AIProvider.__abstractmethods__) == 7
+    assert len(AIProvider.__abstractmethods__) == 9
     assert not MockProvider.__abstractmethods__
 
 
@@ -490,3 +490,226 @@ def test_mock_provider_is_ai_provider(provider):
     from app.ai.base import AIProvider
 
     assert isinstance(provider, AIProvider)
+
+
+# ========================= 按简历匹配题目 =========================
+
+
+def _brief(qid: int, content: str, dimension: str = "沟通能力", category: str = "通用"):
+    from app.ai.base import QuestionBrief
+
+    return QuestionBrief(
+        question_id=qid, content=content, dimension=dimension, category=category
+    )
+
+
+# 一段与下面所有题干都没有字符重合的简历，用于构造「全零分」场景
+UNRELATED_RESUME = "甲乙丙丁戊己庚辛壬癸"
+UNRELATED_CONTENT = "子丑寅卯辰巳午未申酉"
+
+
+class TestMatchQuestionsByResume:
+    def _match(self, provider, resume=UNRELATED_RESUME, candidates=(), count=3):
+        return provider.match_questions_by_resume(
+            resume, "后端工程师", "JD", DIMS, list(candidates), count
+        )
+
+    def test_same_input_same_output(self, provider):
+        candidates = [
+            _brief(1, "请描述一次性能优化的经历", dimension="专业能力"),
+            _brief(2, "如何与非技术同事沟通", dimension="沟通能力"),
+        ]
+        first = self._match(provider, "简历里提到专业能力与沟通能力", candidates, 2)
+        second = self._match(provider, "简历里提到专业能力与沟通能力", candidates, 2)
+
+        assert first == second
+
+    def test_blank_resume_raises(self, provider):
+        with pytest.raises(AIProviderError):
+            self._match(provider, resume="   ", candidates=[_brief(1, "题干")], count=1)
+
+    def test_empty_dims_raises(self, provider):
+        with pytest.raises(AIProviderError):
+            provider.match_questions_by_resume(
+                "一段简历", "岗位", "JD", [], [_brief(1, "题干")], 1
+            )
+
+    def test_count_zero_returns_empty(self, provider):
+        assert self._match(provider, candidates=[_brief(1, "题干")], count=0) == []
+
+    def test_empty_candidates_returns_empty(self, provider):
+        """题库里没有可匹配的题是**正常业务状态**，不是错误。"""
+        assert self._match(provider, candidates=[], count=3) == []
+
+    def test_dimension_hit_ranks_first(self, provider):
+        candidates = [
+            _brief(1, "同一段题干内容", dimension="沟通能力"),
+            _brief(2, "同一段题干内容", dimension="专业能力"),
+        ]
+        result = self._match(
+            provider, resume="简历里写了专业能力相关经历", candidates=candidates, count=2
+        )
+
+        assert [item.question_id for item in result] == [2, 1]
+
+    def test_respects_count(self, provider):
+        candidates = [_brief(i, f"第{i}题的题干内容描述") for i in range(1, 11)]
+
+        assert len(self._match(provider, candidates=candidates, count=3)) == 3
+
+    def test_ids_all_from_pool(self, provider):
+        candidates = [_brief(i, f"第{i}题的题干内容描述") for i in range(1, 6)]
+        pool = {item.question_id for item in candidates}
+
+        result = self._match(provider, "一份普通简历内容描述", candidates, 4)
+        assert {item.question_id for item in result} <= pool
+
+    def test_tie_break_by_question_id(self, provider):
+        """完全同分的两题必须按 question_id 升序 —— 否则结果依赖传入顺序。"""
+        candidates = [
+            _brief(20, "完全相同的题干内容描述"),
+            _brief(10, "完全相同的题干内容描述"),
+        ]
+        result = self._match(provider, candidates=candidates, count=2)
+
+        assert [item.question_id for item in result] == [10, 20]
+
+    def test_reason_mentions_dimension_when_hit(self, provider):
+        result = self._match(
+            provider,
+            resume="简历里写了专业能力相关经历",
+            candidates=[_brief(1, "一道与简历无关的题干", dimension="专业能力")],
+            count=1,
+        )
+        assert "专业能力" in result[0].reason
+
+    def test_all_zero_scores_is_deterministic(self, provider):
+        """简历与所有题都无交集 → 退化为「按 id 升序的前 count 条」，理由走通用文案。"""
+        candidates = [
+            _brief(3, UNRELATED_CONTENT),
+            _brief(1, UNRELATED_CONTENT),
+            _brief(2, UNRELATED_CONTENT),
+        ]
+        result = self._match(provider, candidates=candidates, count=3)
+
+        assert [item.question_id for item in result] == [1, 2, 3]
+        assert all(item.reason == "本题与岗位评估维度相关，作为通用考察项。" for item in result)
+
+    def test_overlap_uses_question_denominator(self):
+        """⚠️ 本模块最重要的一条：分母必须是**题干**，不是 Jaccard 的并集。
+
+        若有人「顺手复用」`_similarity`，长简历会把并集完全主导，该值塌到
+        1e-3 量级 —— 断言会失败，从而把「用对分母」这个非显然的决策钉住。
+        """
+        from app.ai.mock_provider import _resume_overlap, _similarity
+
+        question = "熟悉 Python 与 MySQL 数据库设计"
+        # 用 1200 个互不相同的汉字构造一份高基数的长简历 —— 真实简历的用词分布
+        # 就是这样散的。若用「其他经历描述」这类重复短语，二元组集合会很小，
+        # 两种口径就区分不开了，测试也就失去了钉住能力。
+        filler = "".join(chr(0x4E00 + i) for i in range(1200))
+        resume = question + "。" + filler
+
+        assert _resume_overlap(question, resume) > 0.9
+        assert _similarity(question, resume) < 0.05  # 两种口径确实不同
+
+
+# ========================= 面试前准备提纲 =========================
+
+
+PREP_RESUME = (
+    "五年 Python 后端开发经验，主导过订单系统重构与支付链路拆分，"
+    "熟悉 FastAPI 与 MySQL。"
+)
+
+
+class TestGenerateInterviewPrep:
+    def _prep(self, provider, resume=None, candidate="张三", questions=()):
+        return provider.generate_interview_prep(
+            "后端工程师", "JD", DIMS, candidate, resume, list(questions)
+        )
+
+    def test_same_input_same_output(self, provider):
+        questions = [_brief(1, "请描述一次性能优化的经历", dimension="专业能力")]
+        first = self._prep(provider, PREP_RESUME, questions=questions)
+        second = self._prep(provider, PREP_RESUME, questions=questions)
+
+        assert first == second
+
+    def test_empty_dims_raises(self, provider):
+        with pytest.raises(AIProviderError):
+            provider.generate_interview_prep("岗位", "JD", [], "张三", None, [])
+
+    def test_without_resume_ok(self, provider):
+        result = self._prep(provider, resume=None)
+
+        assert result.outline
+        assert result.focus_points
+        assert result.question_plan
+
+    def test_without_resume_has_no_resume_focus(self, provider):
+        result = self._prep(provider, resume=None)
+
+        assert all(point.dimension != "简历核对" for point in result.focus_points)
+
+    def test_with_resume_adds_resume_focus(self, provider):
+        result = self._prep(provider, resume=PREP_RESUME)
+
+        resume_points = [p for p in result.focus_points if p.dimension == "简历核对"]
+        assert len(resume_points) == 1
+        assert PREP_RESUME[:40] in resume_points[0].reason
+
+    def test_without_candidate_name_uses_default(self, provider):
+        result = self._prep(provider, resume=None, candidate="")
+
+        assert "候选人" in result.outline[0].notes
+
+    def test_outline_total_duration(self, provider):
+        result = self._prep(provider, resume=PREP_RESUME)
+
+        assert [stage.seq for stage in result.outline] == [1, 2, 3, 4]
+        assert sum(stage.duration_min for stage in result.outline) == 45
+        assert all(stage.duration_min > 0 for stage in result.outline)
+
+    def test_focus_points_cover_all_dims(self, provider):
+        result = self._prep(provider, resume=None)
+
+        assert [point.dimension for point in result.focus_points] == DIMS
+
+    def test_question_plan_uses_existing_questions_first(self, provider):
+        questions = [
+            _brief(1, "本场第一道题", dimension="专业能力"),
+            _brief(2, "本场第二道题", dimension="沟通能力"),
+        ]
+        result = self._prep(provider, resume=None, questions=questions)
+
+        assert [item.question for item in result.question_plan[:2]] == [
+            "本场第一道题",
+            "本场第二道题",
+        ]
+
+    def test_question_plan_pads_to_max(self, provider):
+        result = self._prep(provider, resume=None, questions=[])
+
+        assert len(result.question_plan) == 4
+        assert all("关于" in item.question for item in result.question_plan)
+
+    def test_question_plan_capped(self, provider):
+        questions = [_brief(i, f"第{i}道本场题目") for i in range(1, 11)]
+
+        assert len(self._prep(provider, resume=None, questions=questions).question_plan) == 4
+
+    def test_without_questions_ok(self, provider):
+        result = self._prep(provider, resume=None, questions=[])
+
+        assert result.outline and result.focus_points and result.question_plan
+
+    def test_follow_ups_are_non_empty_lists(self, provider):
+        result = self._prep(provider, resume=PREP_RESUME)
+
+        assert all(item.follow_ups for item in result.question_plan)
+        assert all(
+            isinstance(text, str) and text.strip()
+            for item in result.question_plan
+            for text in item.follow_ups
+        )
