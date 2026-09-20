@@ -3,6 +3,8 @@
 直接调用 evaluate_interview 并传入间谍回调，因此不涉及异步、HTTP 或 SSE。
 """
 
+from urllib.parse import unquote
+
 import pytest
 
 from app.evaluation import repository
@@ -352,3 +354,194 @@ def test_delete_all_for_interview(db, completed_interview, spy):
 
     assert repository.list_question_scores(db, completed_interview.id) == []
     assert repository.get_report(db, completed_interview.id) is None
+
+
+# ---------------------------- 报告 DOCX 导出（module-21 §7.2）----------------------------
+
+
+class TestReportExport:
+    def _url(self, interview_id: int) -> str:
+        return f"/api/interviews/{interview_id}/report/export"
+
+    def _evaluated(self, db, hr_user, spy, **create_kwargs):
+        """建面试 → 逐题作答 → 标记完成 → 评估，返回可供 HTTP 访问的面试。"""
+        kwargs = {"position_id": create_kwargs.pop("position_id"), "candidate_name": "张三"}
+        kwargs.update(create_kwargs)
+        detail = interview_service.create_interview(
+            db, hr_user, InterviewCreate(**kwargs)
+        )
+        for question in detail.questions:
+            interview_service.save_answer(
+                db, hr_user, detail.id, question.interview_question_id, ANSWER
+            )
+        interview_service.complete_interview(db, hr_user, detail.id)
+        evaluation_service.evaluate_interview(db, detail.id, spy)
+        return detail
+
+    @pytest.fixture
+    def evaluated(self, db, hr_user, completed_interview, spy):
+        evaluation_service.evaluate_interview(db, completed_interview.id, spy)
+        return completed_interview
+
+    # ---- 正常路径与响应头 ----
+
+    def test_export_returns_200_and_binary(self, client, hr_headers, evaluated):
+        resp = client.get(self._url(evaluated.id), headers=hr_headers)
+
+        assert resp.status_code == 200, resp.text
+        assert resp.headers["content-type"] == (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        assert resp.content[:2] == b"PK"
+
+    def test_export_content_disposition_is_attachment(self, client, hr_headers, evaluated):
+        disposition = client.get(
+            self._url(evaluated.id), headers=hr_headers
+        ).headers["content-disposition"]
+
+        assert disposition.startswith("attachment;")
+
+    def test_export_content_disposition_has_rfc5987_filename(
+        self, client, hr_headers, evaluated
+    ):
+        disposition = client.get(
+            self._url(evaluated.id), headers=hr_headers
+        ).headers["content-disposition"]
+
+        assert "filename*=UTF-8''" in disposition
+        decoded = unquote(disposition.split("filename*=UTF-8''")[1])
+        assert "后端工程师" in decoded
+        assert "张三" in decoded
+        assert decoded.endswith(".docx")
+
+    def test_export_default_format_is_docx(self, client, hr_headers, evaluated):
+        assert client.get(self._url(evaluated.id), headers=hr_headers).status_code == 200
+
+    def test_export_body_matches_builder(self, client, db, hr_headers, hr_user, evaluated):
+        """端点返回体与直接调装配函数的结果长度一致（同一份数据来源）。"""
+        from app.evaluation import export
+        from app.evaluation.service import get_report
+
+        body = client.get(self._url(evaluated.id), headers=hr_headers).content
+        built = export.build_report_docx(get_report(db, hr_user, evaluated.id))
+
+        assert len(body) == len(built)
+
+    # ---- 文件名消毒（本项目第一处把用户输入放进 HTTP 头部）----
+
+    def test_export_filename_sanitized(self, client, db, hr_headers, hr_user, position, spy):
+        hostile = 'A"; \r\nB/C'
+        detail = self._evaluated(
+            db, hr_user, spy, position_id=position.id, candidate_name=hostile
+        )
+
+        resp = client.get(self._url(detail.id), headers=hr_headers)
+        disposition = resp.headers["content-disposition"]
+
+        assert resp.status_code == 200
+        assert "\r" not in disposition
+        assert "\n" not in disposition
+        # 只有 filename="report.docx" 那一对引号，注入的引号已被剔除
+        assert disposition.count('"') == 2
+
+        decoded = unquote(disposition.split("filename*=UTF-8''")[1])
+        assert "/" not in decoded
+        assert "A" in decoded and "B" in decoded
+
+    def test_export_filename_length_capped(self, client, db, hr_headers, hr_user, position, spy):
+        detail = self._evaluated(
+            db, hr_user, spy, position_id=position.id, candidate_name="名" * 100
+        )
+
+        disposition = client.get(
+            self._url(detail.id), headers=hr_headers
+        ).headers["content-disposition"]
+        decoded = unquote(disposition.split("filename*=UTF-8''")[1])
+
+        stem = decoded.rsplit(".", 1)[0]
+        assert len(stem) <= 60
+
+    # ---- 参数与状态 ----
+
+    def test_export_unknown_format_400(self, client, hr_headers, evaluated):
+        """**不静默回退** —— 静默回退会让调用方以为拿到了别的格式。"""
+        resp = client.get(
+            self._url(evaluated.id), params={"format": "pdf"}, headers=hr_headers
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "VALIDATION_ERROR"
+
+    def test_export_before_evaluation_409(self, client, hr_headers, completed_interview):
+        """仅 evaluated 可导出 —— 复用既有「评估尚未完成」文案。"""
+        resp = client.get(self._url(completed_interview.id), headers=hr_headers)
+
+        assert resp.status_code == 409
+        assert resp.json()["message"] == "评估尚未完成"
+
+    def test_export_when_report_missing_404(self, client, db, hr_headers, completed_interview):
+        from app.interview import repository as interview_repo
+
+        row = interview_repo.get_by_id(db, completed_interview.id)
+        row.status = "evaluated"  # 直接置状态，构造「evaluated 但无报告行」
+        db.commit()
+
+        resp = client.get(self._url(completed_interview.id), headers=hr_headers)
+
+        assert resp.status_code == 404
+        assert resp.json()["message"] == "报告不存在"
+
+    def test_export_missing_interview_404(self, client, hr_headers):
+        assert client.get(self._url(999999), headers=hr_headers).status_code == 404
+
+    # ---- 权限 ----
+
+    def test_export_other_hrs_interview_403(self, client, other_hr_headers, evaluated):
+        assert (
+            client.get(self._url(evaluated.id), headers=other_hr_headers).status_code
+            == 403
+        )
+
+    def test_export_rejects_candidate(self, client, candidate_headers, evaluated):
+        assert (
+            client.get(self._url(evaluated.id), headers=candidate_headers).status_code
+            == 403
+        )
+
+    def test_export_allows_admin(self, client, admin_headers, evaluated):
+        """admin 与 hr 都可导出 —— 刻意的确认用例，防止守卫被误写成只允许 hr。"""
+        assert (
+            client.get(self._url(evaluated.id), headers=admin_headers).status_code == 200
+        )
+
+    def test_export_rejects_anonymous(self, client, evaluated):
+        assert client.get(self._url(evaluated.id)).status_code == 401
+
+    def test_candidate_feedback_export_absent(self, client, candidate_headers, evaluated):
+        """候选人无任何导出端点（PRD §4.12：脱敏反馈不提供导出）。"""
+        resp = client.get(
+            f"/api/candidate/interviews/{evaluated.id}/report/export",
+            headers=candidate_headers,
+        )
+
+        assert resp.status_code == 404
+
+    # ---- 无副作用 ----
+
+    def test_export_does_not_persist_anything(self, client, db, hr_headers, evaluated):
+        """PRD §4.12：不额外落库导出记录。"""
+        from sqlalchemy import func, select
+
+        from app.evaluation.models import QuestionScore, Report
+
+        def _counts() -> tuple[int, int]:
+            return (
+                db.execute(select(func.count(Report.id))).scalar_one(),
+                db.execute(select(func.count(QuestionScore.id))).scalar_one(),
+            )
+
+        before = _counts()
+        assert client.get(self._url(evaluated.id), headers=hr_headers).status_code == 200
+        db.rollback()
+
+        assert _counts() == before

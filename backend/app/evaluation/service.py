@@ -6,6 +6,7 @@ stream.py 只负责把回调变成队列推送。
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -15,8 +16,8 @@ from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
 from app.core.config import get_settings
-from app.core.exceptions import BusinessError, NotFoundError
-from app.evaluation import repository
+from app.core.exceptions import BusinessError, NotFoundError, ValidationError
+from app.evaluation import export, repository
 from app.evaluation.schemas import (
     CandidateFeedbackOut,
     DimensionScoreItem,
@@ -318,3 +319,104 @@ def ensure_visible(db: Session, user: User, interview_id: int) -> None:
 
 def scope_owner(user: User) -> int | None:
     return auth_service.scope_owner_id(user)
+
+
+# ------------------------------ 报告导出 ------------------------------
+
+_DOCX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
+# 当前只支持 docx。保留 format 参数（而非把格式写进路径）是为了将来加格式
+# 不必改路径 —— 改路径会同时破坏前端与已发出的文档链接。
+_EXPORT_FORMATS = ("docx",)
+
+_FALLBACK_FILENAME = "report.docx"
+_FILENAME_MIDDLE_MAX = 60
+# `"` 会截断 Content-Disposition 的值、CR/LF 能注入额外头部、`/` 与 `\` 是路径分隔符。
+# ASCII 控制字符由 ord(ch) < 0x20 一并剔除。
+_UNSAFE_FILENAME_CHARS = frozenset('"\\/\r\n\t')
+
+
+@dataclass
+class ReportExport:
+    """service → router 之间传递的导出结果。
+
+    **不用 tuple**：三个字段里两个是字符串，元组会让 `(content, filename)` 与
+    `(filename, content)` 这类笔误无声通过。
+    定义在 service 而非 schemas：它含 `bytes`，无法作为 Pydantic 响应模型，
+    是内部传递结构而非 HTTP 契约。
+    """
+
+    content: bytes
+    filename: str
+    media_type: str
+
+
+def export_report(
+    db: Session, user: User, interview_id: int, fmt: str
+) -> ReportExport:
+    """导出 HR 报告为 DOCX（PRD §4.12）。
+
+    内容与报告接口**同源**（都走 `get_report`），因此自动继承它全部的可见性
+    与状态校验：面试不存在 404 / 非本人 403 / 非 evaluated 409 / 无报告行 404。
+    不额外落库任何导出记录。
+    """
+    if fmt not in _EXPORT_FORMATS:
+        # 先校验格式再读库：格式错了就不该白读一次；且「参数错先于资源错」
+        # 与 main.py 的全局校验收口方向一致。
+        # **不静默当 docx** —— 静默回退会让调用方以为拿到了别的格式。
+        raise ValidationError(
+            "不支持的导出格式",
+            detail={
+                "fields": [
+                    {
+                        "field": "format",
+                        "message": f"当前仅支持 {'/'.join(_EXPORT_FORMATS)}",
+                    }
+                ]
+            },
+        )
+
+    report = get_report(db, user, interview_id)
+
+    # 装配失败不强转成业务错误：export 是纯函数、输入已校验，失败只可能是
+    # 编程错误或依赖异常 → 让它成为 500 + 完整堆栈（main.py 已覆盖）
+    return ReportExport(
+        content=export.build_report_docx(report),
+        filename=_build_filename(report),
+        media_type=_DOCX_MEDIA_TYPE,
+    )
+
+
+def _build_filename(report: ReportDetail) -> str:
+    return _sanitize_filename(
+        f"面试评估报告-{report.position_name}-{report.candidate_name}.docx"
+    )
+
+
+def _sanitize_filename(name: str) -> str:
+    """剔除危险字符并限长，返回 UTF-8 文件名（百分号编码在 router 层做）。
+
+    这是**业务规则**（文件名该长什么样）；百分号编码是 HTTP 协议细节。
+
+    `candidate_name` / `position_name` 是 HR 自由填写的用户输入
+    （`InterviewCreate` 对它们没有任何字符限制），而这是本项目**第一处**把用户
+    输入放进 HTTP 头部的地方 —— 含 `"` 或 CRLF 会破坏甚至注入 `Content-Disposition`。
+    """
+    cleaned = "".join(
+        char
+        for char in name
+        if char not in _UNSAFE_FILENAME_CHARS and ord(char) >= 0x20
+    )
+
+    stem, dot, suffix = cleaned.rpartition(".")
+    if not dot:
+        stem, suffix = cleaned, ""
+
+    stem = stem.strip()[:_FILENAME_MIDDLE_MAX]
+    if not stem:
+        # 中段全被剔掉（如姓名是纯控制字符）→ 退化为固定回退名
+        return _FALLBACK_FILENAME
+
+    return f"{stem}.{suffix}" if suffix else stem

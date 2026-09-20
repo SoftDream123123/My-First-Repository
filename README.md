@@ -70,6 +70,9 @@ python -m venv .venv
 
 # 2) 安装依赖
 pip install -r requirements.txt
+#    ⚠️ 本机直连 PyPI 会超时（files.pythonhosted.org 实测 5 次重试均 0 字节），
+#       且直连索引会把 python-docx 误解析到 2021 年的 0.8.11。请走清华镜像：
+#       pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 3) 配置：复制样例并填写
 cp .env.example .env
