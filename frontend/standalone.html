@@ -63,6 +63,8 @@
   /* 只用于数字。Cambria 是 Windows 自带的「文书衬线」，活字数字、
      笔画敦实 —— 报表里的数字该是这个样子。 */
   --font-num: Cambria, Georgia, "Times New Roman", "SimSun", serif;
+  /* 只用于不透明令牌（邀请码）：等宽让 l/1、O/0 这类字符可以逐字核对 */
+  --font-code: Consolas, "Cascadia Mono", "Courier New", monospace;
 
   /* ---- 字号（1.25 比例，中文基准 15px） ---- */
   --t-xs: 12px;
@@ -724,6 +726,65 @@ a:hover { text-decoration: underline; }
 .save-state.is-saved { color: var(--pass); }
 .save-state.is-failed { color: var(--danger); font-weight: 600; }
 
+/* ---- 面试详情的参考区：候选人简历 + 作答邀请 ----
+   放在作答区下方而不是第三栏：三栏在 1280 宽下会把编辑区挤到 370px。 */
+.detail-extras {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 344px;
+  gap: var(--s5);
+  align-items: start;
+  margin-top: var(--s5);
+}
+
+.code {
+  font-family: var(--font-code);
+  font-size: var(--t-sm);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.invite-item {
+  padding: var(--s3) var(--s5) var(--s4);
+  border-bottom: 1px solid var(--line-soft);
+}
+.invite-item:last-child { border-bottom: none; }
+.invite-top { display: flex; align-items: center; gap: var(--s2); }
+.invite-top .code { flex: 1; min-width: 0; }
+.invite-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+.invite-actions { display: flex; gap: var(--s1); flex: none; }
+
+.resume-body {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--s5);
+  font-size: 14px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+/* 匹配理由：这是 HR 的评估思路，做成引文样式与题干区分开 */
+.match-reason {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--brand-line);
+  background: var(--brand-wash);
+  border-radius: 0 var(--r-control) var(--r-control) 0;
+  font-size: var(--t-sm);
+  line-height: 1.75;
+  color: var(--brand-deep);
+  max-width: 46em;
+}
+.match-reason b { font-weight: 600; }
+
 /* ---- 单选题的选项（只读视图：标出参考答案是哪一项） ---- */
 .option-list {
   border: 1px solid var(--line-soft);
@@ -1279,6 +1340,10 @@ __modules['./mock.js'] = function (exports, __require) {
       { id: 2, username: 'li.yan',    password: 'hr12345678', role: 'hr',    is_active: true,  created_at: '2026-08-11T14:30:00' },
       { id: 3, username: 'zhao.ming', password: 'hr12345678', role: 'hr',    is_active: true,  created_at: '2026-09-01T10:05:00' },
       { id: 4, username: 'chen.xi',   password: 'hr12345678', role: 'hr',    is_active: false, created_at: '2026-09-05T16:42:00' },
+      // 候选人账号由邀请激活流程建立；候选人端尚未接入本原型（F8），
+      // 这里先给出账号，简历的归属才不是悬空引用
+      { id: 5, username: 'li.yun',      password: 'candidate123', role: 'candidate', is_active: true, created_at: '2026-09-14T09:30:00' },
+      { id: 6, username: 'zhou.xiaohe', password: 'candidate123', role: 'candidate', is_active: true, created_at: '2026-09-18T15:15:00' },
     ],
     positions: [
       {
@@ -1414,18 +1479,68 @@ __modules['./mock.js'] = function (exports, __require) {
         explanation: '考的是安全边界的直觉：能不能区分「随机性」与「不可枚举」，以及是否会想到用限流兜住最坏情况。',
         tags: ['安全', '设计'], source: 'bank', created_by: 1, created_at: '2026-09-12T09:50:00',
       },
+      {
+        id: 12, position_id: 1, dimension: '沟通能力', category: '协作', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '和产品对需求时，对方坚持一个你认为技术上不划算的方案。你会怎么处理？',
+        options: [],
+        reference_answer: '先把双方的目标和约束摊开：他真正要的是什么结果，我说的不划算具体贵在哪里。多数分歧其实是信息差，比如他不知道这个方案会让后续每次迭代都背上额外成本。把代价讲清楚之后，往往能一起找到第三条路；实在谈不拢就上升给能拍板的人，而不是拖着。',
+        explanation: '看的是遇到分歧时是「说服」还是「找共识」，以及会不会把代价说具体。',
+        tags: ['协作', '沟通'], source: 'bank', created_by: 1, created_at: '2026-09-13T10:20:00',
+      },
+      {
+        id: 13, position_id: 1, dimension: '专业能力', category: '架构', difficulty: 'hard',
+        question_type: 'short_answer',
+        content: '给一个每秒上万次写入的表做分库分表，你会怎么切分？扩容时怎么保证不停机？',
+        options: [],
+        reference_answer: '先看查询模式再定分片键：如果绝大多数是按用户维度查，就按用户 ID 取模，保证同一用户的数据落在同一片。扩容不停机一般走双写加灰度读：先加新分片并双写，再用读灰度逐步把流量切过去，观察一段时间后停掉旧分片的写。要提前想清楚跨分片查询和聚合怎么办——那才是分表之后最容易失控的地方。',
+        explanation: '考的是有没有真做过：分片键的选择依据、扩容迁移路径，以及跨片查询这个后遗症。',
+        tags: ['架构', '分库分表'], source: 'bank', created_by: 1, created_at: '2026-09-13T10:26:00',
+      },
+      {
+        id: 14, position_id: 1, dimension: '逻辑思维', category: '线上排查', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '线上出现偶发超时，重试之后就恢复了。你会怎么往下查？',
+        options: [],
+        reference_answer: '先确认「重试能好」这件事本身说明什么：多半不是服务彻底挂了，而是某个依赖偶发慢。我会先看超时的时间分布有没有周期性，再对比超时请求与正常请求在下游调用上的差异。要警惕一种情况——重试本身会放大下游压力，把小概率慢变成雪崩。',
+        explanation: '重点在会不会把「重试有效」当成结论。重试是对症状的掩盖，不是原因。',
+        tags: ['排查', '超时'], source: 'bank', created_by: 1, created_at: '2026-09-13T10:32:00',
+      },
     ],
     interviews: [
       { id: 1, position_id: 1, candidate_name: '张书宁', candidate_contact: 'zhang.shuning@example.com', status: 'evaluated',  created_at: '2026-09-14T14:00:00', completed_at: '2026-09-14T15:20:00', created_by: 1, answered: 8 },
-      { id: 2, position_id: 1, candidate_name: '李昀',   candidate_contact: 'li.yun@example.com',        status: 'ongoing',    created_at: '2026-09-16T10:30:00', completed_at: null,                  created_by: 1, answered: 3 },
+      { id: 2, position_id: 1, candidate_name: '李昀',   candidate_contact: 'li.yun@example.com',        status: 'ongoing',    created_at: '2026-09-16T10:30:00', completed_at: null,                  created_by: 1, answered: 3, resume_id: 1 },
       { id: 3, position_id: 2, candidate_name: '王一鸣', candidate_contact: null,                        status: 'completed',  created_at: '2026-09-15T09:00:00', completed_at: '2026-09-15T10:40:00', created_by: 2, answered: 7 },
       { id: 4, position_id: 3, candidate_name: '陈嘉',   candidate_contact: 'chen.jia@example.com',      status: 'evaluating', created_at: '2026-09-16T11:10:00', completed_at: '2026-09-16T12:00:00', created_by: 3, answered: 8 },
-      { id: 5, position_id: 4, candidate_name: '周晓禾', candidate_contact: 'zhou.xiaohe@example.com',   status: 'ongoing',    created_at: '2026-09-18T15:20:00', completed_at: null,                  created_by: 1, answered: 1 },
+      { id: 5, position_id: 4, candidate_name: '周晓禾', candidate_contact: 'zhou.xiaohe@example.com',   status: 'ongoing',    created_at: '2026-09-18T15:20:00', completed_at: null,                  created_by: 1, answered: 1, resume_id: 2 },
     ],
     interviewQuestions: [],
+    resumes: [
+      {
+        id: 1, title: '李昀 · 后端开发简历', candidate_name: '李昀', candidate_contact: 'li.yun@example.com',
+        created_by: 5, created_at: '2026-09-15T20:10:00', updated_at: '2026-09-15T20:10:00',
+        content: "李昀　后端开发工程师\n手机 138-0000-0000　邮箱 li.yun@example.com\n\n工作经历\n2022.07 – 至今　某电商平台　后端开发工程师\n· 负责交易链路的下单与支付服务，日均订单 80 万，接口 P99 稳定在 120ms 以内。\n· 主导过一次线上性能排查：监控发现下单接口 P99 从 90ms 涨到 900ms，用链路追踪定位到一张千万级表的慢查询，补上联合索引并改写 SQL 后恢复。\n· 处理过重复下单问题，最终靠唯一索引加乐观锁解决，顺带理解了事务隔离级别在该场景下的边界。\n· 推动交易核心表的分库分表改造，按用户 ID 取模拆成 16 张表；扩容时用双写加灰度读保证不停机。\n· 负责与产品对接需求、参与方案评审，习惯先把目标和约束对齐再谈技术取舍。\n\n2020.09 – 2022.06　某 SaaS 公司　后端开发工程师\n· 负责权限与审批流的服务端实现，理解 RBAC 模型与数据权限的边界。\n· 写过一个对账任务，上下游数据延迟不可控，改成准实时加定时兜底。\n· 排查过一次偶发超时，最后定位到连接池配置偏小，重试把压力放大成了雪崩。\n\n技能\n· 语言：Python、Go；熟悉 SQL 调优与索引设计\n· 熟悉监控、日志与链路追踪，能独立完成线上问题的定位与复盘\n· 能在方案有分歧时，把双方的假设摆到台面上讨论\n\n教育\n2016.09 – 2020.06　某大学　计算机科学与技术　本科\n",
+      },
+      {
+        id: 2, title: '周晓禾 · 前端开发简历', candidate_name: '周晓禾', candidate_contact: 'zhou.xiaohe@example.com',
+        created_by: 6, created_at: '2026-09-18T15:12:00', updated_at: '2026-09-18T15:12:00',
+        content: "周晓禾　前端开发工程师\n手机 139-0000-0000　邮箱 zhou.xiaohe@example.com\n\n工作经历\n2023.03 – 至今　某企业服务公司　前端开发工程师\n· 负责管理后台的页面与交互实现，技术栈是原生 JavaScript 加少量构建工具，没有引入框架。\n· 处理过滚动卡顿问题：录制 Performance 后确认是频繁读取 offsetHeight 触发的强制同步布局，改成先批量读再批量写之后帧率恢复正常。\n· 排查过一次内存持续增长：组件卸载时没有解绑挂在 window 上的事件监听，整棵组件树无法回收。\n· 与设计对接时习惯主动追问边界情况，比如空态、超长文案、接口失败时的表现。\n\n2022.07 – 2023.02　某创业公司　前端开发工程师\n· 从零搭过一套表单校验与错误提示的公共组件，覆盖了 20 多个业务表单。\n· 参与过首屏优化，把首屏时间从 3.2s 压到 1.8s。\n\n技能\n· 扎实的原生 JavaScript，熟悉 DOM、事件模型与渲染性能\n· 会用 Chrome DevTools 的 Performance 与 Memory 面板定位问题\n\n教育\n2018.09 – 2022.06　某大学　软件工程　本科\n",
+      },
+    ],
+    invitations: [
+      // 面试 1（已评估）一张已接受；面试 2（进行中）覆盖 待接受 / 已过期 / 已撤销 三种
+      { id: 1, interview_id: 1, code: 'Kq3n8XvT2mLpRa7BwYc9dA', status: 'accepted', candidate_user_id: 5,
+        expires_at: '2100-01-01T00:00:00', accepted_at: '2026-09-14T09:30:00', created_at: '2026-09-14T14:05:00', created_by: 1 },
+      { id: 2, interview_id: 2, code: 'Zm4Hr6Ps1QwEk9Lt3Vb8Ny', status: 'pending', candidate_user_id: null,
+        expires_at: '2100-01-01T00:00:00', accepted_at: null, created_at: '2026-09-16T10:35:00', created_by: 1 },
+      { id: 3, interview_id: 2, code: 'Tb7Wq2Mn5Zx4Cr8Jv1Hf6L', status: 'pending', candidate_user_id: null,
+        expires_at: '2026-09-17T10:40:00', accepted_at: null, created_at: '2026-09-16T10:40:00', created_by: 1 },
+      { id: 4, interview_id: 2, code: 'Yd9Uk3Gh6Nm1Pz5Rw8Qc4V', status: 'revoked', candidate_user_id: null,
+        expires_at: '2100-01-01T00:00:00', accepted_at: null, created_at: '2026-09-16T10:45:00', created_by: 1 },
+    ],
   };
 
-  const seq = { user: 5, position: 5, question: 12, interview: 6 };
+  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 5 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -1961,6 +2076,9 @@ __modules['./mock.js'] = function (exports, __require) {
     9: '我会先录一段 Performance，看主线程有没有长任务。如果时间主要花在 Recalculate Style 上，那就是布局抖动，一般是频繁读 offsetHeight 触发的强制同步布局。',
     10: '组件卸载时没有解绑挂在 window 上的监听，整棵组件树都会被全局对象引用住，回收不掉。',
     11: '邀请码要用足够熵的随机串，不能从自增 ID 或时间戳派生，否则拿到一个就能推出下一个。接受的时候用事务把状态从 pending 改成 accepted，保证只能用一次。',
+    12: '我会先把他的目标问清楚：他要的到底是哪个结果。然后把我说的「不划算」拆成具体代价，比如后续每次需求都要额外改一遍这个模块。把代价讲具体之后，分歧往往就变成了取舍问题，能一起找第三条路。',
+    13: '我们当时按用户 ID 取模分了 16 片，因为绝大多数查询都带用户维度。扩容走双写加灰度读：先加新分片同时写两边，再把读流量一点点切过去，观察一周没问题才停旧分片的写。跨片的分页查询最麻烦，最后单独做了一张汇总表。',
+    14: '先看超时的时间分布，有没有集中在某个时间点或某个版本之后；再对比超时请求与正常请求在下游调用上的差异，重点怀疑连接池。我们那次最后发现是连接池配小了，而重试把压力放大成了雪崩 —— 所以「重试能好」本身不是结论。',
   };
 
   const DIMENSION_ANSWERS = {
@@ -1984,6 +2102,7 @@ __modules['./mock.js'] = function (exports, __require) {
           content: item.content,
           dimension: item.dimension,
           source: item.source,
+          question_id: item.question_id,
           answer: answered ? (item.question_id ? BANK_ANSWERS[item.question_id] : DIMENSION_ANSWERS[item.dimension]) ?? null : null,
           recorded_at: answered ? interview.created_at : null,
           answer_source: answered ? 'hr' : null,
@@ -2222,6 +2341,235 @@ __modules['./mock.js'] = function (exports, __require) {
     located.row.status = 'ongoing';
     located.row.completed_at = null;
     return ok(interviewDetail(located.row));
+  });
+
+  /* ---- resumes / invitations / 按简历补题 ---- */
+
+  function locateResume(resumeId) {
+    return state.resumes.find((r) => r.id === Number(resumeId)) || null;
+  }
+
+  /** 派生 expired —— 不回写（后端 _derive_status 同一原则）。 */
+  function deriveInvitationStatus(invitation) {
+    if (invitation.status === 'pending' && new Date(invitation.expires_at) < new Date()) return 'expired';
+    return invitation.status;
+  }
+
+  function invitationView(invitation) {
+    const owner = state.users.find((u) => u.id === invitation.candidate_user_id);
+    return {
+      id: invitation.id,
+      interview_id: invitation.interview_id,
+      code: invitation.code,
+      status: deriveInvitationStatus(invitation),
+      expires_at: invitation.expires_at,
+      accepted_at: invitation.accepted_at,
+      candidate_username: owner ? owner.username : null,
+      created_at: invitation.created_at,
+    };
+  }
+
+  const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function generateInviteCode() {
+    const bytes = new Uint8Array(22);
+    crypto.getRandomValues(bytes);
+    let out = '';
+    for (const byte of bytes) out += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+    return out;
+  }
+
+  on('GET', '/interviews/:id/invitations', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+    const rows = state.invitations
+      .filter((i) => i.interview_id === located.row.id)
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    return ok(rows.map(invitationView));
+  });
+
+  on('POST', '/interviews/:id/invitations', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    // 面试一旦完成，作答通道本就不接受写入，此时发邀请已无意义
+    if (located.row.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '当前状态下不可生成邀请，请先将面试置为进行中', {
+        status: located.row.status,
+      });
+    }
+
+    const row = {
+      id: seq.invitation++,
+      interview_id: located.row.id,
+      code: generateInviteCode(),
+      status: 'pending',
+      candidate_user_id: null,
+      expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      accepted_at: null,
+      created_at: new Date().toISOString(),
+      created_by: user.id,
+    };
+    state.invitations.push(row);
+    return created(invitationView(row));
+  });
+
+  on('DELETE', '/interviews/:id/invitations/:invitationId', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const invitation = state.invitations.find((i) => i.id === Number(params.invitationId));
+    if (!invitation || invitation.interview_id !== located.row.id) {
+      return fail(404, 'NOT_FOUND', '邀请不存在');
+    }
+    // 已撤销的再撤一次是幂等（返回当前状态），不报错
+    if (invitation.status === 'revoked') return ok(invitationView(invitation));
+
+    invitation.status = 'revoked';
+    return ok(invitationView(invitation));
+  });
+
+  on('GET', '/interviews/:id/resume', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    if (located.row.resume_id == null) {
+      // 404 而非 403：前端据此显示「候选人尚未提交简历」，不是「无权限」
+      return fail(404, 'NOT_FOUND', '该面试尚未关联简历');
+    }
+    const resume = locateResume(located.row.resume_id);
+    if (!resume) return fail(404, 'NOT_FOUND', '关联的简历已不可用');
+
+    return ok({
+      resume_id: resume.id,
+      title: resume.title,
+      content: resume.content,
+      candidate_name: resume.candidate_name,
+      candidate_contact: resume.candidate_contact,
+      updated_at: resume.updated_at,
+    });
+  });
+
+  /* 与后端 MockProvider.match_questions_by_resume 同构：维度命中 > 题干重合 > 分类命中。
+     以「题干自身」作分母算重合比例 —— 简历可达两万字，用并集做分母会把相似度压成噪声。 */
+  const MATCH_WEIGHT_DIMENSION = 3.0;
+  const MATCH_WEIGHT_CATEGORY = 1.5;
+  const MATCH_WEIGHT_OVERLAP = 2.0;
+  const MATCH_OVERLAP_MIN = 0.3;
+
+  function bigrams(text) {
+    const normalized = String(text).replace(/\s+/g, '');
+    if (normalized.length < 2) return new Set(normalized);
+    const out = new Set();
+    for (let i = 0; i < normalized.length - 1; i += 1) out.add(normalized.slice(i, i + 2));
+    return out;
+  }
+
+  function resumeOverlap(questionText, resumeText) {
+    const questionGrams = bigrams(questionText);
+    if (!questionGrams.size) return 0;
+    const resumeGrams = bigrams(resumeText);
+    let hit = 0;
+    for (const gram of questionGrams) if (resumeGrams.has(gram)) hit += 1;
+    return hit / questionGrams.size;
+  }
+
+  function matchReason(item, dimensionHit, categoryHit, overlap) {
+    if (dimensionHit && overlap >= MATCH_OVERLAP_MIN) {
+      return `简历中体现了${item.dimension}相关经历，且本题题干与其表述有重合，属于高相关题目。`;
+    }
+    if (dimensionHit) return `简历中体现了${item.dimension}相关经历，本题直接考察该维度。`;
+    if (categoryHit) return `简历中的${item.category}方向与本题一致。`;
+    if (overlap >= MATCH_OVERLAP_MIN) return '本题题干与简历表述有一定重合。';
+    return '本题与岗位评估维度相关，作为通用考察项。';
+  }
+
+  on('POST', '/interviews/:id/questions/match', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+    const interview = located.row;
+
+    if (interview.status !== 'ongoing') return fail(409, 'BUSINESS_ERROR', '当前状态下不可按简历补题');
+    if (interview.resume_id == null) return fail(409, 'BUSINESS_ERROR', '该面试尚未关联简历');
+
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    const dimensions = position ? position.evaluation_dimensions : [];
+    if (!dimensions.length) return fail(409, 'BUSINESS_ERROR', '岗位未定义评估维度，无法补题');
+
+    const existingIds = new Set((interview.questions || []).map((q) => q.question_id).filter((id) => id != null));
+    const candidates = state.questions
+      .filter((q) => q.position_id === interview.position_id
+        && q.created_by === user.id
+        && dimensions.includes(q.dimension)
+        && !existingIds.has(q.id))
+      .sort((a, b) => a.id - b.id);
+    if (!candidates.length) return fail(409, 'BUSINESS_ERROR', '题库中没有可补充的题目');
+
+    // AI 失败 → 数据库零改动（后端在此前后都没有写操作，因此无须补偿）
+    if (aiFails()) return fail(502, 'AI_PROVIDER_ERROR', 'AI 服务调用失败，请稍后重试');
+
+    const resume = locateResume(interview.resume_id);
+    const resumeText = resume ? resume.content : '';
+    const count = Math.max(1, Math.min(20, Number(body?.count) || 3));
+
+    const scored = candidates.map((item) => {
+      const dimensionHit = resumeText.includes(item.dimension);
+      const categoryHit = resumeText.includes(item.category);
+      const overlap = resumeOverlap(item.content, resumeText);
+      return {
+        item,
+        score: MATCH_WEIGHT_DIMENSION * (dimensionHit ? 1 : 0)
+          + MATCH_WEIGHT_CATEGORY * (categoryHit ? 1 : 0)
+          + MATCH_WEIGHT_OVERLAP * overlap,
+        dimensionHit,
+        categoryHit,
+        overlap,
+      };
+    });
+    // 同分必须有序：按 id 升序兜底，否则结果依赖传入顺序
+    scored.sort((a, b) => (b.score - a.score) || (a.item.id - b.item.id));
+
+    const picked = scored.slice(0, count);
+    const baseSeq = Math.max(0, ...(interview.questions || []).map((q) => q.seq));
+
+    // 「没有更相关的题」是正当结论，不是故障 → 200 + added_count = 0
+    if (!picked.length) {
+      return ok({ added_count: 0, added: [], total_questions: (interview.questions || []).length });
+    }
+
+    const added = picked.map((row, index) => {
+      const item = {
+        interview_question_id: interview.id * 1000 + baseSeq + index + 1,
+        seq: baseSeq + index + 1,
+        content: row.item.content,
+        dimension: row.item.dimension,
+        source: 'resume_match',
+        answer: null,
+        recorded_at: null,
+        answer_source: null,
+        question_id: row.item.id,
+        match_reason: matchReason(row.item, row.dimensionHit, row.categoryHit, row.overlap),
+      };
+      interview.questions.push(item);
+      return {
+        interview_question_id: item.interview_question_id,
+        seq: item.seq,
+        content: item.content,
+        dimension: item.dimension,
+        match_reason: item.match_reason,
+      };
+    });
+
+    return ok({ added_count: added.length, added, total_questions: interview.questions.length });
   });
 
   /* ---- fetch 拦截 ---- */
@@ -4419,7 +4767,7 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
   const { toast } = __require('./components/toast.js');
   const { confirmModal } = __require('./components/modal.js');
   const {
-    contextTitle, createShell, emptyState, formatDateTime, loadingBlock,
+    contextTitle, createShell, emptyState, formatDate, formatDateTime, loadingBlock,
     navigate, sourceTag, dimTag, statusRail,
   } = __require('./components/shell.js');
 
@@ -4524,6 +4872,8 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
 
     const navColumn = el('div', {});
     const editorColumn = el('div', {});
+    const resumePanel = el('div', { class: 'panel' });
+    const invitePanel = el('div', { class: 'panel' });
 
     function buildNav() {
       const answered = detail.questions.filter((q) => q.answer).length;
@@ -4649,6 +4999,13 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
 
         el('p', { class: 'editor-question', text: question.content }),
 
+        // 「为什么选这道题」只对按简历匹配来的题显示，普通题没有这个字段
+        question.source === 'resume_match' && question.match_reason
+          ? el('p', { class: 'match-reason' },
+              el('b', { text: '为什么选这道题：' }),
+              question.match_reason)
+          : null,
+
         el('div', { class: 'editor-answer-head' },
           el('label', { class: 'field-label', for: 'answer-input', text: '候选人回答' }),
           el('span', { class: 'hint' },
@@ -4672,6 +5029,227 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
           }),
         ),
       );
+    }
+
+    /* ---------------------- 参考区：候选人简历 ---------------------- */
+
+    function panelHead(title, note, actions) {
+      return el('div', { class: 'panel-head' },
+        el('div', {},
+          el('span', { class: 'panel-title', text: title }),
+          note ? el('div', { class: 'panel-note', text: note }) : null),
+        actions && actions.length ? el('div', { class: 'invite-actions' }, actions) : null);
+    }
+
+    async function runMatch(button) {
+      // 补题会**累加**新题（「幂等」只指不产生重复题目），连点会追加多批 —— 必须防连点
+      button.disabled = true;
+      button.textContent = '匹配中…';
+      try {
+        const result = await api.post(`/interviews/${interviewId}/questions/match`, {});
+        if (result.added_count === 0) {
+          toast.info('未匹配到新的题目'); // 200，不是错误
+        } else {
+          // 必须报本场总数：只报增量时 HR 连点几次会以为界面在重复加同一批题
+          toast.success(`本次新增 ${result.added_count} 题，本场共 ${result.total_questions} 题`);
+        }
+        render(container, params); // 重新拉详情，让新题与匹配理由出现在导航与编辑区
+      } catch (error) {
+        toast.error(error.message); // 409 / 502 都用后端文案
+        button.disabled = false;
+        button.textContent = '按简历补题';
+      }
+    }
+
+    async function loadResume() {
+      const canMatch = detail.status === 'ongoing' && detail.resume_id != null;
+      const matchButton = el('button', {
+        class: 'btn btn--ghost btn--sm',
+        text: '按简历补题',
+        disabled: !canMatch,
+        title: detail.resume_id == null
+          ? '该面试尚未关联简历'
+          : detail.status !== 'ongoing' ? '当前状态不可补题' : '按候选人简历从题库再补几道题',
+        onClick: () => runMatch(matchButton),
+      });
+
+      // 标题先立起来、正文随后填 —— 加载期间不该是一块没有名字的空白面板
+      const body = el('div', {});
+      clear(resumePanel);
+      resumePanel.append(
+        panelHead('候选人简历', detail.resume_id == null ? '尚未关联' : null, [matchButton]),
+        body,
+      );
+      body.append(loadingBlock('正在读取简历…'));
+
+      let resume = null;
+      let failure = null;
+      try {
+        resume = await api.get(`/interviews/${interviewId}/resume`);
+      } catch (error) {
+        failure = error;
+      }
+
+      clear(body);
+
+      if (failure && failure.status !== 404) {
+        body.append(el('div', { class: 'panel-body' },
+          el('p', { class: 'field-error', text: failure.message })));
+        return;
+      }
+      if (!resume) {
+        // 404 是「候选人还没做这件事」，不是「出问题了」—— 两者表现必须明显不同
+        body.append(el('div', { class: 'panel-body' },
+          el('p', { class: 'prose' }, '候选人尚未提交简历。候选人可在其端内录入并关联，之后可据此补充面试题。')));
+        return;
+      }
+
+      body.append(
+        el('div', { class: 'panel-body', style: 'padding-bottom:0' },
+          el('div', { class: 'dossier-label', text: resume.title }),
+          el('div', { class: 'dossier-meta' },
+            resume.candidate_name ? el('span', { text: resume.candidate_name }) : null,
+            resume.candidate_contact ? el('span', { text: resume.candidate_contact }) : null,
+            // HR 据此判断手上这份是不是最新的（候选人改简历后需重新触发补题）
+            el('span', { text: `最后更新 ${formatDateTime(resume.updated_at)}` })),
+        ),
+        el('p', { class: 'resume-body', text: resume.content }),
+      );
+    }
+
+    /* ---------------------- 参考区：作答邀请 ---------------------- */
+
+    const INVITE_LABELS = { pending: '待接受', accepted: '已接受', revoked: '已撤销', expired: '已过期' };
+    const INVITE_TAG = {
+      pending: 'tag--ongoing', accepted: 'tag--evaluated', revoked: 'tag--off', expired: 'tag--evaluating',
+    };
+
+    function copyCode(code) {
+      let reported = false;
+      const report = (message, variant) => {
+        if (reported) return; // 超时回退与成功回调可能都跑，只报第一次
+        reported = true;
+        variant === 'error' ? toast.error(message) : toast.success(message);
+      };
+      const done = () => report('邀请码已复制');
+      const failed = () => report('复制失败，请手工选中邀请码复制', 'error');
+
+      // file:// 与部分浏览器下 navigator.clipboard 不保证可用 —— 退回 execCommand，不引入依赖
+      const legacy = () => {
+        const box = el('textarea', { value: code, style: 'position:fixed;left:-9999px;top:0' });
+        document.body.append(box);
+        box.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch { copied = false; }
+        box.remove();
+        return copied ? done() : failed();
+      };
+
+      if (!(navigator.clipboard && navigator.clipboard.writeText)) { legacy(); return; }
+
+      // 无用户手势 / 未授权时这个 Promise 可能**一直不落地**，不给超时就会「点了没反应」
+      const timer = setTimeout(legacy, 1200);
+      navigator.clipboard.writeText(code).then(
+        () => { clearTimeout(timer); done(); },
+        () => { clearTimeout(timer); legacy(); },
+      );
+    }
+
+    async function revokeInvitation(invitation) {
+      const ok = await confirmModal({
+        title: '撤销这张邀请码？',
+        message: invitation.status === 'accepted'
+          ? '这位候选人已经接受了邀请。撤销会立刻切断他在候选人端对本场面试的访问 —— 这是收回访问权的唯一手段。'
+          : '撤销后这张邀请码立即失效，不能再用于激活。已签发的其他邀请不受影响。',
+        confirmLabel: '撤销',
+      });
+      if (!ok) return;
+      try {
+        await api.del(`/interviews/${interviewId}/invitations/${invitation.id}`);
+        toast.success('邀请已撤销');
+        loadInvitations();
+      } catch (error) {
+        toast.error(error.message);
+      }
+    }
+
+    async function loadInvitations() {
+      const canCreate = detail.status === 'ongoing';
+      const createButton = el('button', {
+        class: 'btn btn--primary btn--sm',
+        text: '生成邀请码',
+        disabled: !canCreate,
+        title: canCreate ? '生成一张 7 天有效、一次性使用的邀请码' : '只有进行中的面试才能发邀请',
+        onClick: async () => {
+          createButton.disabled = true;
+          createButton.textContent = '生成中…';
+          try {
+            await api.post(`/interviews/${interviewId}/invitations`);
+            toast.success('邀请码已生成，复制后发给候选人');
+            loadInvitations();
+          } catch (error) {
+            toast.error(error.message);
+          } finally {
+            createButton.disabled = false;
+            createButton.textContent = '生成邀请码';
+          }
+        },
+      });
+
+      const body = el('div', {});
+      clear(invitePanel);
+      invitePanel.append(panelHead('作答邀请', null, [createButton]), body);
+      body.append(loadingBlock('正在读取邀请…'));
+
+      let invitations = [];
+      try {
+        invitations = await api.get(`/interviews/${interviewId}/invitations`);
+      } catch (error) {
+        clear(body);
+        body.append(el('div', { class: 'panel-body' }, el('p', { class: 'field-error', text: error.message })));
+        return;
+      }
+
+      clear(body);
+
+      if (!invitations.length) {
+        body.append(el('div', { class: 'panel-body' },
+          el('p', { class: 'prose' }, canCreate
+            ? '还没有邀请码。生成一张发给候选人，他就能在候选人端激活账号并在线作答。'
+            : '这场面试没有发过邀请码。')));
+        return;
+      }
+
+      body.append(el('div', {}, invitations.map((invitation) => {
+        const actions = [];
+        // 只有待接受的码值得复制 —— 已撤销/已过期的复制出去也用不了
+        if (invitation.status === 'pending') {
+          actions.push(el('button', {
+            class: 'btn btn--quiet btn--sm', text: '复制', onClick: () => copyCode(invitation.code),
+          }));
+        }
+        if (invitation.status !== 'revoked') {
+          actions.push(el('button', {
+            class: 'btn btn--quiet btn--sm', text: '撤销', onClick: () => revokeInvitation(invitation),
+          }));
+        }
+
+        return el('div', { class: 'invite-item' },
+          el('div', { class: 'invite-top' },
+            el('span', { class: 'code', text: invitation.code }),
+            el('span', {
+              class: `tag ${INVITE_TAG[invitation.status] ?? 'tag--off'}`,
+              text: INVITE_LABELS[invitation.status] ?? invitation.status,
+            }),
+            actions.length ? el('div', { class: 'invite-actions' }, actions) : null),
+          el('div', { class: 'invite-meta' },
+            el('span', { text: `创建于 ${formatDateTime(invitation.created_at)}` }),
+            el('span', { text: `有效期至 ${formatDate(invitation.expires_at)}` }),
+            invitation.accepted_at
+              ? el('span', { text: `已接受${invitation.candidate_username ? ` · ${invitation.candidate_username}` : ''}（${formatDateTime(invitation.accepted_at)}）` })
+              : null),
+        );
+      })));
     }
 
     /* ------------------------------- 组装 ------------------------------- */
@@ -4706,9 +5284,12 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
       statusRail(detail.status),
 
       el('div', { class: 'detail-layout' }, navColumn, editorColumn),
+      el('div', { class: 'detail-extras' }, resumePanel, invitePanel),
     );
 
     repaint();
+    loadResume();
+    loadInvitations();
   }
 
   exports.render = render;
