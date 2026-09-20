@@ -30,39 +30,83 @@ _HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 _PATH_PARAM = re.compile(r"\{[^}]+\}")
 
 
+def _all_api_routes() -> set[tuple[str, str]]:
+    """枚举当前真实的全部 (方法, 路径)。
+
+    ⚠️ 不能用 `for route in app.routes` 直接取 —— FastAPI 0.141 起，
+    `include_router` 的产物被包成 `_IncludedRouter` 对象，其 `.path` 为 None、
+    真正的 APIRoute 藏在 `original_router` 里。直接遍历会**一个路由都取不到**，
+    于是所有依赖它的断言全部空转通过 —— 这正是本文件要防的那类「静默漏掉」，
+    只不过这次漏掉的是测试自己。
+
+    两个来源取并集：
+      1. OpenAPI schema —— 已解析出含 `/api` 前缀的最终路径，跨版本稳定；
+      2. 扁平遍历 app.routes —— 兜住 `include_in_schema=False` 的路由。
+    """
+    from app.main import app
+
+    found: set[tuple[str, str]] = set()
+
+    for path, operations in app.openapi().get("paths", {}).items():
+        for method in operations:
+            found.add((method.upper(), path))
+
+    for route in app.routes:
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if path and methods:
+            for method in methods:
+                if method.upper() in _HTTP_METHODS:
+                    found.add((method.upper(), path))
+
+    return found
+
+
 def _iter_routes(prefixes: tuple[str, ...]):
-    """遍历 app.routes，产出 (method, 已替换路径参数的路径)。
+    """产出 (method, 已替换路径参数的路径)。
 
     路径参数统一替换为 999999：这些路由的守卫在依赖阶段就应生效，
     因此不需要真实资源存在。
     """
-    from app.main import app
-
-    for route in app.routes:
-        methods = getattr(route, "methods", None)
-        path = getattr(route, "path", None)
-        if not methods or not path:
-            continue  # 跳过 Mount（/assets）等无方法的条目
-
+    for method, path in sorted(_all_api_routes()):
         if not path.startswith(prefixes):
             continue
-
-        concrete = _PATH_PARAM.sub("999999", path)
-        for method in sorted(methods & _HTTP_METHODS):
-            yield method, concrete
+        yield method, _PATH_PARAM.sub("999999", path)
 
 
 # ---------------------- A. 自维护不变量 ----------------------
 
 
+def test_route_enumeration_actually_finds_routes():
+    """枚举本身必须有效 —— 否则下面两条不变量测试会空转通过。
+
+    没有这条，`_all_api_routes()` 一旦因框架升级取不到路由，A 组就退化成
+    「什么都没检查」却全绿。
+    """
+    hr_routes = list(_iter_routes(HR_PATH_PREFIXES))
+    assert len(hr_routes) >= 15, f"HR 路由枚举结果异常偏少：{len(hr_routes)} 条"
+
+    paths = {path for _m, path in hr_routes}
+    for expected in (
+        "/api/positions",
+        "/api/questions",
+        "/api/interviews",
+        "/api/users",
+    ):
+        assert expected in paths, f"未枚举到 {expected}"
+
+
 def test_no_hr_route_reachable_by_candidate(client, candidate_headers):
     """候选人 token 对任何 HR 侧路由都必须恒为 403，且不存在任何 2xx。"""
     reachable = []
+    checked = 0
     for method, path in _iter_routes(HR_PATH_PREFIXES):
         resp = client.request(method, path, json={}, headers=candidate_headers)
+        checked += 1
         if resp.status_code != 403:
             reachable.append(f"{method} {path} -> {resp.status_code}")
 
+    assert checked >= 15, f"实际只检查了 {checked} 条路由，枚举可能已失效"
     assert not reachable, (
         "以下 HR 侧路由未挂角色守卫（候选人可达）：\n  " + "\n  ".join(reachable)
     )
@@ -71,11 +115,14 @@ def test_no_hr_route_reachable_by_candidate(client, candidate_headers):
 def test_no_hr_route_reachable_by_hr(client, hr_headers):
     """`/api/users*` 是 admin 专属，hr token 必须恒 403。"""
     reachable = []
+    checked = 0
     for method, path in _iter_routes(("/api/users",)):
         resp = client.request(method, path, json={}, headers=hr_headers)
+        checked += 1
         if resp.status_code != 403:
             reachable.append(f"{method} {path} -> {resp.status_code}")
 
+    assert checked >= 3, f"实际只检查了 {checked} 条路由，枚举可能已失效"
     assert not reachable, (
         "以下 admin 专属路由对 hr 可达：\n  " + "\n  ".join(reachable)
     )
