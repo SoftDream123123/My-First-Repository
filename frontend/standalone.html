@@ -498,6 +498,8 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--line-soft);
 }
 .dossier-title { font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.01em; }
+/* 题干是长句子，不用 22px 粗体 —— 段落级的粗体读起来太压 */
+.dossier-question { font-size: 17px; font-weight: 600; line-height: 1.65; max-width: 46em; }
 .dossier-meta {
   display: flex;
   align-items: center;
@@ -540,6 +542,134 @@ a:hover { text-decoration: underline; }
   color: var(--faint);
 }
 .dim-editor-remove:hover:not(:disabled) { color: var(--danger); background: var(--danger-wash); }
+
+/* ---- 筛选栏 ---- */
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5);
+  border-bottom: 1px solid var(--line-soft);
+  background: #fafcfe;
+}
+.filterbar .input,
+.filterbar .select {
+  width: auto;
+  min-width: 116px;
+  height: 32px;
+  font-size: var(--t-sm);
+}
+.filterbar-grow { flex: 1; }
+.filterbar-count { margin-left: auto; font-size: var(--t-sm); color: var(--muted); }
+
+/* ---- 列表更宽的变体（题库的题干较长，左列放不下 300px） ---- */
+.split--wide { grid-template-columns: 384px 1fr; }
+.split-item-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.split-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+  margin-top: var(--s2);
+}
+.split-item-pos { margin-left: var(--s1); font-size: var(--t-xs); color: var(--muted); }
+
+/* ---- 单选题的选项（只读视图：标出参考答案是哪一项） ---- */
+.option-list {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-control);
+  overflow: hidden;
+}
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  font-size: 14px;
+  line-height: 1.6;
+  border-top: 1px solid var(--line-soft);
+}
+.option-item:first-child { border-top: none; }
+.option-key {
+  flex: none;
+  width: 18px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--faint);
+}
+.option-item.is-correct { background: var(--brand-wash); }
+.option-item.is-correct .option-key { color: var(--brand); }
+.option-flag {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--brand-deep);
+}
+
+/* ---- 选项编辑器 ---- */
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.choice-key {
+  flex: none;
+  width: 18px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--faint);
+}
+
+/* ---- 分段控件（题型这种二选一、且会改变表单结构的选择） ---- */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  overflow: hidden;
+}
+.seg-btn {
+  height: 34px;
+  padding: 0 var(--s4);
+  border: none;
+  background: var(--paper);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn:hover:not(:disabled) { background: #f4f7fa; }
+.seg-btn.is-on { background: var(--brand); color: #fff; font-weight: 600; }
+.seg-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* ---- 弹窗里的两列表单 ---- */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s4); }
+.form-grid .field { min-width: 0; }
+.form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid-full { grid-column: 1 / -1; }
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
 
 /* ---- 空态 / 加载 ---- */
 .empty {
@@ -1041,9 +1171,101 @@ __modules['./mock.js'] = function (exports, __require) {
         created_at: '2026-09-10T11:15:00',
       },
     ],
+    questions: [
+      {
+        id: 1, position_id: 1, dimension: '专业能力', category: '线上排查', difficulty: 'hard',
+        question_type: 'single_choice',
+        content: '线上接口的 P99 延迟从 80ms 突然涨到 900ms，你会先做哪一步？',
+        options: ['先看监控面板，定位耗时集中在哪个环节', '立刻重启服务恢复可用性', '先回滚最近一次上线', '先扩大实例数量扛住流量'],
+        reference_answer: '先看监控面板，定位耗时集中在哪个环节',
+        explanation: '排查要先定位再动手。重启、回滚、扩容都是信息不足时的赌博：它们可能让问题暂时消失，却把真实原因一起掩盖掉，下一次还会再来。',
+        tags: ['性能', '线上问题'], source: 'bank', created_by: 2, created_at: '2026-08-20T10:05:00',
+      },
+      {
+        id: 2, position_id: 1, dimension: '专业能力', category: '数据库', difficulty: 'hard',
+        question_type: 'short_answer',
+        content: '说一下你是怎么理解数据库事务隔离级别的。举一个你实际遇到过的脏读或者幻读问题。',
+        options: [],
+        reference_answer: '能说清四个隔离级别分别挡掉了哪类并发异常，并给出一个自己遇到过的具体场景（现象、原因、怎么定位、最终怎么改）。只背定义、说不出实例的，说明没有真正处理过并发问题。',
+        explanation: '考察点不在背诵，而在有没有被并发问题真正咬过。追问方向：为什么可重复读在 MySQL 里仍可能幻读？你们线上用的是什么级别，为什么？',
+        tags: ['数据库', '事务'], source: 'bank', created_by: 2, created_at: '2026-08-20T10:12:00',
+      },
+      {
+        id: 3, position_id: 1, dimension: '逻辑思维', category: '通用', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '如果有人告诉你「加了索引查询反而变慢了」，你会怎么验证这个说法？',
+        options: [],
+        reference_answer: null,
+        explanation: null,
+        tags: ['索引', '验证思路'], source: 'bank', created_by: 2, created_at: '2026-08-21T09:30:00',
+      },
+      {
+        id: 4, position_id: 1, dimension: '文化契合', category: '通用', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '讲一次你不得不推翻自己既有方案的经历。当时是什么让你改变了判断？',
+        options: [],
+        reference_answer: null,
+        explanation: null,
+        tags: ['协作', '复盘'], source: 'ai', created_by: 2, created_at: '2026-09-01T15:40:00',
+      },
+      {
+        id: 5, position_id: 2, dimension: '需求洞察', category: '需求分析', difficulty: 'medium',
+        question_type: 'single_choice',
+        content: '用户访谈里，用户说「我想要一个导出按钮」。下一步最该做的是什么？',
+        options: ['追问他想用导出的数据做什么', '记录下来排进下个迭代', '先做一个最小可用版本验证', '问其他用户是否也有同样的需求'],
+        reference_answer: '追问他想用导出的数据做什么',
+        explanation: '用户给的是方案，不是需求。先弄清他要拿这份数据去解决什么问题，往往导出根本就不是最优解。',
+        tags: ['用户访谈'], source: 'bank', created_by: 2, created_at: '2026-08-25T11:20:00',
+      },
+      {
+        id: 6, position_id: 2, dimension: '沟通能力', category: '协作', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '研发说这个需求做不了，你会怎么推进？',
+        options: [],
+        reference_answer: '先问清「做不了」具体卡在哪：是工期、是技术风险、还是需求本身有歧义。然后和研发一起把方案拆小，找出能先落地的那一部分。',
+        explanation: '看的是遇到阻力时的第一反应：是压任务，还是找信息差距。',
+        tags: ['跨部门'], source: 'bank', created_by: 2, created_at: '2026-08-26T14:00:00',
+      },
+      {
+        id: 7, position_id: 3, dimension: '逻辑思维', category: '指标体系', difficulty: 'hard',
+        question_type: 'single_choice',
+        content: '次日留存率突然下跌 15%，你的第一步是什么？',
+        options: ['先确认统计口径和埋点有没有变化', '马上拉用户访谈问原因', '按渠道拆分看是哪一块跌的', '先发预警给业务方'],
+        reference_answer: '先确认统计口径和埋点有没有变化',
+        explanation: '指标异常里，口径变更和埋点事故远多于真实业务变化。先去证伪数据本身，再谈业务原因 —— 否则后面所有分析都建在流沙上。',
+        tags: ['指标', '排查'], source: 'bank', created_by: 3, created_at: '2026-09-03T10:15:00',
+      },
+      {
+        id: 8, position_id: 3, dimension: '专业能力', category: '通用', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '怎么向一个不看数据的业务方解释「平均数会骗人」？请举一个具体例子。',
+        options: [],
+        reference_answer: '举一个对方业务里真实存在的偏态分布，比如「人均下单金额」，然后说明少数大客户把平均值拉高了，用中位数或分位数看才接近大多数用户的实际感受。',
+        explanation: '考察能不能把统计概念翻译成业务语言，而不是复述教科书。',
+        tags: ['沟通', '统计'], source: 'bank', created_by: 3, created_at: '2026-09-03T10:22:00',
+      },
+      {
+        id: 9, position_id: 4, dimension: '工程素养', category: '性能', difficulty: 'hard',
+        question_type: 'short_answer',
+        content: '页面滚动时明显卡顿，你会怎么判断这是布局抖动、重绘，还是主线程被占住了？',
+        options: [],
+        reference_answer: '先用 Performance 面板录制一段滚动，看主线程是不是被长任务占满；如果帧时间大部分花在 Recalculate Style / Layout 上，就是布局抖动，通常来自频繁读取 offsetHeight 这类强制同步布局；如果集中在 Paint，则是重绘面积过大。',
+        explanation: '关键在「先测量再判断」。答不上具体面板和指标、只说「用 Chrome DevTools 看看」的，说明没有真的定位过性能问题。',
+        tags: ['性能', 'DevTools'], source: 'ai', created_by: 2, created_at: '2026-09-11T16:30:00',
+      },
+      {
+        id: 10, position_id: 4, dimension: '专业能力', category: '通用', difficulty: 'easy',
+        question_type: 'single_choice',
+        content: '下面哪种做法最可能造成内存泄漏？',
+        options: ['组件卸载时没有移除挂到 window 上的事件监听', '在函数里使用了闭包', '频繁地操作 DOM', '在循环里使用 for 语句'],
+        reference_answer: '组件卸载时没有移除挂到 window 上的事件监听',
+        explanation: '全局对象上的引用会让整棵已卸载的组件树无法被回收。闭包与 DOM 操作本身都不是泄漏，要看有没有留下无法释放的引用。',
+        tags: ['内存'], source: 'bank', created_by: 2, created_at: '2026-09-11T16:35:00',
+      },
+    ],
   };
 
-  const seq = { user: 5, position: 5 };
+  const seq = { user: 5, position: 5, question: 11 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -1058,7 +1280,7 @@ __modules['./mock.js'] = function (exports, __require) {
   }
 
   function requireAdmin(user) {
-    if (!user || user.role !== 'admin') return fail(403, 'FORBIDDEN', '需要管理员权限');
+    if (!user || user.role !== 'admin') return fail(403, 'FORBIDDEN', '无权限执行此操作');
     return null;
   }
 
@@ -1085,7 +1307,8 @@ __modules['./mock.js'] = function (exports, __require) {
   /* ---- auth ---- */
   on('POST', '/auth/login', ({ body }) => {
     const user = state.users.find((u) => u.username === body?.username && u.password === body?.password);
-    if (!user || !user.is_active) return fail(401, 'INVALID_CREDENTIALS', '用户名或密码错误');
+    if (!user || !user.is_active) if (!user) return fail(401, 'UNAUTHORIZED', '用户名或密码错误');
+    if (!user.is_active) return fail(401, 'UNAUTHORIZED', '账号已禁用，请联系管理员');
     const token = `mock.${user.id}.${Date.now().toString(36)}`;
     sessions.set(token, user.id);
     return ok({ token, user: publicUser(user) });
@@ -1097,7 +1320,7 @@ __modules['./mock.js'] = function (exports, __require) {
   });
 
   function requireLogin(user) {
-    return user ? null : fail(401, 'UNAUTHORIZED', '登录状态已失效，请重新登录');
+    return user ? null : fail(401, 'INVALID_TOKEN', '登录状态已失效，请重新登录');
   }
 
   /* ---- users ---- */
@@ -1118,7 +1341,7 @@ __modules['./mock.js'] = function (exports, __require) {
     }
     if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
     if (state.users.some((u) => u.username === username)) {
-      return fail(409, 'CONFLICT', '用户名已存在');
+      return fail(409, 'BUSINESS_ERROR', '用户名已存在');
     }
 
     const row = {
@@ -1139,7 +1362,7 @@ __modules['./mock.js'] = function (exports, __require) {
 
     const target = state.users.find((u) => u.id === Number(params.id));
     if (!target) return fail(404, 'NOT_FOUND', '用户不存在');
-    if (target.id === user.id) return fail(403, 'FORBIDDEN', '不能修改自己的账号');
+    if (target.id === user.id) return fail(403, 'FORBIDDEN', '不能修改自己的角色或状态');
     if (body?.role !== undefined) {
       if (!['admin', 'hr'].includes(body.role)) return fail(400, 'VALIDATION_ERROR', '角色不合法');
       target.role = body.role;
@@ -1204,7 +1427,7 @@ __modules['./mock.js'] = function (exports, __require) {
     const name = body.name.trim();
     // 同名校验按 owner 划范围（后端 get_by_owner_and_name），不是全库唯一
     if (state.positions.some((p) => p.created_by === user.id && p.name === name)) {
-      return fail(409, 'CONFLICT', '该岗位名称已存在');
+      return fail(409, 'BUSINESS_ERROR', '该岗位名称已存在');
     }
 
     const row = {
@@ -1231,7 +1454,7 @@ __modules['./mock.js'] = function (exports, __require) {
 
     const name = body.name.trim();
     if (state.positions.some((p) => p.created_by === user.id && p.name === name && p.id !== located.row.id)) {
-      return fail(409, 'CONFLICT', '该岗位名称已存在');
+      return fail(409, 'BUSINESS_ERROR', '该岗位名称已存在');
     }
 
     located.row.name = name;
@@ -1251,11 +1474,235 @@ __modules['./mock.js'] = function (exports, __require) {
     const usedByQuestion = (state.questions || []).some((q) => q.position_id === located.row.id);
     const usedByInterview = (state.interviews || []).some((i) => i.position_id === located.row.id);
     if (usedByQuestion || usedByInterview) {
-      return fail(409, 'CONFLICT', '该岗位已被题库或面试引用，无法删除');
+      return fail(409, 'BUSINESS_ERROR', '该岗位已被题库或面试引用，无法删除');
     }
 
     state.positions.splice(state.positions.indexOf(located.row), 1);
     return { status: 204 };
+  });
+
+  /* ---- questions ---- */
+
+  const MIN_CHOICE_OPTIONS = 2;
+  const MAX_CHOICE_OPTIONS = 10;
+  const MAX_OPTION_LENGTH = 200;
+  const MAX_TAGS = 10;
+  const MAX_TAG_LENGTH = 20;
+
+  function visibleQuestions(user) {
+    return user.role === 'admin'
+      ? state.questions
+      : state.questions.filter((q) => q.created_by === user.id);
+  }
+
+  function locateQuestion(user, id) {
+    const row = state.questions.find((q) => q.id === Number(id));
+    if (!row) return { error: fail(404, 'NOT_FOUND', '题目不存在') };
+    if (user.role !== 'admin' && row.created_by !== user.id) {
+      return { error: fail(403, 'FORBIDDEN', '无权限访问该题目') };
+    }
+    return { row };
+  }
+
+  /**
+   * 按题型校验选项与参考答案（对应后端 service._normalize_choice_fields）。
+   * 这些是跨字段规则：文案随题型不同，而且**不带 detail.fields** ——
+   * 所以前端会走通用 toast，而不是落到某个字段下方。两条路径都要如实照搬。
+   */
+  function normalizeChoiceFields(questionType, rawOptions, rawAnswer) {
+    const cleaned = (rawOptions || []).map((o) => String(o).trim());
+    for (const item of cleaned) {
+      if (!item) return { error: '选项不能为空' };
+      if (item.length > MAX_OPTION_LENGTH) return { error: `单个选项不能超过 ${MAX_OPTION_LENGTH} 个字符` };
+    }
+    if (new Set(cleaned).size !== cleaned.length) return { error: '选项不能重复' };
+
+    const answer = typeof rawAnswer === 'string' && rawAnswer.trim() ? rawAnswer.trim() : null;
+
+    if (questionType === 'single_choice') {
+      if (cleaned.length < MIN_CHOICE_OPTIONS) return { error: `单选题至少需要 ${MIN_CHOICE_OPTIONS} 个选项` };
+      if (cleaned.length > MAX_CHOICE_OPTIONS) return { error: `单选题最多 ${MAX_CHOICE_OPTIONS} 个选项` };
+      if (answer === null) return { error: '单选题必须提供参考答案' };
+      if (!cleaned.includes(answer)) {
+        return { error: '参考答案必须是选项之一', detail: { options: cleaned } };
+      }
+      return { options: cleaned, reference_answer: answer };
+    }
+
+    if (cleaned.length) return { error: '简答题不应包含选项' };
+    return { options: [], reference_answer: answer };
+  }
+
+  /** 基础字段 → 岗位归属 → 维度归属 → 题型规则。顺序与后端一致。 */
+  function buildQuestionFields(user, body, existing) {
+    const fields = [];
+    const content = String(body?.content ?? '').trim();
+    if (content.length < 5 || content.length > 2000) {
+      fields.push({ field: 'content', message: '题干长度需在 5–2000 字之间' });
+    }
+    const category = String(body?.category ?? '').trim();
+    if (category.length > 50) fields.push({ field: 'category', message: '分类不能超过 50 个字符' });
+
+    const tags = [];
+    if (Array.isArray(body?.tags)) {
+      for (const raw of body.tags) {
+        const item = String(raw).trim();
+        if (!item) { fields.push({ field: 'tags', message: '标签不能为空' }); break; }
+        if (item.length > MAX_TAG_LENGTH) {
+          fields.push({ field: 'tags', message: `单个标签不能超过 ${MAX_TAG_LENGTH} 个字符` });
+          break;
+        }
+        if (!tags.includes(item)) tags.push(item);
+      }
+      if (tags.length > MAX_TAGS) fields.push({ field: 'tags', message: `标签不能超过 ${MAX_TAGS} 个` });
+    }
+    if (fields.length) return { fields };
+
+    const position = state.positions.find((p) => p.id === Number(body?.position_id));
+    if (!position) return { error: fail(404, 'NOT_FOUND', '岗位不存在') };
+    if (user.role !== 'admin' && position.created_by !== user.id) {
+      return { error: fail(403, 'FORBIDDEN', '无权限访问该岗位') };
+    }
+
+    const dimension = String(body?.dimension ?? '').trim();
+    if (!position.evaluation_dimensions.includes(dimension)) {
+      return {
+        error: fail(400, 'VALIDATION_ERROR', '该维度不属于岗位的评估维度', {
+          dimension,
+          allowed: position.evaluation_dimensions,
+        }),
+      };
+    }
+
+    const questionType = body?.question_type || (existing ? existing.question_type : 'short_answer');
+    const choice = normalizeChoiceFields(questionType, body?.options, body?.reference_answer);
+    if (choice.error) return { error: fail(400, 'VALIDATION_ERROR', choice.error, choice.detail ?? null) };
+
+    const explanation = String(body?.explanation ?? '').trim();
+    if (explanation.length > 2000) {
+      return { error: fail(400, 'VALIDATION_ERROR', '解析不能超过 2000 个字符') };
+    }
+
+    return {
+      values: {
+        position_id: position.id,
+        dimension,
+        category: category || '通用',
+        content,
+        difficulty: ['easy', 'medium', 'hard'].includes(body?.difficulty) ? body.difficulty : 'medium',
+        tags,
+        question_type: questionType,
+        options: choice.options,
+        reference_answer: choice.reference_answer,
+        explanation: explanation || null,
+      },
+    };
+  }
+
+  /** Mock 的「AI 生成参考答案」——确定性输出，无 Key 也能演示与复现。 */
+  function mockReferenceAnswer(question) {
+    if (question.question_type === 'single_choice') {
+      return {
+        reference_answer: (question.options || [])[0] || '（未能生成）',
+        explanation: `这道题考的是「${question.dimension}」：先在信息不足时保持克制，定位清楚再动手。`,
+      };
+    }
+    return {
+      reference_answer: `能从「${question.dimension}」出发，说清判断依据、验证步骤与边界情况，并给出一个自己经历过的具体例子，而不是复述概念。`,
+      explanation: '追问方向：如果条件反过来会怎样？有没有反例？你会怎么验证自己的结论？',
+    };
+  }
+
+  on('GET', '/questions', ({ user, query }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    let rows = visibleQuestions(user);
+    if (query.position_id) rows = rows.filter((q) => q.position_id === Number(query.position_id));
+    if (query.category) rows = rows.filter((q) => q.category === query.category);
+    if (query.dimension) rows = rows.filter((q) => q.dimension === query.dimension);
+    if (query.source) rows = rows.filter((q) => q.source === query.source);
+    if (query.question_type) rows = rows.filter((q) => q.question_type === query.question_type);
+    if (query.keyword) rows = rows.filter((q) => q.content.includes(query.keyword));
+    return ok(rows);
+  });
+
+  on('POST', '/questions', ({ user, body }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const built = buildQuestionFields(user, body, null);
+    if (built.error) return built.error;
+    if (built.fields) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields: built.fields });
+
+    const row = {
+      id: seq.question++,
+      ...built.values,
+      source: 'bank', // 来源由服务端决定，客户端不可指定
+      created_by: user.id,
+      created_at: new Date().toISOString(),
+    };
+    state.questions.push(row);
+    return created(row);
+  });
+
+  on('GET', '/questions/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateQuestion(user, params.id);
+    return located.error || ok(located.row);
+  });
+
+  on('PUT', '/questions/:id', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateQuestion(user, params.id);
+    if (located.error) return located.error;
+
+    const built = buildQuestionFields(user, body, located.row);
+    if (built.error) return built.error;
+    if (built.fields) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields: built.fields });
+
+    Object.assign(located.row, built.values);
+    return ok(located.row);
+  });
+
+  on('DELETE', '/questions/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateQuestion(user, params.id);
+    if (located.error) return located.error;
+
+    // interviewQuestions 由面试模块补上；引用校验在那之后才真正起作用
+    const used = (state.interviewQuestions || []).some((iq) => iq.question_id === located.row.id);
+    if (used) return fail(409, 'BUSINESS_ERROR', '该题目已被面试引用，无法删除');
+
+    state.questions.splice(state.questions.indexOf(located.row), 1);
+    return { status: 204 };
+  });
+
+  on('POST', '/questions/:id/reference-answer', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locateQuestion(user, params.id);
+    if (located.error) return located.error;
+
+    const generated = mockReferenceAnswer(located.row);
+    const options = located.row.options || [];
+    if (located.row.question_type === 'single_choice' && !options.includes(generated.reference_answer)) {
+      // 不做「吸附到最接近的选项」—— 静默改写等于伪造正确答案，且不落库
+      return fail(409, 'BUSINESS_ERROR', 'AI 生成的答案不在选项中，请手工确认', {
+        generated: generated.reference_answer,
+        options,
+      });
+    }
+
+    located.row.reference_answer = generated.reference_answer;
+    located.row.explanation = generated.explanation;
+    return ok(located.row);
   });
 
   /* ---- fetch 拦截 ---- */
@@ -1273,7 +1720,13 @@ __modules['./mock.js'] = function (exports, __require) {
     const url = typeof input === 'string' ? input : input.url;
     const options = init || {};
     const method = String(options.method || 'GET').toUpperCase();
-    const path = url.replace(/^\/api/, '');
+
+    // 路径与查询串要分开：match() 按 '/' 切段，带着 ?a=1 会把最后一段切碎
+    const raw = url.replace(/^\/api/, '');
+    const mark = raw.indexOf('?');
+    const path = mark >= 0 ? raw.slice(0, mark) : raw;
+    const query = Object.fromEntries(new URLSearchParams(mark >= 0 ? raw.slice(mark + 1) : ''));
+
     const headers = options.headers || {};
     const token = String(headers.Authorization || headers.authorization || '').replace(/^Bearer\s+/, '');
 
@@ -1291,7 +1744,7 @@ __modules['./mock.js'] = function (exports, __require) {
     const userId = sessions.get(token);
     const user = state.users.find((u) => u.id === userId && u.is_active) || null;
 
-    return toResponse(matched.handler({ body, params: matched.params, user, token }));
+    return toResponse(matched.handler({ body, params: matched.params, query, user, token }));
   }
 
   exports.install = function () {
@@ -1331,7 +1784,7 @@ __modules['./router.js'] = function (exports, __require) {
     { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告', pending: true },
     { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备', pending: true },
     { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
-    { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库',     pending: true },
+    { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库' },
     { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', label: '用户管理', adminOnly: true },
   ];
 
@@ -2542,6 +2995,666 @@ __modules['./pages/positions.js'] = function (exports, __require) {
 
 
 /* ==========================================================================
+   pages/questions.js —— 题库管理
+   同样是「列表 + 案卷」：题干、选项、参考答案、解析都是成段内容，
+   表格里放不下，而 HR 维护题库时恰恰要通读这几块。
+
+   筛选条只放**后端真的支持**的六项（position_id / category / dimension /
+   source / question_type / keyword）。PRD §4.3 提到「按难度筛选」，但
+   HR 的列表端点并没有这个参数 —— 原型按接口来，不为没实现的能力造控件。
+   ========================================================================== */
+__modules['./pages/questions.js'] = function (exports, __require) {
+  const { el, mount, clear } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const { confirmModal, openModal } = __require('./components/modal.js');
+  const { contextTitle, createShell, emptyState, loadingBlock, dimTag, sourceTag } = __require('./components/shell.js');
+
+  const DIFFICULTY_LABELS = { easy: '易', medium: '中', hard: '难' };
+  const TYPE_LABELS = { single_choice: '单选题', short_answer: '简答题' };
+
+  const MAX_TAGS = 10;
+  const MAX_TAG_LENGTH = 20;
+  const MIN_OPTIONS = 2;
+  const MAX_OPTIONS = 10;
+  const MAX_OPTION_LENGTH = 200;
+
+  /** 标签用顿号或逗号分隔 —— 与后端 tags 数组对应。 */
+  function parseTags(raw) {
+    return raw.split(/[、,，]/).map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  /** 选项的显示记号 A / B / C…（答案文本本身不含字母，这里只做索引） */
+  function letter(index) { return String.fromCharCode(65 + index); }
+
+  /* --------------------------- 选项编辑器 --------------------------- */
+  /**
+   * 参考答案在编辑期用**选项下标**表示，而不是选项文本。
+   * 用文本的话，用户改一个错别字就会让已选中的答案悄无声息地失效。
+   */
+  function buildChoiceEditor(initialOptions, initialAnswer) {
+    const options = [...initialOptions];
+    let answerIndex = initialOptions.indexOf(initialAnswer);
+    if (answerIndex < 0) answerIndex = null;
+
+    const list = el('div', {});
+    const errorNode = el('p', { class: 'field-error', hidden: true });
+    const answerSelect = el('select', {
+      class: 'select',
+      id: 'question-answer',
+      onChange: (event) => { answerIndex = event.target.value === '' ? null : Number(event.target.value); },
+    });
+
+    function repaintList() {
+      clear(list);
+      options.forEach((text, index) => {
+        list.append(
+          el('div', { class: 'choice-row' },
+            el('span', { class: 'choice-key', text: letter(index) }),
+            el('input', {
+              class: 'input',
+              value: text,
+              maxlength: String(MAX_OPTION_LENGTH),
+              'aria-label': `选项 ${letter(index)}`,
+              onInput: (event) => {
+                options[index] = event.target.value;
+                // 只改下拉里那一项的文字，不重建 —— 重建会把已选中的答案冲掉
+                const node = answerSelect.options[index + 1]; // 0 号是「请选择」
+                if (node) node.textContent = options[index] || `选项 ${letter(index)}`;
+              },
+            }),
+            el('button', {
+              class: 'btn btn--quiet dim-editor-remove',
+              type: 'button',
+              text: '×',
+              title: '删除这一项',
+              'aria-label': `删除选项 ${letter(index)}`,
+              onClick: () => {
+                options.splice(index, 1);
+                if (answerIndex === index) answerIndex = null;
+                else if (answerIndex !== null && answerIndex > index) answerIndex -= 1;
+                repaint();
+              },
+            }),
+          ),
+        );
+      });
+    }
+
+    function repaintAnswer() {
+      if (answerIndex !== null && answerIndex >= options.length) answerIndex = null;
+      clear(answerSelect);
+      answerSelect.append(el('option', { value: '', text: '请选择' }));
+      options.forEach((text, index) => {
+        answerSelect.append(el('option', { value: String(index), text: text || `选项 ${letter(index)}` }));
+      });
+      answerSelect.value = answerIndex === null ? '' : String(answerIndex);
+    }
+
+    function repaint() { repaintList(); repaintAnswer(); }
+    repaint();
+
+    const addButton = el('button', {
+      class: 'btn btn--ghost btn--sm',
+      type: 'button',
+      text: '添加选项',
+      onClick: () => {
+        if (options.length >= MAX_OPTIONS) { toast.error(`最多 ${MAX_OPTIONS} 个选项`); return; }
+        options.push('');
+        repaint();
+        list.querySelector('.choice-row:last-child .input')?.focus();
+      },
+    });
+
+    return {
+      node: el('div', {}, list, el('div', { style: 'margin-top:8px' }, addButton), errorNode),
+      errorNode,
+      answerSelect,
+      /** 由「AI 生成参考答案」写回时用 —— 传进来的是选项文本。 */
+      setAnswer(text) {
+        answerIndex = options.indexOf(text);
+        if (answerIndex < 0) answerIndex = null;
+        repaintAnswer();
+      },
+      /** 校验通过返回 { options, reference_answer }，否则显示错误并返回 null。 */
+      read() {
+        const cleaned = options.map((o) => o.trim());
+        let error = null;
+        if (cleaned.length < MIN_OPTIONS) error = `单选题至少需要 ${MIN_OPTIONS} 个选项`;
+        else if (cleaned.length > MAX_OPTIONS) error = `单选题最多 ${MAX_OPTIONS} 个选项`;
+        else if (cleaned.some((o) => !o)) error = '选项不能为空';
+        else if (cleaned.some((o) => o.length > MAX_OPTION_LENGTH)) error = `单个选项不能超过 ${MAX_OPTION_LENGTH} 个字符`;
+        else if (new Set(cleaned).size !== cleaned.length) error = '选项不能重复';
+        else if (answerIndex === null) error = '单选题必须提供参考答案';
+
+        if (error) { errorNode.textContent = error; errorNode.hidden = false; return null; }
+        errorNode.hidden = true;
+        return { options: cleaned, reference_answer: cleaned[answerIndex] };
+      },
+    };
+  }
+
+  /* ------------------------------ 表单弹窗 ------------------------------ */
+
+  function openQuestionModal(positions, question, onSaved) {
+    const isEdit = Boolean(question);
+    const isChoice = question ? question.question_type === 'single_choice' : true;
+
+    const positionSelect = el(
+      'select',
+      { class: 'select', id: 'question-position' },
+      positions.map((p) => el('option', { value: String(p.id), text: p.name })),
+    );
+    if (question) positionSelect.value = String(question.position_id);
+
+    // 维度随岗位联动为下拉 —— 候选值就是该岗位的评估维度，否则提交必然被拒绝
+    const dimensionSelect = el('select', { class: 'select', id: 'question-dimension' });
+
+    function syncDimensions() {
+      const position = positions.find((p) => p.id === Number(positionSelect.value));
+      clear(dimensionSelect);
+      if (!position) {
+        dimensionSelect.append(el('option', { value: '', text: '请先选择岗位' }));
+        dimensionSelect.disabled = true;
+        return;
+      }
+      dimensionSelect.disabled = false;
+      position.evaluation_dimensions.forEach((dimension) => {
+        dimensionSelect.append(el('option', { value: dimension, text: dimension }));
+      });
+      if (question && position.id === question.position_id) dimensionSelect.value = question.dimension;
+    }
+    positionSelect.addEventListener('change', syncDimensions);
+
+    const contentInput = el('textarea', {
+      class: 'textarea', id: 'question-content', rows: '4', maxlength: '2000',
+      value: question?.content ?? '',
+      placeholder: '写具体一点。好的面试题通常指向一个真实场景，而不是让人背诵定义。',
+    });
+    const contentError = fieldError();
+
+    const choiceEditor = buildChoiceEditor(question?.options ?? ['', ''], question?.reference_answer ?? null);
+
+    const shortAnswerInput = el('textarea', {
+      class: 'textarea', id: 'question-reference', rows: '3', maxlength: '2000',
+      value: isChoice ? '' : (question?.reference_answer ?? ''),
+      placeholder: '可选。留空表示还没有标准答案，之后可以用 AI 生成再改。',
+    });
+
+    const explanationInput = el('textarea', {
+      class: 'textarea', id: 'question-explanation', rows: '3', maxlength: '2000',
+      value: question?.explanation ?? '',
+      placeholder: '可选。写清这道题在考什么、可追问哪些方向，评估时也用得上。',
+    });
+
+    const categoryInput = el('input', {
+      class: 'input', id: 'question-category', maxlength: '50', value: question?.category ?? '通用',
+    });
+    const categoryError = fieldError();
+
+    const difficultySelect = el(
+      'select',
+      { class: 'select', id: 'question-difficulty' },
+      ['easy', 'medium', 'hard'].map((value) => el('option', { value, text: DIFFICULTY_LABELS[value] })),
+    );
+    difficultySelect.value = question?.difficulty ?? 'medium';
+
+    const tagsInput = el('input', {
+      class: 'input', id: 'question-tags', value: (question?.tags ?? []).join('、'),
+      placeholder: '用顿号或逗号分隔，最多 10 个',
+    });
+    const tagsError = fieldError();
+
+    const errors = fieldErrors({
+      content: contentError,
+      category: categoryError,
+      tags: tagsError,
+      options: choiceEditor.errorNode,
+    });
+
+    /* ---- 题型：二选一，且它会改变表单结构，所以做成醒目的分段控件 ---- */
+    let type = question?.question_type ?? 'short_answer';
+
+    const choiceBlock = el('div', { class: 'field' },
+      el('span', { class: 'field-label', text: '选项' }),
+      choiceEditor.node);
+
+    const choiceAnswerBlock = el('div', { class: 'field' },
+      el('span', { class: 'field-label', text: '参考答案' }),
+      el('p', { class: 'field-note', style: 'margin-bottom:8px' }, '单选题的参考答案必须是其中一个选项 —— 判分时就按它比对。'),
+      choiceEditor.answerSelect);
+
+    const shortAnswerBlock = el('div', { class: 'field' },
+      el('label', { class: 'field-label', for: 'question-reference', text: '参考答案' }),
+      shortAnswerInput);
+
+    const segButtons = {
+      single_choice: el('button', { class: 'seg-btn', type: 'button', text: TYPE_LABELS.single_choice }),
+      short_answer: el('button', { class: 'seg-btn', type: 'button', text: TYPE_LABELS.short_answer }),
+    };
+
+    function paintType() {
+      for (const [key, button] of Object.entries(segButtons)) {
+        button.className = `seg-btn${key === type ? ' is-on' : ''}`;
+      }
+      const isSingle = type === 'single_choice';
+      choiceBlock.hidden = !isSingle;
+      choiceAnswerBlock.hidden = !isSingle;
+      shortAnswerBlock.hidden = isSingle;
+    }
+    for (const [key, button] of Object.entries(segButtons)) {
+      button.addEventListener('click', () => { type = key; paintType(); });
+    }
+
+    const typeBlock = el('div', { class: 'field' },
+      el('span', { class: 'field-label', text: '题型' }),
+      el('div', { class: 'seg' }, segButtons.single_choice, segButtons.short_answer));
+
+    const body = el(
+      'div',
+      {},
+      el('div', { class: 'form-grid' },
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'question-position', text: '所属岗位' }),
+          positionSelect),
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'question-dimension', text: '考察维度' }),
+          dimensionSelect),
+      ),
+      typeBlock,
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'question-content', text: '题干' }),
+        contentInput,
+        el('p', { class: 'field-note', text: '5–2000 字。' }),
+        contentError),
+      choiceBlock,
+      choiceAnswerBlock,
+      shortAnswerBlock,
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'question-explanation', text: '解析' }),
+        explanationInput),
+      el('div', { class: 'form-grid' },
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'question-category', text: '分类' }),
+          categoryInput, categoryError),
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'question-difficulty', text: '难度' }),
+          difficultySelect),
+      ),
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'question-tags', text: '标签' }),
+        tagsInput,
+        el('p', { class: 'field-note', text: '用顿号或逗号分隔。最多 10 个，每个不超过 20 字。' }),
+        tagsError),
+    );
+
+    const submit = el('button', { class: 'btn btn--primary', text: isEdit ? '保存' : '创建题目' });
+
+    // AI 生成参考答案：端点按题目 id 工作，所以只有已保存的题才能用
+    const aiButton = el('button', {
+      class: 'btn btn--ghost',
+      type: 'button',
+      text: 'AI 生成参考答案',
+      disabled: !isEdit,
+      title: isEdit ? '由 AI 写出参考答案与解析，写回后可继续手工修改' : '先保存这道题，才能用 AI 生成参考答案',
+      onClick: async () => {
+        aiButton.disabled = true;
+        const before = aiButton.textContent;
+        aiButton.textContent = '生成中…';
+        try {
+          const updated = await api.post(`/questions/${question.id}/reference-answer`, {});
+          if (updated.question_type === 'single_choice') {
+            choiceEditor.setAnswer(updated.reference_answer);
+          } else {
+            shortAnswerInput.value = updated.reference_answer ?? '';
+          }
+          explanationInput.value = updated.explanation ?? '';
+          toast.success('已生成，可直接修改后保存');
+        } catch (error) {
+          toast.error(error.message); // 后端文案，例如「AI 生成的答案不在选项中」
+        } finally {
+          aiButton.disabled = false;
+          aiButton.textContent = before;
+        }
+      },
+    });
+
+    const handle = openModal({
+      title: isEdit ? '编辑题目' : '创建题目',
+      body,
+      wide: true,
+      footer: [aiButton, el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }), submit],
+    });
+
+    syncDimensions();
+    paintType();
+
+    submit.addEventListener('click', async () => {
+      errors.clear();
+
+      const content = contentInput.value.trim();
+      if (content.length < 5) { errors.show('content', '题干至少 5 个字'); contentInput.focus(); return; }
+
+      const tags = parseTags(tagsInput.value);
+      if (tags.length > MAX_TAGS) {
+        errors.show('tags', `标签最多 ${MAX_TAGS} 个，当前 ${tags.length} 个`);
+        tagsInput.focus();
+        return;
+      }
+      const tooLong = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
+      if (tooLong) {
+        errors.show('tags', `单个标签不能超过 ${MAX_TAG_LENGTH} 个字符：${tooLong}`);
+        tagsInput.focus();
+        return;
+      }
+
+      let options = [];
+      let referenceAnswer;
+      if (type === 'single_choice') {
+        const choice = choiceEditor.read();
+        if (!choice) return;
+        options = choice.options;
+        referenceAnswer = choice.reference_answer;
+      } else {
+        referenceAnswer = shortAnswerInput.value.trim() || null;
+      }
+
+      handle.setBusy(true);
+      try {
+        const payload = {
+          position_id: Number(positionSelect.value),
+          dimension: dimensionSelect.value,
+          content,
+          category: categoryInput.value.trim() || '通用',
+          difficulty: difficultySelect.value,
+          tags,
+          question_type: type,
+          options,
+          reference_answer: referenceAnswer,
+          explanation: explanationInput.value.trim() || null,
+        };
+        if (isEdit) await api.put(`/questions/${question.id}`, payload);
+        else await api.post('/questions', payload);
+        handle.close();
+        toast.success(isEdit ? '题目已保存' : '题目已创建');
+        onSaved();
+      } catch (error) {
+        handle.setBusy(false);
+        // 字段格式类 400（content / tags 越界）走 detail.fields，落到字段下方；
+        // 选项与答案类规则、维度不属岗位返回的是别的 detail 形状（不含 fields），
+        // 所以落到 else 分支，用后端原话提示。
+        if (!errors.fromServer(error)) toast.error(error.message);
+      }
+    });
+  }
+
+  /* -------------------------------- 页面 -------------------------------- */
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('题库'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载题库…'));
+
+    let positions;
+    try {
+      positions = await api.get('/positions');
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('题库加载失败', error.message)));
+      return;
+    }
+
+    let questions = [];
+    let selectedId = null;
+    const filters = { position_id: '', question_type: '', dimension: '', category: '', source: '', keyword: '' };
+
+    const listBody = el('div', { class: 'split-list-body' });
+    const dossier = el('div', { class: 'panel' });
+    const split = el('div', { class: 'split split--wide' }, el('div', { class: 'split-list' }, listBody), dossier);
+    const emptyPanel = el('div', { class: 'panel' });
+    const bodyHost = el('div', {}, split, emptyPanel);
+    const countNode = el('span', { class: 'filterbar-count' });
+
+    function create() { openQuestionModal(positions, null, reload); }
+
+    function query() {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+      const qs = params.toString();
+      return `/questions${qs ? `?${qs}` : ''}`;
+    }
+
+    async function reload() {
+      try {
+        questions = await api.get(query());
+      } catch (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (!questions.some((q) => q.id === selectedId)) selectedId = questions[0]?.id ?? null;
+      paint();
+    }
+
+    async function removeQuestion(question) {
+      const ok = await confirmModal({
+        title: '删除这道题？',
+        message: '如果它已经被某场面试引用，删除会被拒绝。',
+      });
+      if (!ok) return;
+      try {
+        await api.del(`/questions/${question.id}`);
+        toast.success('题目已删除');
+        reload();
+      } catch (error) {
+        toast.error(error.message); // 409 的文案直接来自后端
+      }
+    }
+
+    function paintList() {
+      clear(listBody);
+      if (!questions.length) {
+        listBody.append(el('p', { class: 'hint', style: 'padding:var(--s4)' }, '没有匹配的题目。'));
+        return;
+      }
+      for (const question of questions) {
+        const position = positions.find((p) => p.id === question.position_id);
+        listBody.append(
+          el('button', {
+            class: `split-item${question.id === selectedId ? ' is-active' : ''}`,
+            type: 'button',
+            'aria-current': question.id === selectedId ? 'true' : null,
+            onClick: () => { selectedId = question.id; paintList(); paintDossier(); },
+          },
+            el('div', { class: 'split-item-text', text: question.content }),
+            el('div', { class: 'split-item-tags' },
+              el('span', { class: 'tag tag--dim', text: TYPE_LABELS[question.question_type] ?? question.question_type }),
+              el('span', { class: 'tag tag--dim', text: DIFFICULTY_LABELS[question.difficulty] ?? question.difficulty }),
+              el('span', { class: 'split-item-pos', text: position?.name ?? '—' }),
+            ),
+          ),
+        );
+      }
+    }
+
+    function section(label, node) {
+      return el('div', { class: 'dossier-section' },
+        el('div', { class: 'dossier-label', text: label }),
+        node);
+    }
+
+    function paintDossier() {
+      clear(dossier);
+      const question = questions.find((q) => q.id === selectedId);
+      if (!question) {
+        dossier.append(emptyState('请选择一道题', '左侧选中后，这里显示题干、选项、参考答案与解析。'));
+        return;
+      }
+
+      const position = positions.find((p) => p.id === question.position_id);
+      const isChoice = question.question_type === 'single_choice';
+      const answer = question.reference_answer;
+
+      dossier.append(
+        el('div', { class: 'dossier-head' },
+          el('div', {},
+            el('h2', { class: 'dossier-question', text: question.content }),
+            el('div', { class: 'meta-row' },
+              sourceTag(question.source),
+              el('span', { class: 'tag tag--dim', text: TYPE_LABELS[question.question_type] ?? question.question_type }),
+              dimTag(question.dimension),
+              el('span', { class: 'tag tag--dim', text: `难度 ${DIFFICULTY_LABELS[question.difficulty] ?? question.difficulty}` }),
+              // 位置信息合并成一句：几个裸词并排时，「线上排查」到底是分类还是
+              // 岗位名的一部分，读起来要猜
+              el('span', { text: `${position?.name ?? '—'}／${question.category}` }),
+            ),
+          ),
+          el('div', { class: 'dossier-actions' },
+            el('button', {
+              class: 'btn btn--ghost',
+              text: 'AI 生成参考答案',
+              onClick: () => generateAnswer(question),
+            }),
+            el('button', { class: 'btn btn--ghost', text: '编辑', onClick: () => openQuestionModal(positions, question, reload) }),
+            el('button', { class: 'btn btn--ghost', text: '删除', onClick: () => removeQuestion(question) }),
+          ),
+        ),
+
+        isChoice && question.options.length
+          ? section('选项', el('ol', { class: 'option-list' },
+              question.options.map((text, index) =>
+                el('li', { class: `option-item${text === answer ? ' is-correct' : ''}` },
+                  el('span', { class: 'option-key', text: letter(index) }),
+                  el('span', { text }),
+                  text === answer ? el('span', { class: 'option-flag', text: '参考答案' }) : null,
+                ),
+              ),
+            ))
+          : null,
+
+        answer
+          ? section('参考答案', el('p', { class: 'dossier-text', text: answer }))
+          : section('参考答案', el('p', { class: 'hint' }, isChoice
+              ? '这道单选题还没有参考答案。'
+              : '还没有参考答案。可以用上面的「AI 生成参考答案」起草，再手工修改。')),
+
+        question.explanation ? section('解析', el('p', { class: 'dossier-text', text: question.explanation })) : null,
+
+        question.tags.length
+          ? section('标签', el('div', { class: 'tag-row' }, question.tags.map((tag) => dimTag(tag))))
+          : null,
+      );
+    }
+
+    async function generateAnswer(question) {
+      if (question.reference_answer) {
+        const ok = await confirmModal({
+          title: '重新生成参考答案？',
+          message: '生成会覆盖这道题现有的参考答案与解析，且不可撤销。',
+          confirmLabel: '重新生成',
+          danger: false,
+        });
+        if (!ok) return;
+      }
+      try {
+        const updated = await api.post(`/questions/${question.id}/reference-answer`, {});
+        Object.assign(question, updated);
+        paintDossier();
+        toast.success('参考答案已更新');
+      } catch (error) {
+        toast.error(error.message);
+      }
+    }
+
+    function paint() {
+      countNode.textContent = `${questions.length} 道题`;
+      const hasAny = questions.length > 0;
+      split.hidden = !hasAny;
+      emptyPanel.hidden = hasAny;
+      if (!hasAny) {
+        clear(emptyPanel);
+        emptyPanel.append(
+          emptyState('没有匹配的题目', '换个筛选条件，或者新建一道。',
+            el('button', { class: 'btn btn--primary', text: '创建题目', onClick: create })),
+        );
+        return;
+      }
+      paintList();
+      paintDossier();
+    }
+
+    /* ---------------------------- 筛选栏 ---------------------------- */
+
+    function selectFilter(options, key, ariaLabel) {
+      const node = el(
+        'select',
+        { class: 'select', 'aria-label': ariaLabel, onChange: (event) => { filters[key] = event.target.value; reload(); } },
+        options.map(([value, text]) => el('option', { value, text })),
+      );
+      return node;
+    }
+
+    function textFilter(key, placeholder, grow) {
+      return el('input', {
+        class: `input${grow ? ' filterbar-grow' : ''}`,
+        placeholder,
+        'aria-label': placeholder,
+        onInput: (event) => { filters[key] = event.target.value.trim(); reload(); },
+      });
+    }
+
+    // 维度与分类都是**精确匹配**（后端 == 比较），所以给下拉而不是自由输入 ——
+    // 自由输入要求用户一字不差地敲对，否则筛出来是空的却看不出为什么。
+    const dimensionOptions = [['', '全部维度']];
+    const seenDimensions = new Set();
+    for (const position of positions) {
+      for (const dimension of position.evaluation_dimensions) {
+        if (!seenDimensions.has(dimension)) { seenDimensions.add(dimension); dimensionOptions.push([dimension, dimension]); }
+      }
+    }
+    const categoryOptions = [['', '全部分类']];
+    for (const question of questions) {
+      if (!categoryOptions.some(([value]) => value === question.category)) {
+        categoryOptions.push([question.category, question.category]);
+      }
+    }
+
+    const filterbar = el('div', { class: 'filterbar' },
+      selectFilter([['', '全部岗位'], ...positions.map((p) => [String(p.id), p.name])], 'position_id', '按岗位筛选'),
+      selectFilter([['', '全部题型'], ['single_choice', TYPE_LABELS.single_choice], ['short_answer', TYPE_LABELS.short_answer]], 'question_type', '按题型筛选'),
+      selectFilter(dimensionOptions, 'dimension', '按维度筛选'),
+      selectFilter(categoryOptions, 'category', '按分类筛选'),
+      selectFilter([['', '全部来源'], ['bank', '手工'], ['ai', 'AI']], 'source', '按来源筛选'),
+      textFilter('keyword', '搜索题干', true),
+      countNode,
+    );
+
+    mount(
+      main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: '题库' }),
+          el('p', { class: 'page-lede' }, '手工维护的题会优先被抽中；AI 在面试创建时补充的题也会收录到这里。'),
+        ),
+        el('div', { class: 'page-head-actions' },
+          el('button', {
+            class: 'btn btn--primary',
+            text: '创建题目',
+            disabled: !positions.length,
+            title: positions.length ? '' : '请先创建岗位',
+            onClick: create,
+          })),
+      ),
+      el('div', { class: 'panel' }, filterbar, bodyHost),
+    );
+
+    await reload();
+  }
+
+  exports.render = render;
+};
+
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -2590,6 +3703,7 @@ __modules['./main.js'] = function (exports, __require) {
   registerPages({
     login: __require('./pages/login.js'),
     positions: __require('./pages/positions.js'),
+    questions: __require('./pages/questions.js'),
     users: __require('./pages/users.js'),
     placeholder: __require('./pages/placeholder.js'),
   });
