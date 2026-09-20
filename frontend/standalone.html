@@ -326,6 +326,25 @@ a:hover { text-decoration: underline; }
 }
 .table strong { font-weight: 600; }
 
+/* ---- 答题进度：一条细条 + 数字。比单纯一个「3 / 8」更能一眼看出有没有答完 ---- */
+.progress { display: flex; align-items: center; gap: var(--s2); }
+.progress-track {
+  flex: none;
+  width: 52px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e4eaf1;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--brand); }
+.progress-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
 /* ---- 按钮 ---- */
 .btn {
   display: inline-flex;
@@ -862,15 +881,17 @@ a:hover { text-decoration: underline; }
 .login-card { width: 100%; max-width: 372px; }
 .login-card > h2 { font-size: var(--t-xl); }
 .login-card-lede { margin: var(--s2) 0 var(--s7); font-size: 14px; color: var(--muted); }
-.login-demo {
-  margin-top: var(--s6);
+/* ---- 提示条：说明「接下来会发生什么」，既不是错误也不是警告 ---- */
+.note-box {
   padding: var(--s3) var(--s4);
   background: var(--brand-wash);
   border: 1px solid var(--brand-line);
   border-radius: var(--r-control);
   font-size: var(--t-sm);
+  line-height: 1.6;
   color: var(--brand-deep);
 }
+.login-card .note-box { margin-top: var(--s6); }
 
 /* ---- 未实现的模块占位（原型建设期用） ---- */
 .placeholder {
@@ -1143,7 +1164,7 @@ __modules['./mock.js'] = function (exports, __require) {
         name: '后端工程师',
         jd: '负责核心交易链路的服务设计与开发。要求熟悉 Python 或 Go，理解 MySQL 索引与事务，有高并发场景的排查经验。团队规模 8 人，直接汇报给技术负责人。',
         evaluation_dimensions: ['沟通能力', '专业能力', '逻辑思维', '文化契合'],
-        created_by: 2,
+        created_by: 1,
         created_at: '2026-08-12T10:20:00',
       },
       {
@@ -1167,7 +1188,7 @@ __modules['./mock.js'] = function (exports, __require) {
         name: '前端工程师',
         jd: '负责管理后台的页面与交互实现。要求扎实的原生 JavaScript 功底，能读懂设计稿并主动追问边界情况。这个岗位不写框架胶水代码，看重对 DOM 与渲染性能的理解。',
         evaluation_dimensions: ['专业能力', '工程素养', '沟通能力'],
-        created_by: 2,
+        created_by: 1,
         created_at: '2026-09-10T11:15:00',
       },
     ],
@@ -1179,7 +1200,7 @@ __modules['./mock.js'] = function (exports, __require) {
         options: ['先看监控面板，定位耗时集中在哪个环节', '立刻重启服务恢复可用性', '先回滚最近一次上线', '先扩大实例数量扛住流量'],
         reference_answer: '先看监控面板，定位耗时集中在哪个环节',
         explanation: '排查要先定位再动手。重启、回滚、扩容都是信息不足时的赌博：它们可能让问题暂时消失，却把真实原因一起掩盖掉，下一次还会再来。',
-        tags: ['性能', '线上问题'], source: 'bank', created_by: 2, created_at: '2026-08-20T10:05:00',
+        tags: ['性能', '线上问题'], source: 'bank', created_by: 1, created_at: '2026-08-20T10:05:00',
       },
       {
         id: 2, position_id: 1, dimension: '专业能力', category: '数据库', difficulty: 'hard',
@@ -1188,7 +1209,7 @@ __modules['./mock.js'] = function (exports, __require) {
         options: [],
         reference_answer: '能说清四个隔离级别分别挡掉了哪类并发异常，并给出一个自己遇到过的具体场景（现象、原因、怎么定位、最终怎么改）。只背定义、说不出实例的，说明没有真正处理过并发问题。',
         explanation: '考察点不在背诵，而在有没有被并发问题真正咬过。追问方向：为什么可重复读在 MySQL 里仍可能幻读？你们线上用的是什么级别，为什么？',
-        tags: ['数据库', '事务'], source: 'bank', created_by: 2, created_at: '2026-08-20T10:12:00',
+        tags: ['数据库', '事务'], source: 'bank', created_by: 1, created_at: '2026-08-20T10:12:00',
       },
       {
         id: 3, position_id: 1, dimension: '逻辑思维', category: '通用', difficulty: 'medium',
@@ -1197,7 +1218,7 @@ __modules['./mock.js'] = function (exports, __require) {
         options: [],
         reference_answer: null,
         explanation: null,
-        tags: ['索引', '验证思路'], source: 'bank', created_by: 2, created_at: '2026-08-21T09:30:00',
+        tags: ['索引', '验证思路'], source: 'bank', created_by: 1, created_at: '2026-08-21T09:30:00',
       },
       {
         id: 4, position_id: 1, dimension: '文化契合', category: '通用', difficulty: 'medium',
@@ -1206,7 +1227,7 @@ __modules['./mock.js'] = function (exports, __require) {
         options: [],
         reference_answer: null,
         explanation: null,
-        tags: ['协作', '复盘'], source: 'ai', created_by: 2, created_at: '2026-09-01T15:40:00',
+        tags: ['协作', '复盘'], source: 'ai', created_by: 1, created_at: '2026-09-01T15:40:00',
       },
       {
         id: 5, position_id: 2, dimension: '需求洞察', category: '需求分析', difficulty: 'medium',
@@ -1251,7 +1272,7 @@ __modules['./mock.js'] = function (exports, __require) {
         options: [],
         reference_answer: '先用 Performance 面板录制一段滚动，看主线程是不是被长任务占满；如果帧时间大部分花在 Recalculate Style / Layout 上，就是布局抖动，通常来自频繁读取 offsetHeight 这类强制同步布局；如果集中在 Paint，则是重绘面积过大。',
         explanation: '关键在「先测量再判断」。答不上具体面板和指标、只说「用 Chrome DevTools 看看」的，说明没有真的定位过性能问题。',
-        tags: ['性能', 'DevTools'], source: 'ai', created_by: 2, created_at: '2026-09-11T16:30:00',
+        tags: ['性能', 'DevTools'], source: 'ai', created_by: 1, created_at: '2026-09-11T16:30:00',
       },
       {
         id: 10, position_id: 4, dimension: '专业能力', category: '通用', difficulty: 'easy',
@@ -1260,12 +1281,29 @@ __modules['./mock.js'] = function (exports, __require) {
         options: ['组件卸载时没有移除挂到 window 上的事件监听', '在函数里使用了闭包', '频繁地操作 DOM', '在循环里使用 for 语句'],
         reference_answer: '组件卸载时没有移除挂到 window 上的事件监听',
         explanation: '全局对象上的引用会让整棵已卸载的组件树无法被回收。闭包与 DOM 操作本身都不是泄漏，要看有没有留下无法释放的引用。',
-        tags: ['内存'], source: 'bank', created_by: 2, created_at: '2026-09-11T16:35:00',
+        tags: ['内存'], source: 'bank', created_by: 1, created_at: '2026-09-11T16:35:00',
+      },
+      {
+        id: 11, position_id: 1, dimension: '逻辑思维', category: '系统设计', difficulty: 'medium',
+        question_type: 'short_answer',
+        content: '让你设计一个「面试邀请码」，要求一次性、7 天有效、不可被猜出。你会怎么实现，又怎么防住被暴力枚举？',
+        options: [],
+        reference_answer: '邀请码用足够熵的随机串（而非自增或时间戳派生），存库并带 status 与 expires_at；接受时用事务把 pending 改为 accepted，保证一次性；防枚举靠熵本身加上接受接口的进程内限流，而不是靠「码看起来很难猜」。',
+        explanation: '考的是安全边界的直觉：能不能区分「随机性」与「不可枚举」，以及是否会想到用限流兜住最坏情况。',
+        tags: ['安全', '设计'], source: 'bank', created_by: 1, created_at: '2026-09-12T09:50:00',
       },
     ],
+    interviews: [
+      { id: 1, position_id: 1, candidate_name: '张书宁', candidate_contact: 'zhang.shuning@example.com', status: 'evaluated',  created_at: '2026-09-14T14:00:00', completed_at: '2026-09-14T15:20:00', created_by: 1, answered: 8 },
+      { id: 2, position_id: 1, candidate_name: '李昀',   candidate_contact: 'li.yun@example.com',        status: 'ongoing',    created_at: '2026-09-16T10:30:00', completed_at: null,                  created_by: 1, answered: 3 },
+      { id: 3, position_id: 2, candidate_name: '王一鸣', candidate_contact: null,                        status: 'completed',  created_at: '2026-09-15T09:00:00', completed_at: '2026-09-15T10:40:00', created_by: 2, answered: 7 },
+      { id: 4, position_id: 3, candidate_name: '陈嘉',   candidate_contact: 'chen.jia@example.com',      status: 'evaluating', created_at: '2026-09-16T11:10:00', completed_at: '2026-09-16T12:00:00', created_by: 3, answered: 8 },
+      { id: 5, position_id: 4, candidate_name: '周晓禾', candidate_contact: 'zhou.xiaohe@example.com',   status: 'ongoing',    created_at: '2026-09-18T15:20:00', completed_at: null,                  created_by: 1, answered: 1 },
+    ],
+    interviewQuestions: [],
   };
 
-  const seq = { user: 5, position: 5, question: 11 };
+  const seq = { user: 5, position: 5, question: 12, interview: 6 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -1705,6 +1743,259 @@ __modules['./mock.js'] = function (exports, __require) {
     return ok(located.row);
   });
 
+  /* ---- interviews 与出题组装 ---- */
+
+  const QUESTION_COUNT_FROM_BANK = 5;
+  const QUESTION_COUNT_FROM_AI = 3;
+  const QUESTION_DIFFICULTIES = ['easy', 'medium', 'hard'];
+
+  /* 与后端 MockProvider._QUESTION_TEMPLATES 逐字一致 —— 原型里的 AI 出题
+     要和真实 Mock 产出同一批题目，否则「无 Key 演示」与真实运行看到的不是一回事。 */
+  const AI_QUESTION_TEMPLATES = [
+    '关于{dim}：请描述一次你在{position}相关工作中遇到的具体挑战，以及你的处理方式。',
+    '关于{dim}：如果让你从零开始改进{position}岗位的一项关键流程，你会怎么做？',
+    '关于{dim}：请举例说明你如何衡量自己在{dim}方面的表现。',
+  ];
+
+  /** 按维度轮询抽取，让各维度题数尽量平均（对应后端 _round_robin_pick）。 */
+  function roundRobinPick(groups, dimensions, count) {
+    const cursors = {};
+    for (const dim of dimensions) cursors[dim] = 0;
+
+    const picked = [];
+    while (picked.length < count) {
+      let progressed = false;
+      for (const dim of dimensions) {
+        if (picked.length >= count) break;
+        const index = cursors[dim];
+        if (index < groups[dim].length) {
+          picked.push(groups[dim][index]);
+          cursors[dim] = index + 1;
+          progressed = true;
+        }
+      }
+      if (!progressed) break; // 所有维度都抽空了
+    }
+    return picked;
+  }
+
+  /**
+   * 题库抽 5 题 + AI 补足到 8 题（对应后端 _assemble_questions）。
+   * need_ai = 3 + (5 - 题库实抽数) —— 总题数恒为 8，题库不足时由 AI 补差额。
+   * 候选池按 owner 过滤：谁建的面试，就从谁的题库里抽（后端 list_by_position）。
+   */
+  function assembleQuestions(position, ownerId) {
+    const dimensions = position.evaluation_dimensions;
+    if (!dimensions.length) return [];
+
+    const candidates = state.questions
+      .filter((q) => q.position_id === position.id && q.created_by === ownerId && dimensions.includes(q.dimension))
+      .sort((a, b) => a.id - b.id);
+
+    const groups = {};
+    for (const dim of dimensions) groups[dim] = [];
+    for (const question of candidates) groups[question.dimension].push(question);
+
+    const picked = roundRobinPick(groups, dimensions, QUESTION_COUNT_FROM_BANK);
+    const needAi = QUESTION_COUNT_FROM_AI + (QUESTION_COUNT_FROM_BANK - picked.length);
+
+    const taken = new Set(picked.map((q) => q.content));
+    const generated = [];
+    for (let i = 0; i < needAi; i += 1) {
+      const dimension = dimensions[i % dimensions.length];
+      const template = AI_QUESTION_TEMPLATES[i % AI_QUESTION_TEMPLATES.length];
+      const render = () => template.replace(/\{dim\}/g, dimension).replace(/\{position\}/g, position.name);
+
+      let content = render();
+      let variant = 1;
+      while (taken.has(content)) { content = `${render()}（变体${variant}）`; variant += 1; }
+      taken.add(content);
+
+      generated.push({
+        content,
+        dimension,
+        difficulty: QUESTION_DIFFICULTIES[i % QUESTION_DIFFICULTIES.length],
+        source: 'ai',
+      });
+    }
+
+    return [
+      ...picked.map((q) => ({ question_id: q.id, content: q.content, dimension: q.dimension, source: 'bank' })),
+      ...generated.map((g) => ({ question_id: null, ...g })),
+    ];
+  }
+
+  /* 候选人回答的素材。真实面试里会出现的样子 —— 泛泛的占位文本会让
+     作答区、评估与报告比实际更「模板」。 */
+  const BANK_ANSWERS = {
+    1: '先看监控。我会按接口自身、数据库、下游依赖三段拆开看耗时分布，定位到具体环节再决定动作。上一次类似的情况是慢查询把连接池打满了，补了索引就恢复。',
+    2: '我们线上用的是可重复读。真遇到过一次幻读：同一个事务里两次查询的结果集不一致，原因是间隙锁没覆盖到新插入的行，后来把那段逻辑改成显式加锁。',
+    3: '我会先要到具体的 SQL 和执行计划，确认优化器有没有真的用上这个索引。常见的是回表代价太高，或者条件列的选择性别太差，优化器认为全表扫描反而更快。',
+    4: '做过一版实时对账，评审时被指出上游数据延迟不可控。我拉了一段真实数据核对，发现延迟分布确实到分钟级，就改成准实时加定时兜底。',
+    5: '我会先问他导出来是给谁看、要解决什么问题。有一次用户的真实需求是要给财务做月度核对，其实缺的是一个定时报表，不是导出按钮。',
+    6: '我会约他一起把「做不了」拆开：是排期紧，还是方案有技术风险。排期紧就砍范围先上核心链路，风险高就一起找替代方案。',
+    7: '先看埋点和口径有没有变。我遇到过一回是发版时漏埋了一个上报点，数据直接掉了两成。确认口径没问题之后，再按渠道和机型去拆。',
+    8: '我会拿他熟悉的场景举例，比如人均下单金额被几个大客户拉高了，中位数才接近大多数用户的真实感受。',
+    9: '我会先录一段 Performance，看主线程有没有长任务。如果时间主要花在 Recalculate Style 上，那就是布局抖动，一般是频繁读 offsetHeight 触发的强制同步布局。',
+    10: '组件卸载时没有解绑挂在 window 上的监听，整棵组件树都会被全局对象引用住，回收不掉。',
+    11: '邀请码要用足够熵的随机串，不能从自增 ID 或时间戳派生，否则拿到一个就能推出下一个。接受的时候用事务把状态从 pending 改成 accepted，保证只能用一次。',
+  };
+
+  const DIMENSION_ANSWERS = {
+    沟通能力: '我习惯先把结论和影响面说清楚，再讲过程。跨团队的时候会提前把接口和边界写成文档，避免口头对齐出偏差。',
+    专业能力: '我会先把问题拆成能独立验证的几部分，逐个排掉，最后再合起来看整体表现，而不是一上来就改线上。',
+    逻辑思维: '我会先列出自己的假设，再设计一个能证伪它的最小实验，而不是直接动手改。',
+    文化契合: '我更看重能不能把问题讲透。团队里有人指出我没想到的点，我会先接受再讨论，而不是先辩护。',
+    需求洞察: '我会去看用户实际怎么用，而不是只听他说想要什么。行为比表述可靠。',
+    工程素养: '我会先写一个能稳定复现的最小例子，再动手改。没有复现步骤的话，修好了也说不清是不是修对了。',
+  };
+
+  /** 按真实出题组装规则，为种子面试生成题目与已作答部分。 */
+  function seedInterviews() {
+    for (const interview of state.interviews) {
+      const position = state.positions.find((p) => p.id === interview.position_id);
+      interview.questions = assembleQuestions(position, interview.created_by).map((item, index) => {
+        const answered = index < interview.answered;
+        return {
+          interview_question_id: interview.id * 100 + index + 1,
+          seq: index + 1,
+          content: item.content,
+          dimension: item.dimension,
+          source: item.source,
+          answer: answered ? (item.question_id ? BANK_ANSWERS[item.question_id] : DIMENSION_ANSWERS[item.dimension]) ?? null : null,
+          recorded_at: answered ? interview.created_at : null,
+          answer_source: answered ? 'hr' : null,
+        };
+      });
+    }
+  }
+  seedInterviews();
+
+  /** 原型开关：让依赖 AI 的接口失败，用来走查错误态。?fail=ai 或 localStorage。 */
+  function aiFails() {
+    if (/[?&]fail=ai(&|$)/.test(location.search)) return true;
+    try { return localStorage.getItem('prototype.failAI') === '1'; } catch { return false; }
+  }
+  exports.setFailAI = function (on) {
+    try { on ? localStorage.setItem('prototype.failAI', '1') : localStorage.removeItem('prototype.failAI'); } catch {}
+  };
+
+  function visibleInterviews(user) {
+    return user.role === 'admin'
+      ? state.interviews
+      : state.interviews.filter((i) => i.created_by === user.id);
+  }
+
+  function locateInterview(user, id) {
+    const row = state.interviews.find((i) => i.id === Number(id));
+    if (!row) return { error: fail(404, 'NOT_FOUND', '面试不存在') };
+    if (user.role !== 'admin' && row.created_by !== user.id) {
+      return { error: fail(403, 'FORBIDDEN', '无权限访问该面试') };
+    }
+    return { row };
+  }
+
+  function interviewListItem(interview) {
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    const questions = interview.questions || [];
+    return {
+      id: interview.id,
+      position_id: interview.position_id,
+      position_name: position?.name ?? '—',
+      candidate_name: interview.candidate_name,
+      candidate_contact: interview.candidate_contact,
+      status: interview.status,
+      created_at: interview.created_at,
+      completed_at: interview.completed_at,
+      question_count: questions.length,
+      answered_count: questions.filter((q) => q.answer).length,
+    };
+  }
+
+  function interviewDetail(interview) {
+    return {
+      ...interviewListItem(interview),
+      jd: state.positions.find((p) => p.id === interview.position_id)?.jd ?? '',
+      evaluation_dimensions: state.positions.find((p) => p.id === interview.position_id)?.evaluation_dimensions ?? [],
+      questions: (interview.questions || []).map((q) => ({
+        interview_question_id: q.interview_question_id,
+        seq: q.seq,
+        content: q.content,
+        dimension: q.dimension,
+        source: q.source,
+        answer: q.answer,
+        recorded_at: q.recorded_at,
+        answer_source: q.answer_source,
+        match_reason: q.match_reason ?? null,
+      })),
+      resume_id: interview.resume_id ?? null,
+    };
+  }
+
+  on('GET', '/interviews', ({ user }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const rows = visibleInterviews(user).slice()
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); // 新的在前
+    return ok(rows.map(interviewListItem));
+  });
+
+  on('POST', '/interviews', ({ user, body }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const fields = [];
+    const name = String(body?.candidate_name ?? '').trim();
+    const contact = String(body?.candidate_contact ?? '').trim();
+    if (!name) fields.push({ field: 'candidate_name', message: '请填写候选人姓名' });
+    else if (name.length > 100) fields.push({ field: 'candidate_name', message: '候选人姓名不能超过 100 个字符' });
+    if (contact.length > 200) fields.push({ field: 'candidate_contact', message: '联系方式不能超过 200 个字符' });
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    const position = state.positions.find((p) => p.id === Number(body?.position_id));
+    if (!position) return fail(404, 'NOT_FOUND', '岗位不存在');
+    if (user.role !== 'admin' && position.created_by !== user.id) {
+      return fail(403, 'FORBIDDEN', '无权限访问该岗位');
+    }
+    if (!position.evaluation_dimensions.length) {
+      return fail(409, 'BUSINESS_ERROR', '岗位未定义评估维度，无法出题');
+    }
+    // AI 出题失败 → 整体回滚，面试不落库（后端 create_interview 是单事务）
+    if (aiFails()) return fail(502, 'AI_PROVIDER_ERROR', 'AI 服务调用失败，请稍后重试');
+
+    const interview = {
+      id: seq.interview++,
+      position_id: position.id,
+      candidate_name: name,
+      candidate_contact: contact || null,
+      status: 'ongoing',
+      created_at: new Date().toISOString(),
+      completed_at: null,
+      created_by: user.id,
+      resume_id: null,
+    };
+    interview.questions = assembleQuestions(position, user.id).map((item, index) => ({
+      interview_question_id: interview.id * 100 + index + 1,
+      seq: index + 1,
+      content: item.content,
+      dimension: item.dimension,
+      source: item.source,
+      answer: null,
+      recorded_at: null,
+      answer_source: null,
+    }));
+
+    state.interviews.push(interview);
+    return created(interviewDetail(interview));
+  });
+
+  on('GET', '/interviews/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    return located.error || ok(interviewDetail(located.row));
+  });
+
   /* ---- fetch 拦截 ---- */
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1779,7 +2070,7 @@ __modules['./router.js'] = function (exports, __require) {
    */
   const routes = [
     { path: '/login',                     key: 'login',           side: 'hr', isPublic: true,  label: '登录' },
-    { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试',     pending: true },
+    { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试' },
     { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情', pending: true },
     { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告', pending: true },
     { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备', pending: true },
@@ -2379,7 +2670,7 @@ __modules['./pages/login.js'] = function (exports, __require) {
         passwordError,
       ),
       submit,
-      el('p', { class: 'login-demo' }, '演示账号：admin / admin12345'),
+      el('p', { class: 'note-box' }, '演示账号：admin / admin12345'),
     );
   }
 
@@ -3406,6 +3697,7 @@ __modules['./pages/questions.js'] = function (exports, __require) {
 
     let questions = [];
     let selectedId = null;
+    let reloadNo = 0; // 并发请求的序号，用来丢弃过期响应
     const filters = { position_id: '', question_type: '', dimension: '', category: '', source: '', keyword: '' };
 
     const listBody = el('div', { class: 'split-list-body' });
@@ -3425,12 +3717,19 @@ __modules['./pages/questions.js'] = function (exports, __require) {
     }
 
     async function reload() {
+      // 筛选栏每次改动都会发一次请求（关键词还是逐键触发），请求会并发。
+      // 没有这个序号守卫时，先发的请求可能后返回，把新筛选的结果覆盖成旧的。
+      const requestNo = ++reloadNo;
+      let rows;
       try {
-        questions = await api.get(query());
+        rows = await api.get(query());
       } catch (error) {
-        toast.error(error.message);
+        if (requestNo === reloadNo) toast.error(error.message);
         return;
       }
+      if (requestNo !== reloadNo) return; // 已经有更新的请求发出，这次的结果作废
+
+      questions = rows;
       if (!questions.some((q) => q.id === selectedId)) selectedId = questions[0]?.id ?? null;
       paint();
     }
@@ -3655,6 +3954,231 @@ __modules['./pages/questions.js'] = function (exports, __require) {
 
 
 /* ==========================================================================
+   pages/interviews.js —— 面试列表
+   全站唯一用表格的页面：这里要横向扫很多行、比较状态与进度，表格是对的形状；
+   岗位与题库是「读一份东西」，所以用案卷。
+
+   每行的主操作按状态命名（记录回答 / 去评估 / 查看报告），而不是一律叫「查看」——
+   HR 扫这张表时问的是「这场该我做什么」，按钮直接回答它。
+   ========================================================================== */
+__modules['./pages/interviews.js'] = function (exports, __require) {
+  const { el, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const { openModal } = __require('./components/modal.js');
+  const { contextTitle, createShell, emptyState, formatDateTime, loadingBlock, statusTag, navigate } = __require('./components/shell.js');
+
+  const NEXT_ACTION = {
+    draft:      { label: '查看',     path: (id) => `/interviews/${id}` },
+    ongoing:    { label: '记录回答', path: (id) => `/interviews/${id}` },
+    completed:  { label: '去评估',   path: (id) => `/interviews/${id}` },
+    evaluating: { label: '查看进度', path: (id) => `/interviews/${id}/evaluation` },
+    evaluated:  { label: '查看报告', path: (id) => `/interviews/${id}/evaluation` },
+  };
+
+  function progressCell(interview) {
+    const total = interview.question_count || 0;
+    const done = interview.answered_count || 0;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    return el('div', { class: 'progress' },
+      el('div', { class: 'progress-track' },
+        el('div', { class: 'progress-fill', style: `width:${percent}%` })),
+      el('span', { class: 'progress-value', text: `${done} / ${total}` }),
+    );
+  }
+
+  function buildRow(interview) {
+    const next = NEXT_ACTION[interview.status] ?? NEXT_ACTION.draft;
+    const actions = [
+      el('button', {
+        class: 'btn btn--quiet btn--sm',
+        text: next.label,
+        onClick: () => navigate(next.path(interview.id)),
+      }),
+    ];
+    // 已经能出报告的面试，除了「查看报告」再给一个回详情页的口子
+    if (interview.status === 'evaluating' || interview.status === 'evaluated') {
+      actions.push(el('button', {
+        class: 'btn btn--quiet btn--sm',
+        text: '详情',
+        onClick: () => navigate(`/interviews/${interview.id}`),
+      }));
+    }
+
+    return el(
+      'tr',
+      {},
+      el(
+        'td',
+        {},
+        el('strong', { text: interview.candidate_name }),
+        interview.candidate_contact ? el('div', { class: 'meta', text: interview.candidate_contact }) : null,
+      ),
+      el('td', { text: interview.position_name }),
+      el('td', {}, statusTag(interview.status)),
+      el('td', {}, progressCell(interview)),
+      el('td', { class: 'meta', text: formatDateTime(interview.created_at) }),
+      el('td', { class: 'cell-actions' }, actions),
+    );
+  }
+
+  /* ------------------------------ 创建弹窗 ------------------------------ */
+
+  async function openCreateModal(onCreated) {
+    let positions = [];
+    let loadFailed = false;
+    try {
+      positions = await api.get('/positions');
+    } catch {
+      loadFailed = true;
+    }
+
+    const positionSelect = el(
+      'select',
+      { class: 'select', id: 'new-interview-position' },
+      positions.length
+        ? positions.map((p) => el('option', { value: String(p.id), text: p.name }))
+        : el('option', { value: '', text: '暂无岗位' }),
+    );
+
+    const nameInput = el('input', {
+      class: 'input', id: 'new-interview-name', maxlength: '100', placeholder: '候选人的姓名',
+    });
+    const nameError = fieldError();
+
+    const contactInput = el('input', {
+      class: 'input', id: 'new-interview-contact', maxlength: '200', placeholder: '邮箱或手机号（可不填）',
+    });
+    const contactError = fieldError();
+
+    const errors = fieldErrors({ candidate_name: nameError, candidate_contact: contactError });
+
+    const submit = el('button', {
+      class: 'btn btn--primary',
+      text: '创建并出题',
+      disabled: loadFailed || !positions.length,
+    });
+
+    const body = el(
+      'div',
+      {},
+      loadFailed
+        ? el('p', { class: 'field-error', text: '岗位列表加载失败，请关闭后重试。' })
+        : null,
+      !loadFailed && !positions.length
+        ? el('p', { class: 'hint', text: '还没有岗位。先到「岗位」页创建一个，再回来建面试。' })
+        : null,
+
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'new-interview-position', text: '岗位' }),
+        positionSelect,
+        el('p', { class: 'field-note', text: 'AI 会按这个岗位的 JD 和评估维度出题。' })),
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'new-interview-name', text: '候选人姓名' }),
+        nameInput,
+        nameError),
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'new-interview-contact', text: '联系方式' }),
+        contactInput,
+        contactError),
+      el('p', { class: 'note-box' },
+        '创建后会立刻出题：题库抽 5 道、AI 按 JD 补 3 道，共 8 道，通常需要几秒。'),
+    );
+
+    const handle = openModal({
+      title: '创建面试',
+      body,
+      footer: [
+        el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+        submit,
+      ],
+    });
+
+    submit.addEventListener('click', async () => {
+      errors.clear();
+      if (!nameInput.value.trim()) {
+        errors.show('candidate_name', '请填写候选人姓名');
+        nameInput.focus();
+        return;
+      }
+
+      // 同步出题可能耗时数秒 —— 期间锁住整个弹窗，避免重复提交
+      handle.setBusy(true);
+      submit.textContent = '正在生成面试题…';
+
+      try {
+        const detail = await api.post('/interviews', {
+          position_id: Number(positionSelect.value),
+          candidate_name: nameInput.value.trim(),
+          candidate_contact: contactInput.value.trim() || null,
+        });
+        handle.close();
+        toast.success(`已生成 ${detail.question_count} 道题`);
+        onCreated(detail);
+      } catch (error) {
+        // 后端已整体回滚，可以安全重试 —— 弹窗保持打开
+        handle.setBusy(false);
+        submit.textContent = '创建并出题';
+        // 400 落到字段；502（AI 出题失败）等仍用后端文案
+        if (!errors.fromServer(error)) toast.error(error.message);
+      }
+    });
+  }
+
+  /* -------------------------------- 页面 -------------------------------- */
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('面试'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载面试列表…'));
+
+    let interviews;
+    try {
+      interviews = await api.get('/interviews');
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试列表加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container) }))));
+      return;
+    }
+
+    const create = () => openCreateModal(() => render(container));
+
+    mount(
+      main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: '面试' }),
+          el('p', { class: 'page-lede' }, '一场面试从创建开始：AI 按岗位出题，你逐题记录，完成后一键评估。'),
+        ),
+        el('div', { class: 'page-head-actions' },
+          el('button', { class: 'btn btn--primary', text: '创建面试', onClick: create })),
+      ),
+
+      el('div', { class: 'panel' },
+        interviews.length
+          ? el('table', { class: 'table' },
+              el('thead', {},
+                el('tr', {},
+                  el('th', { text: '候选人' }),
+                  el('th', { text: '岗位' }),
+                  el('th', { text: '状态' }),
+                  el('th', { text: '答题进度' }),
+                  el('th', { text: '创建时间' }),
+                  el('th', {}),
+                )),
+              el('tbody', {}, interviews.map(buildRow)),
+            )
+          : emptyState('还没有面试', '创建一场面试，AI 会按岗位和评估维度出题。',
+              el('button', { class: 'btn btn--primary', text: '创建面试', onClick: create })),
+      ),
+    );
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -3702,6 +4226,7 @@ __modules['./main.js'] = function (exports, __require) {
 
   registerPages({
     login: __require('./pages/login.js'),
+    interviews: __require('./pages/interviews.js'),
     positions: __require('./pages/positions.js'),
     questions: __require('./pages/questions.js'),
     users: __require('./pages/users.js'),
