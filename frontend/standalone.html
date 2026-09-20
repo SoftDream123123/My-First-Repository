@@ -760,6 +760,7 @@ a:hover { text-decoration: underline; }
   color: var(--muted);
 }
 .invite-actions { display: flex; gap: var(--s1); flex: none; }
+.panel-head-actions { display: flex; gap: var(--s2); flex: none; }
 
 .resume-body {
   max-height: 300px;
@@ -1073,8 +1074,295 @@ a:hover { text-decoration: underline; }
   font-size: var(--t-sm);
   line-height: 1.6;
   color: var(--brand-deep);
+  /* 一句话的提示条不该横跨 1100px —— 那看着像空横幅 */
+  max-width: 46em;
 }
 .login-card .note-box { margin-top: var(--s6); }
+
+/* ---- 评估报告 ----
+   报告的读法是「先结论后证据」：头版给总分与综合结论，右侧是维度形状；
+   再往下才是逐题评分这条证据链。
+   维度分**不再单出一张表** —— 雷达图的图例每行直接带该维度的评语，
+   图给形状、给一眼的比较，图例给数值、给理由，两者是同一件事的两面。
+   （PRD §4.12 里 DOCX 的「多维评分表」是那份文件的要求，屏幕上不必照抄。） */
+.report-head { display: grid; grid-template-columns: minmax(0, 1fr) 400px; }
+.report-head-main { padding: var(--s6); }
+/* 图表比左边那一栏矮（4 维的图例横跨底部），居中放，免得顶部堆一块、下面空一块 */
+.report-head-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--s5) var(--s6);
+  border-left: 1px solid var(--line-soft);
+}
+
+/* 评估进行中时总分还没算出来：给一个小字占位并占住 56px 的高度，
+   免得整块在分数落地那一刻跳一下。这里不能用一个 56px 的「—」——
+   那个字形在这个字号下就是一条灰杠，读起来像进度条。 */
+.report-score { display: flex; align-items: baseline; gap: var(--s2); min-height: var(--t-hero); }
+.report-score-pending { font-size: var(--t-xl); font-weight: 600; color: var(--faint); }
+.report-score-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-hero);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.report-score-value.is-pass { color: var(--pass); }
+.report-score-value.is-watch { color: var(--watch); }
+.report-score-unit { font-family: var(--font-num); font-size: var(--t-lg); color: var(--muted); }
+.report-score-scale { margin-top: var(--s3); font-size: var(--t-sm); color: var(--muted); }
+.report-conclusion {
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line-soft);
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 32em;
+}
+
+/* 优点 / 待改进：结论正下方的两块，用分数带的方向做标记 —— 与评分的颜色同源 */
+.report-finds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--s6);
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line-soft);
+}
+.find-list { display: flex; flex-direction: column; gap: var(--s3); }
+.find-item {
+  padding-left: var(--s3);
+  border-left: 3px solid var(--line);
+  font-size: 14px;
+  line-height: 1.75;
+}
+.find-item.is-pass { border-left-color: var(--pass); }
+.find-item.is-watch { border-left-color: var(--watch); }
+
+/* 评估三步：真正有先后的过程，因此编号是在编码顺序而不是装饰 */
+.stage-list { margin-top: var(--s5); border-top: 1px solid var(--line-soft); }
+.stage-list li {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.stage-list-index {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  color: var(--brand);
+  line-height: 1.4;
+}
+.stage-list-label { font-size: 14px; font-weight: 600; }
+.stage-list-text { margin-top: var(--s1); font-size: var(--t-sm); line-height: 1.7; color: var(--muted); }
+
+/* 逐题评分：一条可以逐条核对的证据链 */
+.score-item { padding: var(--s5); border-top: 1px solid var(--line-soft); }
+.score-item:first-child { border-top: none; }
+.score-item-head { display: flex; align-items: center; gap: var(--s3); }
+.score-seq {
+  min-width: 26px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--brand);
+}
+.score-value {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-xl);
+  font-weight: 700;
+  line-height: 1;
+}
+.score-value.is-pass { color: var(--pass); }
+.score-value.is-watch { color: var(--watch); }
+.score-question { margin-top: var(--s3); font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+.score-comment { margin-top: var(--s3); font-size: 14px; line-height: 1.8; max-width: 44em; }
+
+/* 回答与评估意见各自成块：两块长得像，靠标题分开，不靠猜 */
+.score-block,
+.prep-field { margin-top: var(--s4); }
+.score-block .dossier-label,
+.prep-field .dossier-label { margin-bottom: var(--s2); }
+.score-block .answer-quote,
+.prep-field .score-comment { margin-top: 0; }
+
+.answer-quote {
+  margin-top: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: #f7fafc;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-control);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: var(--ink-soft);
+  max-width: 48em;
+}
+.answer-quote.is-blank { color: var(--muted); }
+
+/* 评估流：只有一条状态行。不做三段的步骤条 ——
+   逐题分数自己就是进度，再画一遍是把同一件事说两次。 */
+.stream-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s5);
+  border-bottom: 1px solid var(--line-soft);
+  background: #fafcfe;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+.stream-note.is-failed {
+  background: var(--danger-wash);
+  border-bottom-color: var(--danger-line);
+  color: var(--danger);
+}
+.stream-note.is-failed .btn { margin-left: auto; }
+.stream-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: stream-pulse 1.3s ease-in-out infinite;
+}
+@keyframes stream-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+.stream-count {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--muted);
+}
+
+/* 新到的一条只在落地那一下动一次，之后完全安静 */
+.just-arrived { animation: arrive 0.28s ease-out; }
+@keyframes arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---- 雷达图 + 维度图例 ---- */
+.radar { display: block; width: 100%; height: auto; }
+.radar-grid { fill: none; stroke: var(--line-soft); }
+.radar-spoke { stroke: var(--line-soft); }
+.radar-area { stroke-width: 2; }
+.radar-area.is-pass { fill: var(--pass); fill-opacity: 0.12; stroke: var(--pass); }
+.radar-area.is-watch { fill: var(--watch); fill-opacity: 0.12; stroke: var(--watch); }
+.radar-dot { stroke: var(--paper); stroke-width: 1.5; }
+.radar-dot.is-pass { fill: var(--pass); }
+.radar-dot.is-watch { fill: var(--watch); }
+.radar-label { font-family: var(--font-ui); font-size: var(--t-xs); fill: var(--muted); }
+.radar-hint { padding: var(--s5) 0; font-size: var(--t-sm); color: var(--muted); text-align: center; }
+
+/* 维度图例：横跨面板底部的一行。图给形状，图例给数值与理由。
+   auto-fit 是为了让 3–6 个维度都排得下 —— 维度数是岗位定的，不是设计定的。 */
+.dim-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s4) var(--s6);
+  padding: var(--s5) var(--s6) var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+.dim-legend-row { min-width: 0; }
+.dim-legend-top { display: flex; align-items: baseline; gap: var(--s2); }
+.dim-legend-name { font-size: 14px; font-weight: 600; }
+.dim-legend-score {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-md);
+  font-weight: 700;
+}
+.dim-legend-score.is-pass { color: var(--pass); }
+.dim-legend-score.is-watch { color: var(--watch); }
+.dim-legend-comment { margin-top: var(--s1); font-size: var(--t-sm); line-height: 1.7; color: var(--muted); }
+
+/* 维度不足 3 个时雷达围不出形状 —— 改画横条，不硬凑一个三角形 */
+.dim-bars { display: flex; flex-direction: column; gap: var(--s5); }
+.dim-bar-top { display: flex; align-items: baseline; gap: var(--s2); }
+.dim-bar-track { margin-top: var(--s2); height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.dim-bar-fill { height: 100%; }
+.dim-bar-fill.is-pass { background: var(--pass); }
+.dim-bar-fill.is-watch { background: var(--watch); }
+
+/* ---- 面试准备助手 ----
+   提纲是一份要读的东西，不是一块看板：整页内容收在 1000px 内，
+   免得面板横跨 1176px 而正文只占左半边。 */
+.prep-page { max-width: 1000px; }
+
+.prep-note {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-top: var(--s5);
+  padding: var(--s3) var(--s5);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.prep-stage {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line-soft);
+}
+.prep-stage:first-child { border-top: none; }
+.prep-time {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--brand);
+  white-space: nowrap;
+}
+.prep-phase { font-size: var(--t-base); font-weight: 600; }
+.prep-points { margin-top: var(--s2); display: flex; flex-direction: column; gap: var(--s1); }
+.prep-points li { position: relative; padding-left: var(--s4); font-size: 14px; line-height: 1.75; color: var(--ink-soft); }
+.prep-points li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 11px;
+  width: 6px;
+  height: 1px;
+  background: var(--faint);
+}
+
+.prep-focus { padding: var(--s4) var(--s5); border-top: 1px solid var(--line-soft); }
+.prep-focus:first-child { border-top: none; }
+.prep-focus-text { margin-top: var(--s2); font-size: 14px; line-height: 1.8; max-width: 46em; }
+.prep-focus-why { margin-top: var(--s2); font-size: var(--t-sm); line-height: 1.75; color: var(--muted); max-width: 46em; }
+
+.prep-question { padding: var(--s4) var(--s5); border-top: 1px solid var(--line-soft); }
+.prep-question:first-child { border-top: none; }
+.prep-question-head { display: grid; grid-template-columns: 26px 1fr; gap: var(--s3); }
+.prep-question-text { font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+.prep-question-body { margin-top: var(--s3); padding-left: 38px; }
+.prep-field + .prep-field { margin-top: var(--s3); }
+
+/* 编辑态：一段一块，可增可删 —— 与维度编辑器同一种手势 */
+.prep-edit-block {
+  margin-bottom: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+.prep-edit-head { display: flex; align-items: center; gap: var(--s2); }
+.prep-edit-head .input { flex: 1; min-width: 0; }
+.prep-edit-head .select { width: auto; flex: none; }
+.prep-edit-head .mins { flex: none; width: 92px; }
+/* 有内容之后 placeholder 就不显示了，字段靠这行小字认 —— 意图与追问长得太像 */
+.prep-edit-tag { flex: none; font-size: var(--t-xs); color: var(--muted); }
+.prep-edit-label { margin-bottom: var(--s1); font-size: var(--t-xs); color: var(--muted); }
+.prep-edit-add { margin-top: var(--s2); }
 
 /* ---- 未实现的模块占位（原型建设期用） ---- */
 .placeholder {
@@ -1098,6 +1386,44 @@ a:hover { text-decoration: underline; }
   margin-top: var(--s3);
   font-size: 14px;
   color: var(--muted);
+}
+
+/* ==========================================================================
+   打印 —— 「导出 PDF」走浏览器打印（PRD §4.12）。
+   后端不生成 PDF，所以这份样式要负责把屏幕上的东西整理成一份能直接交出去的
+   纸件：拿掉导航、状态轨与操作栏，保住分数色带与雷达图的颜色（它们是内容，
+   不是装饰），并避免一条评分被切在两页之间。
+   ========================================================================== */
+@media print {
+  @page { margin: 16mm; }
+
+  body { min-width: 0; background: #fff; }
+  .spine,
+  .topbar,
+  .rail,
+  .page-head-actions,
+  .stream-note,
+  .toast-stack,
+  .modal-overlay,
+  .no-print { display: none !important; }
+
+  .shell { display: block; }
+  .main { padding: 0; max-width: none; }
+
+  /* 浏览器默认会丢掉背景与浅色填充，那样雷达与分数色带就全白了 */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .panel { border-color: #cbd5e0; }
+  .report-head,
+  .report-finds { break-inside: avoid; }
+  .score-item,
+  .dim-legend-row,
+  .find-item,
+  .prep-stage,
+  .prep-focus,
+  .prep-question { break-inside: avoid; }
+
+  h1, h2, h3, .panel-title { break-after: avoid; }
 }
 </style>
 </head>
@@ -1295,6 +1621,115 @@ __modules['./api.js'] = function (exports, __require) {
   exports.put = (path, body) => request('PUT', path, body);
   exports.patch = (path, body) => request('PATCH', path, body);
   exports.del = (path) => request('DELETE', path);
+
+  /** 把一段 SSE 报文（event: / data: 若干行）解成一个事件对象。 */
+  function parseEventBlock(block) {
+    let name = 'message';
+    const data = [];
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) name = line.slice(6).trim();
+      else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
+    }
+    if (!data.length) return null;
+    try { return { event: name, data: JSON.parse(data.join('\n')) }; }
+    catch { return null; } // 半截报文或非 JSON：跳过这一条，不打断整条流
+  }
+
+  /**
+   * 读 SSE。**不用 EventSource**：它不能带 Authorization 头，而这个端点需要
+   * JWT。fetch + ReadableStream 是同一件事的手工版，且能被 mock 拦截。
+   * 调用方给 signal（页面 destroy 时 abort），onEvent 收到 {event, data}。
+   */
+  async function stream(path, { onEvent, signal } = {}) {
+    const token = session.getToken();
+    let response;
+    try {
+      response = await fetch(BASE + path, {
+        method: 'GET',
+        headers: {
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        signal,
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      throw new ApiError({ code: 'NETWORK_ERROR', message: NETWORK_MESSAGE });
+    }
+
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch { payload = null; }
+      const shaped = payload && typeof payload.code === 'string' && 'message' in payload;
+      throw new ApiError(shaped
+        ? { ...payload, status: response.status }
+        : { code: 'UNKNOWN', message: `请求失败（${response.status}）`, status: response.status });
+    }
+    if (!response.body) throw new ApiError({ code: 'STREAM_UNAVAILABLE', message: '当前浏览器不支持流式响应' });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+      let mark;
+      while ((mark = buffer.indexOf('\n\n')) >= 0) {
+        const parsed = parseEventBlock(buffer.slice(0, mark));
+        buffer = buffer.slice(mark + 2);
+        if (parsed) onEvent(parsed);
+      }
+    }
+  }
+
+  /**
+   * 下载后端生成的文件流（报告 DOCX）。
+   * 不能直接用 <a href> —— 那个带不上 JWT，会拿回一个 401。
+   */
+  async function download(path, fallbackName) {
+    const token = session.getToken();
+    let response;
+    try {
+      response = await fetch(BASE + path, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      throw new ApiError({ code: 'NETWORK_ERROR', message: NETWORK_MESSAGE });
+    }
+
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch { payload = null; }
+      const shaped = payload && typeof payload.code === 'string' && 'message' in payload;
+      throw new ApiError(shaped
+        ? { ...payload, status: response.status }
+        : { code: 'UNKNOWN', message: `导出失败（${response.status}）`, status: response.status });
+    }
+
+    const disposition = response.headers.get('Content-Disposition') || '';
+    // 中文文件名走 RFC 5987 的 filename*=UTF-8''…；解析不到时退回一个本地拼的名字
+    const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+    const plain = /filename="?([^";]+)"?/i.exec(disposition);
+    let filename = fallbackName;
+    if (utf8) { try { filename = decodeURIComponent(utf8[1]); } catch { /* 用兜底名 */ } }
+    else if (plain) filename = plain[1];
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    // 立刻 revoke 会让部分浏览器来不及取数据，等一拍再释放
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return filename;
+  }
+
+  exports.stream = stream;
+  exports.download = download;
 };
 
 /* ==========================================================================
@@ -2572,11 +3007,502 @@ __modules['./mock.js'] = function (exports, __require) {
     return ok({ added_count: added.length, added, total_questions: interview.questions.length });
   });
 
+  /* ---- 评估与报告 ----
+     Mock 的评分是完全确定性的：同一场面试每次评估得到同一份报告，无 Key 也能
+     演示与复现。规则是「答得有内容、有一定篇幅 → 分更高」，再按 id 加一个稳定的
+     小抖动，让同一场里的分数不至于齐平。真实 Provider 走大模型，接口形状相同。 */
+
+  const reports = new Map();          // interview_id → 报告
+  const candidateFeedback = new Map(); // interview_id → 候选人脱敏视图（F9 才读）
+  const evaluations = new Map();      // interview_id → 评估任务（含已产生的 SSE 事件）
+
+  const QUESTION_COMMENTS = {
+    strong: [
+      '回答给出了具体场景与处理过程，能说清判断依据，属于有实操经验的表述。',
+      '先讲结论再讲过程，边界情况也考虑到了，看得出是真正做过这件事的人。',
+      '提到了取舍的原因 —— 不只说做了什么，还说了为什么这么做。',
+    ],
+    ok: [
+      '方向是对的，但停在「我会怎么做」的层面，缺少一个自己经历过的实例。',
+      '要点基本说到了，但用的是通用表述，没体现出与本岗位场景的关联。',
+      '回答完整，追问细节时还有多少可讲的，需要下一轮确认。',
+    ],
+    weak: [
+      '多为结论式表述，没有给出判断依据，继续追问也未能落到具体做法上。',
+      '回答与题目关联不大，更像是临时组织的语言，缺少准备痕迹。',
+      '提到了相关概念，但没说明自己实际处理过什么、结果如何。',
+    ],
+    poor: [
+      '几乎未提供有效信息，无法据此判断该项能力。',
+      '仅有一两句笼统的表述，与题目要求相去甚远。',
+    ],
+  };
+
+  function hashString(text) {
+    let hash = 0;
+    for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) | 0;
+    return Math.abs(hash);
+  }
+  const round1 = (value) => Math.round(value * 10) / 10;
+  const pickBy = (list, seed) => list[hashString(seed) % list.length];
+
+  function scoreBand(score) {
+    if (score >= 8) return 'strong';
+    if (score >= 6.5) return 'ok';
+    if (score >= 4) return 'weak';
+    return 'poor';
+  }
+
+  function scoreQuestion(question, interview) {
+    const text = String(question.answer ?? '').trim();
+    if (!text) return 0; // 未作答一律 0 分（PRD §4.5 的 0–10 分制）
+    const depth = Math.min(3.4, text.length / 40);
+    const jitter = (hashString(`${question.interview_question_id}:${interview.candidate_name}`) % 11) / 10 - 0.5;
+    return round1(Math.max(2, Math.min(9.5, 5.2 + depth + jitter)));
+  }
+
+  /* 优点 / 待改进是「发现」，不是把图例里的评语再抄一遍 ——
+     这是这份报告里唯一一处替 HR 下判断的地方，措辞要能直接写进评审结论。 */
+  function strongFinding(dim, score) {
+    return score >= 8
+      ? `在${dim}上给出了完整的判断依据与处理过程，属于有实操经验的水平。`
+      : `${dim}的回答方向正确，且能结合自身经历展开。`;
+  }
+  function weakFinding(dim, score) {
+    return score < 4
+      ? `${dim}的回答没有提供有效信息，建议下一轮直接把问题落到具体项目上。`
+      : `${dim}停留在通用表述，缺少可核实的细节。`;
+  }
+
+  function buildEvaluation(interview) {
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    const dimensions = position ? position.evaluation_dimensions : [];
+    const questions = interview.questions || [];
+
+    const questionScores = questions.map((q) => {
+      const score = scoreQuestion(q, interview);
+      return {
+        interview_question_id: q.interview_question_id,
+        score,
+        comment: score === 0
+          ? '本题未作答，按 0 分计。'
+          : pickBy(QUESTION_COMMENTS[scoreBand(score)], String(q.interview_question_id)),
+      };
+    });
+
+    const dimensionScores = dimensions.map((dim) => {
+      const scores = questions.filter((q) => q.dimension === dim).map((q) => scoreQuestion(q, interview));
+      const score = scores.length ? round1(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const band = scoreBand(score);
+      const comment = {
+        strong: `${dim}上表现稳定，多个问题都能落到具体做法与结果上。`,
+        ok: `${dim}基本达到要求，个别问题停留在概念层面，缺少实例支撑。`,
+        weak: `${dim}是本场较弱的环节，回答多为泛泛而谈，追问后仍无细节。`,
+        poor: `${dim}方面几乎没有可用信息。`,
+      }[band];
+      return { dimension: dim, score, comment };
+    });
+
+    const overall = dimensionScores.length
+      ? round1(dimensionScores.reduce((sum, d) => sum + d.score, 0) / dimensionScores.length)
+      : 0;
+    const best = dimensionScores.filter((d) => d.score >= 6.5).sort((a, b) => b.score - a.score).slice(0, 2);
+    const worst = dimensionScores.filter((d) => d.score < 6.5).sort((a, b) => a.score - b.score).slice(0, 2);
+
+    const verdict = overall >= 8 ? '与岗位要求高度匹配，建议进入下一轮。'
+      : overall >= 6.5 ? '基本符合岗位要求，建议结合团队需要重点确认列出的薄弱项。'
+      : overall >= 4.5 ? '与岗位要求存在明显差距，建议谨慎推进。'
+      : '本轮表现与岗位要求差距较大，不建议继续推进。';
+    const lead = best.length
+      ? `${interview.candidate_name}在${best.map((d) => d.dimension).join('、')}上表现扎实`
+      : `${interview.candidate_name}本轮未体现出明显优势`;
+    const tail = worst.length
+      ? `${worst.map((d) => d.dimension).join('、')}是需要进一步确认的部分。`
+      : '各维度表现较为均衡。';
+
+    return {
+      interview_id: interview.id,
+      overall_score: overall,
+      conclusion: `${lead}，${tail}${verdict}`,
+      strengths: best.map((d) => strongFinding(d.dimension, d.score)),
+      weaknesses: worst.map((d) => weakFinding(d.dimension, d.score)),
+      question_scores: questionScores,
+      dimension_scores: dimensionScores,
+    };
+  }
+
+  /** 候选人脱敏视图：只含结论、优点、待改进，不含任何分数（PRD §4.9）。 */
+  function feedbackFrom(report) {
+    return {
+      interview_id: report.interview_id,
+      conclusion: report.conclusion,
+      strengths: report.strengths,
+      weaknesses: report.weaknesses,
+      generated_at: new Date().toISOString(),
+    };
+  }
+
+  function pushEvent(job, event, data) { job.events.push({ event, data }); }
+
+  /**
+   * 启动一次评估。任务在「后台」跑（不阻塞请求），产出的事件进缓冲 ——
+   * 前端中途断开再连，靠这份缓冲续上，而不是从头再演一遍（PRD §7）。
+   */
+  function startEvaluation(interview) {
+    const report = buildEvaluation(interview);
+    const job = { interview_id: interview.id, events: [], done: false, report };
+    evaluations.set(interview.id, job);
+    interview.status = 'evaluating';
+
+    (async () => {
+      await sleep(240);
+
+      // 真实 Provider 会重试 1 次再判失败（PRD §7）；Mock 直接判失败。
+      // 失败时状态回退 completed，既有作答与题目一律不动，HR 可重新触发。
+      if (aiFails()) {
+        interview.status = 'completed';
+        pushEvent(job, 'error', {
+          code: 'AI_PROVIDER_ERROR',
+          message: 'AI 服务调用失败，本次评估未完成，可重新触发',
+        });
+        job.done = true;
+        return;
+      }
+
+      pushEvent(job, 'stage', { stage: 'question_scores', total: report.question_scores.length });
+      for (const item of report.question_scores) {
+        await sleep(240 + Math.random() * 260);
+        pushEvent(job, 'question_score', item);
+      }
+
+      pushEvent(job, 'stage', { stage: 'dimension_scores' });
+      for (const item of report.dimension_scores) {
+        await sleep(400 + Math.random() * 200);
+        pushEvent(job, 'dimension_score', item);
+      }
+
+      pushEvent(job, 'stage', { stage: 'report' });
+      await sleep(620);
+      pushEvent(job, 'report', {
+        overall_score: report.overall_score,
+        conclusion: report.conclusion,
+        strengths: report.strengths,
+        weaknesses: report.weaknesses,
+      });
+
+      reports.set(interview.id, report);
+      candidateFeedback.set(interview.id, feedbackFrom(report)); // 候选人端 F9 才读
+      interview.status = 'evaluated';
+      await sleep(200);
+      pushEvent(job, 'done', { status: 'evaluated' });
+      job.done = true;
+    })();
+
+    return job;
+  }
+
+  /** 把任务的事件缓冲变成一条 SSE 流：先补发已有的，再等新的。 */
+  function eventStream(job, signal) {
+    const encoder = new TextEncoder();
+    let stopped = false;
+    // 这条 fetch 是拦截出来的，原生 AbortController 挂不到它上面，
+    // 得自己接住 abort —— 否则页面走了事件还在往一个没人读的流里灌
+    if (signal) signal.addEventListener('abort', () => { stopped = true; }, { once: true });
+
+    return new ReadableStream({
+      async start(controller) {
+        let cursor = 0;
+        try {
+          for (;;) {
+            while (cursor < job.events.length) {
+              const item = job.events[cursor];
+              cursor += 1;
+              controller.enqueue(encoder.encode(`event: ${item.event}\ndata: ${JSON.stringify(item.data)}\n\n`));
+            }
+            if (job.done || stopped) break;
+            await sleep(120);
+          }
+          controller.close();
+        } catch {
+          // 客户端已断开：任务照跑、缓冲还在，只是没人可推
+        }
+      },
+    });
+  }
+
+  on('POST', '/interviews/:id/evaluate', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const bad = assertTransition(located.row.status, 'evaluating');
+    if (bad) return bad;
+
+    startEvaluation(located.row);
+    // 地址不带 /api 前缀，前端可直接交给 api.stream()
+    return ok({ stream_url: `/interviews/${located.row.id}/evaluation/stream` });
+  });
+
+  on('GET', '/interviews/:id/evaluation/stream', ({ user, params, signal }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    if (located.row.status !== 'evaluating') {
+      return fail(409, 'BUSINESS_ERROR', '该面试当前不在评估中');
+    }
+    // 停在「评估中」但没有任务：说明这个进程里任务丢了（原型重开后就是这种情况），
+    // 就地补一次，而不是让页面卡在一个没有来源的进度上
+    const job = evaluations.get(located.row.id) || startEvaluation(located.row);
+    return { status: 200, stream: eventStream(job, signal) };
+  });
+
+  on('GET', '/interviews/:id/report', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const report = reports.get(located.row.id);
+    if (!report) return fail(404, 'NOT_FOUND', '该面试尚未生成评估报告');
+    return ok(report);
+  });
+
+  /* ---- 面试前准备助手 ---- */
+
+  const preps = new Map(); // interview_id → 提纲
+  let prepVariant = 0;
+
+  /* 预案最多取 6 题，因此这两组各备 6 条 —— 少一条就会有两题拿到同一段话，
+     一眼看出是套模板。 */
+  const PREP_FOLLOWUPS = [
+    ['如果条件反过来（流量再涨十倍、时间只给一半），你会怎么调整？', '这件事最坏会到什么程度，你当时怎么兜底？'],
+    ['当时有没有别的方案？你为什么没选那个？', '如果重来一次，你会改哪一步？'],
+    ['你怎么验证自己的判断是对的？', '这个结论有没有反例？'],
+    ['这部分是你独立负责的，还是团队一起做的？你具体做了哪一块？', '当时有谁提过不同意见，最后怎么定的？'],
+    ['这件事是你推动的，还是被安排做的？', '过程中最难的一步是什么，你当时怎么过的？'],
+    ['如果让你现在重做一遍，第一步会不一样吗？', '这套做法在你们团队是通例，还是只有你这么做？'],
+  ];
+
+  /* 措辞按序号轮换。四段一模一样的句子会让「AI 生成的提纲」当场露馅 ——
+     真实 Provider 会写得比这更活，Mock 至少不能句句同构。 */
+  const PREP_FOCUS = [
+    '把本场题目追问到具体做法与结果，而不是停在概念上。',
+    '从他的叙述里找证据：做了什么、为什么这么做、结果如何。',
+    '分清是「真的做过」还是「听过同事做」—— 追问到他自己负责的那部分。',
+    '看深度不看广度：允许只讲一件事，但要能讲到底。',
+    '留意前后说法是否一致，尤其是数字与时间线。',
+  ];
+
+  const PREP_REASON = {
+    withResume: [
+      '简历里有可交叉核实的经历，需确认表述与事实一致。',
+      '简历提到了对应项目，可让他把细节讲透。',
+      '注意核实简历里的数字与结果是怎么来的。',
+      '简历中这段经历的时间与职责需要进一步确认。',
+    ],
+    noResume: [
+      '本场未关联简历，需靠追问建立事实基础。',
+      '没有简历可对照，先让他自述一遍经历。',
+      '未关联简历，重点看自述内容前后是否自洽。',
+      '本场没有简历，追问时留意说法前后是否一致。',
+    ],
+  };
+
+  const PREP_INTENT = [
+    '看他能不能讲清自己实际做了什么、依据是什么，而不是给出一个通用答案。',
+    '重点在过程：遇到过什么阻力、怎么解决的、事后有没有复盘。',
+    '留意有没有具体的数字或结果支撑，还是只有定性描述。',
+    '观察他讲的是「我们做了什么」还是「我做了什么」。',
+    '分辨他讲的是「标准做法」还是「他当时的做法」—— 后者才有信息量。',
+    '答得快就追问一层原理；答得含糊，就把场景缩到他真正做过的那一段。',
+  ];
+
+  /** 每个维度一个阶段，阶段的切入点轮换着写，别让四段话长得一模一样。 */
+  const PREP_DIM_POINT = [
+    '从本场题目切入，追问到具体做法与结果',
+    '让他举一个自己主导的例子，再往下追问两层',
+    '先问做法，再问为什么这么做，最后问结果',
+    '用一道情景题验证，看他的思路有没有落在实际约束上',
+  ];
+
+  function buildPrep(interview, position, resume) {
+    const dims = position ? position.evaluation_dimensions : [];
+    const questions = interview.questions || [];
+    // Mock 每生成一次换一批措辞，好让「重新生成」在演示里看得出确实覆盖了；
+    // 真实 Provider 是确定性的，同一输入产出同一份提纲。
+    prepVariant += 1;
+    const variant = prepVariant;
+
+    const opening = variant % 2 === 0
+      ? ['确认求职意向与期望到岗时间', '说明本场流程、时长与后续安排']
+      : ['请候选人用三分钟讲清最近一段工作的主要职责', '确认求职意向与期望到岗时间'];
+
+    const outline = [
+      { phase: '开场与自我介绍', minutes: 5, points: opening },
+      {
+        phase: resume ? '经历核实' : '经历了解',
+        minutes: resume ? 15 : 8,
+        points: resume
+          ? ['围绕简历中的核心项目追问职责边界', '核实简历里提到的数字与结果是怎么来的']
+          : ['没有简历可对照，请候选人按时间线自述经历', '记录需要后续交叉核对的说法'],
+      },
+      ...dims.map((dim, index) => ({
+        phase: `重点验证：${dim}`,
+        minutes: 8,
+        points: [
+          PREP_DIM_POINT[(index + variant) % PREP_DIM_POINT.length],
+          `记录${dim}上的判断依据，作为多维评分的输入`,
+        ],
+      })),
+      { phase: '候选人提问与收尾', minutes: 5, points: ['回答候选人关于团队与岗位的问题', '说明后续流程与大致时间'] },
+    ];
+
+    const focusPoints = dims.map((dim, index) => {
+      const reasons = resume ? PREP_REASON.withResume : PREP_REASON.noResume;
+      return {
+        dimension: dim,
+        focus: PREP_FOCUS[(index + variant) % PREP_FOCUS.length],
+        reason: `岗位「${position.name}」把${dim}列为评估维度；${reasons[(index + variant) % reasons.length]}`,
+      };
+    });
+
+    const source = questions.length
+      ? questions.slice(0, 6).map((q) => ({ question: q.content, dimension: q.dimension }))
+      : dims.map((dim) => ({ question: `请结合一段具体经历，说明你在${dim}方面是怎么做的。`, dimension: dim }));
+
+    const questionPlan = source.map((item, index) => ({
+      question: item.question,
+      intent: PREP_INTENT[(index + variant) % PREP_INTENT.length],
+      followups: PREP_FOLLOWUPS[(index + variant) % PREP_FOLLOWUPS.length],
+    }));
+
+    return {
+      interview_id: interview.id,
+      outline,
+      focus_points: focusPoints,
+      question_plan: questionPlan,
+      generated_at: new Date().toISOString(),
+      edited_at: null,
+    };
+  }
+
+  /** 准备助手是面试的前置工作稿，与状态机正交：只有「完成」之后才冻结（PRD §4.11）。 */
+  const PREP_OPEN_STATUSES = ['draft', 'ongoing'];
+  const PREP_FROZEN = '面试已完成，准备提纲随之定稿；如需修改，请先回退到进行中';
+
+  function validatePrep(body) {
+    const fields = [];
+    const outline = body?.outline;
+    const focus = body?.focus_points;
+    const plan = body?.question_plan;
+
+    if (!Array.isArray(outline) || !outline.length) {
+      fields.push({ field: 'outline', message: '面试提纲至少要保留一个阶段' });
+    } else if (outline.some((s) => !String(s?.phase ?? '').trim())) {
+      fields.push({ field: 'outline', message: '阶段名称不能为空' });
+    } else if (outline.some((s) => !(Number(s?.minutes) > 0))) {
+      fields.push({ field: 'outline', message: '每个阶段都要填分钟数，且需大于 0' });
+    }
+
+    if (!Array.isArray(focus)) fields.push({ field: 'focus_points', message: '考察重点格式不正确' });
+    else if (focus.some((f) => !String(f?.dimension ?? '').trim())) {
+      fields.push({ field: 'focus_points', message: '考察重点的维度不能为空' });
+    }
+
+    if (!Array.isArray(plan)) fields.push({ field: 'question_plan', message: '问题预案格式不正确' });
+    else if (plan.some((p) => !String(p?.question ?? '').trim())) {
+      fields.push({ field: 'question_plan', message: '预案里的问题不能为空' });
+    }
+
+    return fields;
+  }
+
+  on('GET', '/interviews/:id/prep', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    const prep = preps.get(located.row.id);
+    if (!prep) return fail(404, 'NOT_FOUND', '该面试尚未生成准备提纲');
+    return ok(prep);
+  });
+
+  on('POST', '/interviews/:id/prep', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    if (!PREP_OPEN_STATUSES.includes(located.row.status)) return fail(409, 'BUSINESS_ERROR', PREP_FROZEN);
+
+    const position = state.positions.find((p) => p.id === located.row.position_id);
+    const resume = located.row.resume_id != null ? locateResume(located.row.resume_id) : null;
+    const prep = buildPrep(located.row, position, resume);
+    preps.set(located.row.id, prep); // 重新生成即整体覆盖（PRD §4.11）
+    return ok(prep);
+  });
+
+  on('PUT', '/interviews/:id/prep', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateInterview(user, params.id);
+    if (located.error) return located.error;
+
+    if (!PREP_OPEN_STATUSES.includes(located.row.status)) return fail(409, 'BUSINESS_ERROR', PREP_FROZEN);
+
+    const prep = preps.get(located.row.id);
+    if (!prep) return fail(404, 'NOT_FOUND', '该面试尚未生成准备提纲');
+
+    const fields = validatePrep(body);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    // 三个字段整体替换，不做字段级合并
+    prep.outline = body.outline.map((s) => ({ phase: s.phase.trim(), minutes: Number(s.minutes), points: s.points || [] }));
+    prep.focus_points = body.focus_points.map((f) => ({
+      dimension: f.dimension.trim(), focus: String(f.focus ?? ''), reason: String(f.reason ?? ''),
+    }));
+    prep.question_plan = body.question_plan.map((p) => ({
+      question: p.question.trim(), intent: String(p.intent ?? ''), followups: p.followups || [],
+    }));
+    prep.edited_at = new Date().toISOString();
+    return ok(prep);
+  });
+
+  /* 种子数据要自洽：已评估的面试得有一份对应的报告，其中一场还要有一份现成的
+     准备提纲 —— 页面进来就能看到「定稿后只读」这条分支，而不只是个空态。 */
+  function seedEvaluations() {
+    for (const interview of state.interviews) {
+      if (interview.status !== 'evaluated') continue;
+      const report = buildEvaluation(interview);
+      reports.set(interview.id, report);
+      candidateFeedback.set(interview.id, feedbackFrom(report));
+    }
+  }
+  seedEvaluations();
+
+  (function seedPrep() {
+    const interview = state.interviews.find((i) => i.id === 1);
+    if (!interview) return;
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    preps.set(interview.id, buildPrep(interview, position, null));
+  })();
+
   /* ---- fetch 拦截 ---- */
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function toResponse(result) {
     if (result.status === 204) return new Response(null, { status: 204 });
+    // SSE：body 直接是一条 ReadableStream，不套 JSON
+    if (result.stream) {
+      return new Response(result.stream, {
+        status: result.status,
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' },
+      });
+    }
     return new Response(JSON.stringify(result.body), {
       status: result.status,
       headers: { 'Content-Type': 'application/json' },
@@ -2611,7 +3537,10 @@ __modules['./mock.js'] = function (exports, __require) {
     const userId = sessions.get(token);
     const user = state.users.find((u) => u.id === userId && u.is_active) || null;
 
-    return toResponse(matched.handler({ body, params: matched.params, query, user, token }));
+    // signal 透传给处理函数：SSE 端点要接住客户端的断开（见 eventStream）
+    return toResponse(matched.handler({
+      body, params: matched.params, query, user, token, signal: options.signal,
+    }));
   }
 
   exports.install = function () {
@@ -2648,8 +3577,8 @@ __modules['./router.js'] = function (exports, __require) {
     { path: '/login',                     key: 'login',           side: 'hr', isPublic: true,  label: '登录' },
     { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试' },
     { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情' },
-    { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告', pending: true },
-    { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备', pending: true },
+    { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告' },
+    { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备' },
     { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
     { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库' },
     { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', label: '用户管理', adminOnly: true },
@@ -3083,6 +4012,15 @@ __modules['./components/shell.js'] = function (exports, __require) {
     return el('span', { class: 'tag tag--dim', text: dimension });
   }
 
+  /** 面板标题行：标题 + 可选注解 + 可选操作按钮。 */
+  function panelHead(title, note, actions) {
+    return el('div', { class: 'panel-head' },
+      el('div', {},
+        el('span', { class: 'panel-title', text: title }),
+        note ? el('div', { class: 'panel-note', text: note }) : null),
+      actions && actions.length ? el('div', { class: 'panel-head-actions' }, actions) : null);
+  }
+
   /** 分数着色：阈值 6.5 与后端对 strengths 的定义一致。 */
   function scoreClass(score) { return score >= 6.5 ? 'is-pass' : 'is-watch'; }
 
@@ -3125,6 +4063,7 @@ __modules['./components/shell.js'] = function (exports, __require) {
   exports.statusTag = statusTag;
   exports.sourceTag = sourceTag;
   exports.dimTag = dimTag;
+  exports.panelHead = panelHead;
   exports.scoreClass = scoreClass;
   exports.formatDate = formatDate;
   exports.formatDateTime = formatDateTime;
@@ -4768,7 +5707,7 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
   const { confirmModal } = __require('./components/modal.js');
   const {
     contextTitle, createShell, emptyState, formatDate, formatDateTime, loadingBlock,
-    navigate, sourceTag, dimTag, statusRail,
+    navigate, panelHead, sourceTag, dimTag, statusRail,
   } = __require('./components/shell.js');
 
   const SAVE_LABELS = { idle: '未修改', saving: '保存中…', saved: '已保存', failed: '保存失败' };
@@ -4836,7 +5775,8 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
           }),
           el('button', {
             class: 'btn btn--primary',
-            text: '开始评估',
+            // 这里只负责带路：真正触发评估的是评估页上的「开始评估」，按钮名字要和结果一致
+            text: '去评估',
             onClick: () => navigate(`/interviews/${interviewId}/evaluation`),
           }),
         );
@@ -5032,14 +5972,6 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
     }
 
     /* ---------------------- 参考区：候选人简历 ---------------------- */
-
-    function panelHead(title, note, actions) {
-      return el('div', { class: 'panel-head' },
-        el('div', {},
-          el('span', { class: 'panel-title', text: title }),
-          note ? el('div', { class: 'panel-note', text: note }) : null),
-        actions && actions.length ? el('div', { class: 'invite-actions' }, actions) : null);
-    }
 
     async function runMatch(button) {
       // 补题会**累加**新题（「幂等」只指不产生重复题目），连点会追加多批 —— 必须防连点
@@ -5277,6 +6209,13 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
         ),
         el('div', { class: 'page-head-actions' },
           el('button', { class: 'btn btn--ghost', text: '返回列表', onClick: () => navigate('/interviews') }),
+          // 准备提纲与面试状态机正交（PRD §5.1），因此不进下面那组状态动作
+          el('button', {
+            class: 'btn btn--ghost',
+            text: '面试准备',
+            title: '面试前的工作稿：提纲、考察重点与问题预案。不影响面试进度。',
+            onClick: () => navigate(`/interviews/${interviewId}/prep`),
+          }),
           buildActions()),
       ),
 
@@ -5290,6 +6229,973 @@ __modules['./pages/interview-detail.js'] = function (exports, __require) {
     repaint();
     loadResume();
     loadInvitations();
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/evaluation.js —— 评估报告
+   两处判断：
+
+   1. **不切成「进度页 → 结果页」两套版式。** 流式产出时用的就是最终那份版式，
+      分数一条条落进去 —— 看到的是报告在成形，而不是一个进度条在转。
+      因此状态行只有一条（当前阶段 + 已评几题），不再画三段步骤条：
+      逐题分数自己就是进度，再画一遍是把同一件事说两次。
+   2. **维度分不做第二张表。** 雷达图的图例每行直接带该维度的评语 ——
+      图给形状、图例给数值与理由，两者是同一件事的两面。
+      PRD §4.12 里 DOCX 的「多维评分表」是那份文件的要求，屏幕上不必照抄。
+   ========================================================================== */
+__modules['./pages/evaluation.js'] = function (exports, __require) {
+  const { el, mount, clear } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal } = __require('./components/modal.js');
+  const {
+    contextTitle, createShell, emptyState, dimTag, formatDateTime, loadingBlock,
+    navigate, panelHead, scoreClass, statusRail,
+  } = __require('./components/shell.js');
+
+  const DEFAULT_TITLE = '面试助手 · HR 工作台';
+
+  /* 画布尺寸按「4 个汉字 + 两侧留白」定：常用的 3–6 维都不会把标签挤出画布 */
+  const RADAR = { width: 320, height: 290, cx: 160, cy: 142, r: 86, labelR: 108 };
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  const STAGES = [
+    { label: '逐题评分', text: '每一题给一个 0–10 的分数，并写清这个分数是看了什么得出的。' },
+    { label: '多维评分', text: '按岗位的评估维度分别打分，画成雷达图，看出强项与短板在哪一侧。' },
+    { label: '汇总报告', text: '给出总分、综合结论、优点与待改进 —— 可以直接写进评审结论。' },
+  ];
+
+  /** SVG 必须用 createElementNS 建，`el` 建出来的是 HTMLUnknownElement。 */
+  function svgEl(tag, attrs, children) {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs || {})) {
+      if (value === null || value === undefined) continue;
+      node.setAttribute(key, String(value));
+    }
+    for (const child of (children || []).flat(Infinity)) {
+      if (child === null || child === undefined || child === false) continue;
+      node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return node;
+  }
+
+  const axisAngle = (index, total) => (-Math.PI / 2) + (index * 2 * Math.PI) / total;
+  const polar = (cx, cy, radius, angle) => [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+
+  /**
+   * 雷达图。分数可能只到了一部分：已到的画点，**全部到齐才封上多边形** ——
+   * 少一个顶点就不是同一个形状，提前封口等于编一个不存在的读数。
+   * 维度不足 3 个时围不出面积，改画横条（见 buildDimensionPanel）。
+   */
+  function radarSvg(dims, scores) {
+    const { width, height, cx, cy, r, labelR } = RADAR;
+    const total = dims.length;
+    const nodes = [];
+
+    for (const ratio of [0.25, 0.5, 0.75, 1]) {
+      nodes.push(svgEl('polygon', {
+        class: 'radar-grid',
+        points: dims.map((_, i) => polar(cx, cy, r * ratio, axisAngle(i, total)).map((n) => n.toFixed(1)).join(',')).join(' '),
+      }));
+    }
+    dims.forEach((_, i) => {
+      const [x, y] = polar(cx, cy, r, axisAngle(i, total));
+      nodes.push(svgEl('line', { class: 'radar-spoke', x1: cx, y1: cy, x2: x.toFixed(1), y2: y.toFixed(1) }));
+    });
+
+    // 维度名绕圈排：左半边的靠右收，免得压出画布
+    dims.forEach((dim, i) => {
+      const angle = axisAngle(i, total);
+      const [x, y] = polar(cx, cy, labelR, angle);
+      const cos = Math.cos(angle);
+      nodes.push(svgEl('text', {
+        class: 'radar-label',
+        x: x.toFixed(1),
+        y: (y + 4).toFixed(1),
+        'text-anchor': Math.abs(cos) < 0.2 ? 'middle' : (cos > 0 ? 'start' : 'end'),
+      }, [dim]));
+    });
+
+    const complete = dims.every((dim) => typeof scores[dim] === 'number');
+    if (complete) {
+      const mean = dims.reduce((sum, dim) => sum + scores[dim], 0) / total;
+      nodes.push(svgEl('polygon', {
+        class: `radar-area ${scoreClass(mean)}`,
+        points: dims.map((dim, i) => polar(cx, cy, r * (scores[dim] / 10), axisAngle(i, total)).map((n) => n.toFixed(1)).join(',')).join(' '),
+      }));
+    }
+    dims.forEach((dim, i) => {
+      const score = scores[dim];
+      if (typeof score !== 'number') return;
+      const [x, y] = polar(cx, cy, r * (score / 10), axisAngle(i, total));
+      nodes.push(svgEl('circle', {
+        class: `radar-dot ${scoreClass(score)}`,
+        cx: x.toFixed(1), cy: y.toFixed(1), r: 3.5,
+      }));
+    });
+
+    return svgEl('svg', {
+      class: 'radar',
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': dims.map((dim) => `${dim} ${typeof scores[dim] === 'number' ? scores[dim].toFixed(1) : '待评分'} 分`).join('；'),
+    }, nodes);
+  }
+
+  function scoreSpan(className, value) {
+    const known = typeof value === 'number';
+    return el('span', {
+      class: `${className}${known ? ` ${scoreClass(value)}` : ''}`,
+      text: known ? value.toFixed(1) : '—',
+    });
+  }
+
+  /** 右栏：3 维及以上画雷达；1–2 维围不成面积，改画横条 —— 别硬凑一个三角形。 */
+  function buildChartCell(dims, scores, notes) {
+    if (!dims.length) {
+      return el('div', { class: 'report-head-side' },
+        el('p', { class: 'hint', text: '该岗位没有定义评估维度。' }));
+    }
+
+    if (dims.length < 3) {
+      return el('div', { class: 'report-head-side' },
+        el('div', { class: 'dim-bars' }, dims.map((dim) => {
+          const value = scores[dim];
+          return el('div', {},
+            el('div', { class: 'dim-bar-top' },
+              el('span', { class: 'dim-legend-name', text: dim }),
+              scoreSpan('dim-legend-score', value)),
+            el('div', { class: 'dim-bar-track' },
+              el('div', {
+                class: `dim-bar-fill${typeof value === 'number' ? ` ${scoreClass(value)}` : ''}`,
+                style: `width:${typeof value === 'number' ? (value / 10) * 100 : 0}%`,
+              })),
+            notes[dim] ? el('div', { class: 'dim-legend-comment', text: notes[dim] }) : null);
+        })));
+    }
+
+    return el('div', { class: 'report-head-side' }, radarSvg(dims, scores));
+  }
+
+  /**
+   * 维度图例横跨面板底部：每个维度给「名称 + 分数 + 一句为什么」。
+   * 维度不足 3 个时横条自己已经带了评语，这里就不再重复一遍。
+   */
+  function buildLegendRow(dims, scores, notes) {
+    if (dims.length < 3) return null;
+    return el('div', { class: 'dim-legend' }, dims.map((dim) => el('div', { class: 'dim-legend-row' },
+      el('div', { class: 'dim-legend-top' },
+        el('span', { class: 'dim-legend-name', text: dim }),
+        scoreSpan('dim-legend-score', scores[dim])),
+      notes[dim] ? el('div', { class: 'dim-legend-comment', text: notes[dim] }) : null)));
+  }
+
+  function findSection(title, items, band, emptyText) {
+    return el('section', {},
+      el('h3', { class: 'panel-title', text: title }),
+      items.length
+        ? el('div', { class: 'find-list', style: 'margin-top:var(--s3)' },
+            items.map((text) => el('p', { class: `find-item ${band}`, text })))
+        : el('p', { class: 'hint', style: 'margin-top:var(--s3)', text: emptyText }));
+  }
+
+  /** 优点与待改进：这两条是直接能抄进评审结论的话，因此紧跟在综合结论下面。 */
+  function findingsBlock(report) {
+    return el('div', { class: 'report-finds' },
+      findSection('优点', report.strengths, 'is-pass', '本次评估没有提炼出明显优势。'),
+      findSection('待改进', report.weaknesses, 'is-watch', '本次评估没有发现突出的短板。'));
+  }
+
+  /* ------------------------------ 页面 ------------------------------ */
+
+  let activeAbort = null; // 离开页面时要停掉正在读的 SSE
+
+  exports.destroy = function () {
+    if (activeAbort) { activeAbort(); activeAbort = null; }
+    document.title = DEFAULT_TITLE;
+  };
+
+  async function render(container, params) {
+    const interviewId = params.id;
+    const { root, main } = createShell(contextTitle('面试', '评估报告'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载面试…'));
+
+    let detail;
+    try {
+      detail = await api.get(`/interviews/${interviewId}`);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '返回列表', onClick: () => navigate('/interviews') }))));
+      return;
+    }
+
+    // PDF 导出走浏览器打印，文件名取的就是这个标题
+    document.title = `${detail.candidate_name} · 面试评估报告`;
+
+    const dims = detail.evaluation_dimensions || [];
+    const questions = detail.questions || [];
+    const backToDetail = el('button', {
+      class: 'btn btn--ghost', text: '返回详情', onClick: () => navigate(`/interviews/${interviewId}`),
+    });
+
+    function simplePage(title, text, extra) {
+      mount(main,
+        el('div', { class: 'page-head' },
+          el('div', {},
+            el('h1', { text: detail.candidate_name }),
+            el('p', { class: 'page-lede', text: detail.position_name })),
+          el('div', { class: 'page-head-actions' }, backToDetail)),
+        statusRail(detail.status),
+        el('div', { class: 'panel', style: 'margin-top:var(--s5)' },
+          panelHead(title),
+          el('div', { class: 'panel-body' }, el('p', { class: 'prose', text }), extra || null)));
+    }
+
+    if (detail.status === 'draft' || detail.status === 'ongoing') {
+      simplePage('还不能评估',
+        '评估读的是已经记录下来的回答。请先把面试标记为完成，再回到这里开始评估。');
+      return;
+    }
+
+    if (!questions.length) {
+      simplePage('这场面试没有题目',
+        '题目在创建面试时生成。如果这里为空，说明出题那一步没有落库。');
+      return;
+    }
+
+    if (detail.status === 'completed') {
+      const missing = questions.filter((q) => !String(q.answer ?? '').trim()).length;
+      const start = el('button', { class: 'btn btn--primary', text: '开始评估' });
+      start.addEventListener('click', async () => {
+        // 同步请求，真正的产出在接下来的 SSE 流里；提交期间锁住按钮防连点
+        start.disabled = true;
+        start.textContent = '正在提交…';
+        try {
+          await api.post(`/interviews/${interviewId}/evaluate`);
+          render(container, params); // 状态已变为「评估中」，重载后自动接流
+        } catch (error) {
+          toast.error(error.message);
+          start.disabled = false;
+          start.textContent = '开始评估';
+        }
+      });
+
+      simplePage('尚未评估',
+        '回答已经记录完，可以开始评估。评估会逐题给分、按维度综合，最后汇总成一份报告。',
+        el('div', {},
+          missing
+            ? el('p', { class: 'note-box', style: 'margin-top:var(--s4)',
+                text: `本场有 ${missing} 道题没有记录回答，评估时按 0 分计入。` })
+            : null,
+          el('ol', { class: 'stage-list' }, STAGES.map((stage, index) => el('li', {},
+            el('span', { class: 'stage-list-index', text: String(index + 1) }),
+            el('div', {},
+              el('p', { class: 'stage-list-label', text: stage.label }),
+              el('p', { class: 'stage-list-text', text: stage.text }))))),
+          el('div', { class: 'editor-actions' }, start)));
+      return;
+    }
+
+    /* ---------------------- 评估中 / 已评估 ---------------------- */
+
+    const view = {
+      status: detail.status,
+      stage: null,
+      done: detail.status === 'evaluated',
+      restarting: false,
+      failed: null,
+      progress: { done: 0, total: questions.length },
+      scoreMap: {},  // interview_question_id → { score, comment }
+      dimMap: {},    // dimension → { score, comment }
+      report: null,
+      lastArrived: null,
+    };
+
+    const headRegion = el('div', { class: 'panel' });
+    const scoresRegion = el('div', { class: 'panel' });
+    const actionsRegion = el('div', { class: 'page-head-actions' });
+
+    mount(main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: detail.candidate_name }),
+          el('p', { class: 'page-lede' },
+            detail.candidate_contact
+              ? `${detail.position_name} · ${detail.candidate_contact}`
+              : detail.position_name),
+          el('p', { class: 'meta' },
+            detail.completed_at
+              ? `创建于 ${formatDateTime(detail.created_at)}，完成于 ${formatDateTime(detail.completed_at)}`
+              : `创建于 ${formatDateTime(detail.created_at)}`)),
+        actionsRegion),
+      statusRail(detail.status),
+      el('div', { style: 'margin-top:var(--s5)' }, headRegion, scoresRegion));
+
+    const dimScores = () => Object.fromEntries(
+      dims.filter((dim) => view.dimMap[dim]).map((dim) => [dim, view.dimMap[dim].score]));
+    const dimNotes = () => Object.fromEntries(
+      dims.filter((dim) => view.dimMap[dim]).map((dim) => [dim, view.dimMap[dim].comment]));
+
+    function streamNote() {
+      const failed = view.failed;
+      if (failed) {
+        return el('div', { class: 'stream-note is-failed' },
+          el('span', { text: failed.message }),
+          el('button', {
+            class: 'btn btn--ghost btn--sm',
+            text: '重新加载', // 状态可能已经变了，重新拉一次比在这里猜更可靠
+            onClick: () => render(container, params),
+          }));
+      }
+      if (view.done) return null;
+
+      const text = view.stage === 'dimension_scores' ? '正在生成多维评分…'
+        : view.stage === 'report' ? '正在汇总报告…'
+        : '正在逐题评分…';
+      return el('div', { class: 'stream-note' },
+        el('span', { class: 'stream-dot' }),
+        el('span', { text }),
+        view.stage === 'question_scores'
+          ? el('span', { class: 'stream-count', text: `${view.progress.done} / ${view.progress.total}` })
+          : null);
+    }
+
+    function repaintHead() {
+      const report = view.report;
+      // 用 mount 而不是原生 append：原生 append 会把 streamNote() 的 null 变成字符串 "null"
+      mount(headRegion,
+        streamNote(),
+        el('div', { class: 'report-head' },
+          el('div', { class: 'report-head-main' },
+            el('div', { class: 'report-score' },
+              // 还没汇出总分时留一个小字占位，别先填一个 0 —— 0 分和「还没算出来」是两件事
+              report
+                ? el('span', {
+                    class: `report-score-value ${scoreClass(report.overall_score)}`,
+                    text: report.overall_score.toFixed(1),
+                  })
+                : el('span', { class: 'report-score-pending', text: '待出分' }),
+              report ? el('span', { class: 'report-score-unit', text: '/ 10' }) : null),
+            el('p', { class: 'report-score-scale', text: '满分 10 分，6.5 分及以上为达标' }),
+            el('p', { class: 'report-conclusion', text: report
+              ? report.conclusion
+              : '综合结论在评估完成后给出，它由逐题评分与多维评分汇总而来。' }),
+            report ? findingsBlock(report) : null),
+          buildChartCell(dims, dimScores(), dimNotes())),
+        buildLegendRow(dims, dimScores(), dimNotes()));
+    }
+
+    function repaintScores() {
+      const arrived = questions.filter((q) => view.scoreMap[q.interview_question_id]);
+      clear(scoresRegion);
+      scoresRegion.append(
+        panelHead('逐题评分', arrived.length ? `${arrived.length} / ${questions.length} 题` : null),
+        arrived.length
+          ? el('div', {}, arrived.map((question) => {
+              const row = view.scoreMap[question.interview_question_id];
+              const answer = String(question.answer ?? '').trim();
+              return el('div', {
+                class: `score-item${question.interview_question_id === view.lastArrived ? ' just-arrived' : ''}`,
+              },
+                el('div', { class: 'score-item-head' },
+                  el('span', { class: 'score-seq', text: String(question.seq) }),
+                  dimTag(question.dimension),
+                  scoreSpan('score-value', row.score)),
+                el('p', { class: 'score-question', text: question.content }),
+                el('div', { class: 'score-block' },
+                  el('div', { class: 'dossier-label', text: '候选人回答' }),
+                  el('p', { class: `answer-quote${answer ? '' : ' is-blank'}`, text: answer || '本题未作答' })),
+                el('div', { class: 'score-block' },
+                  el('div', { class: 'dossier-label', text: '评估意见' }),
+                  el('p', { class: 'score-comment', text: row.comment })));
+            }))
+          : el('div', { class: 'panel-body' },
+              el('p', { class: 'hint', text: '评估会逐题产出分数与评语，它们会依次出现在这里。' })));
+    }
+
+    function repaintActions() {
+      clear(actionsRegion);
+      actionsRegion.append(backToDetail);
+      if (view.status !== 'evaluated') return;
+
+      actionsRegion.append(
+        el('button', {
+          class: 'btn btn--quiet',
+          text: '重新评估',
+          onClick: async () => {
+            const ok = await confirmModal({
+              title: '重新评估这场面试？',
+              message: '新报告会整体覆盖当前这一份 —— 逐题评分、多维评分与结论都不会保留。评估本身不可编辑，重评是唯一的修改方式。',
+              confirmLabel: '重新评估',
+              danger: false,
+            });
+            if (!ok) return;
+            try {
+              await api.post(`/interviews/${interviewId}/evaluate`);
+              render(container, params);
+            } catch (error) {
+              toast.error(error.message);
+            }
+          },
+        }),
+        el('button', {
+          class: 'btn btn--ghost',
+          text: '导出 DOCX',
+          title: '由后端用 python-docx 生成，含基本信息与两张评分表（不含雷达图）',
+          onClick: async (event) => {
+            const button = event.currentTarget;
+            if (!api.isLive()) {
+              // 原型模式不伪造一个 Word 打不开的 .docx —— 说清它由谁生成、怎么拿到
+              toast.error('DOCX 由后端用 python-docx 生成，内存 mock 里没有这个文件。可改用「导出 PDF」，或加 ?live=1 连上后端。');
+              return;
+            }
+            button.disabled = true;
+            button.textContent = '正在生成…';
+            try {
+              const name = await api.download(
+                `/interviews/${interviewId}/report/export?format=docx`,
+                `面试报告_${detail.candidate_name}.docx`,
+              );
+              toast.success(`已导出 ${name}`);
+            } catch (error) {
+              // PRD §7：DOCX 失败时提示可改用浏览器打印那条路径
+              toast.error(`${error.message}（可改用「导出 PDF」）`);
+            } finally {
+              button.disabled = false;
+              button.textContent = '导出 DOCX';
+            }
+          },
+        }),
+        el('button', {
+          class: 'btn btn--primary',
+          text: '导出 PDF',
+          title: '走浏览器打印，雷达图所见即所得',
+          onClick: () => window.print(),
+        }));
+    }
+
+    function repaint() {
+      repaintActions();
+      repaintHead();
+      repaintScores();
+    }
+
+    let destroyed = false;
+    let controller = null;
+    activeAbort = () => { destroyed = true; if (controller) controller.abort(); };
+
+    async function attachStream() {
+      if (destroyed) return;
+      controller = new AbortController();
+      try {
+        await api.stream(`/interviews/${interviewId}/evaluation/stream`, {
+          signal: controller.signal,
+          onEvent: (item) => {
+            if (destroyed || view.restarting) return;
+
+            if (item.event === 'error') {
+              // 评估失败：后端已把状态回退到「已完成」，重新加载就能回到「开始评估」
+              view.restarting = true;
+              toast.error(item.data.message);
+              controller.abort();
+              render(container, params);
+              return;
+            }
+
+            if (item.event === 'stage') {
+              view.stage = item.data.stage;
+              if (item.data.stage === 'question_scores') view.progress.total = item.data.total;
+            } else if (item.event === 'question_score') {
+              view.scoreMap[item.data.interview_question_id] = item.data;
+              view.progress.done += 1;
+              view.lastArrived = item.data.interview_question_id;
+              repaintScores();
+            } else if (item.event === 'dimension_score') {
+              view.dimMap[item.data.dimension] = item.data;
+            } else if (item.event === 'report') {
+              view.report = item.data; // 结论、优点与待改进都随 repaintHead 一起落进头版
+            } else if (item.event === 'done') {
+              view.done = true;
+              view.status = 'evaluated';
+              repaintActions();
+            }
+            repaintHead();
+          },
+        });
+      } catch (error) {
+        if (destroyed || view.restarting || error?.name === 'AbortError') return;
+        view.failed = { message: error.message };
+        repaintHead();
+        return;
+      }
+
+      // 流自然结束却没收到 done：连接断了。任务可能还在后台跑，
+      // 因此不说「失败」，只请人重新加载 —— 重新加载会接上同一条任务
+      if (!destroyed && !view.restarting && !view.done) {
+        view.failed = { message: '评估流已断开。评估任务可能仍在后台继续，重新加载即可接上进度。' };
+        repaintHead();
+      }
+    }
+
+    repaint();
+
+    if (detail.status === 'evaluated') {
+      try {
+        const report = await api.get(`/interviews/${interviewId}/report`);
+        view.report = report;
+        for (const item of report.question_scores) view.scoreMap[item.interview_question_id] = item;
+        for (const item of report.dimension_scores) view.dimMap[item.dimension] = item;
+        repaint();
+      } catch (error) {
+        // 状态说已评估、报告却读不到：如实说，不假装有报告
+        clear(headRegion);
+        headRegion.append(
+          emptyState('报告读取失败', error.message,
+            el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container, params) })),
+        );
+      }
+    } else {
+      attachStream();
+    }
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/interview-prep.js —— 面试前准备助手
+   PRD §4.11：一场面试一份，生成即整批落库，重新生成整体覆盖；
+   与面试状态机正交（只有「完成」之后才冻结）。
+   提纲本身是一条时间轴，所以阶段用分钟刻度排；考察重点按维度；
+   问题预案直接用**本场已经出了的题**，而不是另造一批通用问题 ——
+   HR 要的是「这场该怎么问」，不是一份放之四海皆准的题库。
+   ========================================================================== */
+__modules['./pages/interview-prep.js'] = function (exports, __require) {
+  const { el, mount, clear } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal } = __require('./components/modal.js');
+  const {
+    contextTitle, createShell, dimTag, emptyState, formatDateTime, loadingBlock,
+    navigate, panelHead,
+  } = __require('./components/shell.js');
+
+  const DEFAULT_TITLE = '面试助手 · HR 工作台';
+  const FROZEN_HINT = '面试已完成，准备提纲随之定稿；如需修改，请先回退到进行中。';
+
+  exports.destroy = function () { document.title = DEFAULT_TITLE; };
+
+  /** 把「每行一条」的文本域读成数组 —— 比让人维护一个嵌套列表现实得多。 */
+  const linesOf = (value) => String(value ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+
+  /** 累计分钟刻度：提纲的价值有一半在「这段该花多久」。 */
+  function cumulativeRanges(stages) {
+    let cursor = 0;
+    return stages.map((stage) => {
+      const minutes = Number(stage.minutes) || 0;
+      const label = `${cursor}–${cursor + minutes}`;
+      cursor += minutes;
+      return label;
+    });
+  }
+
+  /* ------------------------------ 只读视图 ------------------------------ */
+
+  function outlinePanel(prep) {
+    const ranges = cumulativeRanges(prep.outline);
+    const total = prep.outline.reduce((sum, stage) => sum + (Number(stage.minutes) || 0), 0);
+    return el('div', { class: 'panel' },
+      panelHead('面试提纲', `共约 ${total} 分钟`),
+      prep.outline.length
+        ? el('div', {}, prep.outline.map((stage, index) => el('div', { class: 'prep-stage' },
+            el('span', { class: 'prep-time', text: `${ranges[index]} 分` }),
+            el('div', {},
+              el('p', { class: 'prep-phase', text: stage.phase }),
+              stage.points?.length
+                ? el('ul', { class: 'prep-points' }, stage.points.map((point) => el('li', { text: point })))
+                : null))))
+        : el('div', { class: 'panel-body' }, el('p', { class: 'hint', text: '还没有安排阶段。' })));
+  }
+
+  function focusPanel(prep) {
+    return el('div', { class: 'panel' },
+      panelHead('考察重点', '按岗位的评估维度'),
+      prep.focus_points.length
+        ? el('div', {}, prep.focus_points.map((item) => el('div', { class: 'prep-focus' },
+            // 维度是这一项的题眼，做成标签；正文不再重复一遍维度名
+            dimTag(item.dimension),
+            el('p', { class: 'prep-focus-text', text: item.focus }),
+            item.reason ? el('p', { class: 'prep-focus-why', text: item.reason }) : null)))
+        : el('div', { class: 'panel-body' }, el('p', { class: 'hint', text: '还没有列出考察重点。' })));
+  }
+
+  function planPanel(prep) {
+    return el('div', { class: 'panel' },
+      panelHead('问题预案', '来自本场已出的题目'),
+      prep.question_plan.length
+        ? el('div', {}, prep.question_plan.map((item, index) => el('div', { class: 'prep-question' },
+            el('div', { class: 'prep-question-head' },
+              el('span', { class: 'score-seq', text: String(index + 1) }),
+              el('p', { class: 'prep-question-text', text: item.question })),
+            el('div', { class: 'prep-question-body' },
+              el('div', { class: 'prep-field' },
+                el('div', { class: 'dossier-label', text: '考察意图' }),
+                el('p', { class: 'score-comment', text: item.intent })),
+              item.followups?.length
+                ? el('div', { class: 'prep-field' },
+                    el('div', { class: 'dossier-label', text: '可追问' }),
+                    el('ul', { class: 'prep-points' }, item.followups.map((text) => el('li', { text }))))
+                : null))))
+        : el('div', { class: 'panel-body' }, el('p', { class: 'hint', text: '还没有准备问题。' })));
+  }
+
+  /* ------------------------------ 编辑视图 ------------------------------ */
+  /* 三个字段整体覆盖（后端也是整体替换，不做字段级合并），因此编辑态就是
+     把三块内容换成可增删的表单，保存时一次性提交。 */
+
+  function removeButton(onClick) {
+    return el('button', {
+      class: 'btn btn--quiet dim-editor-remove', text: '×', title: '删除这一条', onClick,
+    });
+  }
+
+  function outlineEditor(prep) {
+    const rows = el('div', {});
+    const drafts = prep.outline.map((stage) => ({
+      phase: stage.phase, minutes: stage.minutes, points: (stage.points || []).join('\n'),
+    }));
+
+    function renderRows() {
+      clear(rows);
+      drafts.forEach((draft, index) => {
+        const block = el('div', { class: 'prep-edit-block' },
+          el('div', { class: 'prep-edit-head' },
+            el('span', { class: 'prep-edit-tag', text: '阶段' }),
+            el('input', {
+              class: 'input', value: draft.phase, placeholder: '阶段名称',
+              onInput: (event) => { draft.phase = event.target.value; },
+            }),
+            el('span', { class: 'prep-edit-tag', text: '分钟' }),
+            el('input', {
+              class: 'input mins', type: 'number', min: '1', max: '600', value: String(draft.minutes),
+              onInput: (event) => { draft.minutes = Number(event.target.value); },
+            }),
+            removeButton(() => { drafts.splice(index, 1); renderRows(); })),
+          el('div', { class: 'field', style: 'margin:var(--s3) 0 0' },
+            el('p', { class: 'prep-edit-label', text: '这一段要做什么 · 每行一条' }),
+            el('textarea', {
+              class: 'textarea', rows: '3', value: draft.points,
+              placeholder: '例如：请候选人用三分钟讲清最近一段工作的主要职责',
+              onInput: (event) => { draft.points = event.target.value; },
+            })));
+        rows.append(block);
+      });
+    }
+    renderRows();
+
+    return {
+      node: el('div', {},
+        rows,
+        el('div', { class: 'prep-edit-add' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm', text: '添加阶段',
+            onClick: () => { drafts.push({ phase: '新阶段', minutes: 5, points: '' }); renderRows(); },
+          }))),
+      drafts,
+    };
+  }
+
+  function focusEditor(prep, dims) {
+    const rows = el('div', {});
+    const drafts = prep.focus_points.map((item) => ({
+      dimension: item.dimension, focus: item.focus, reason: item.reason,
+    }));
+
+    function renderRows() {
+      clear(rows);
+      drafts.forEach((draft, index) => {
+        rows.append(el('div', { class: 'prep-edit-block' },
+          el('div', { class: 'prep-edit-head' },
+            el('span', { class: 'prep-edit-tag', text: '维度' }),
+            el('select', {
+              class: 'select', onChange: (event) => { draft.dimension = event.target.value; },
+            },
+              // 维度集合由岗位给出；不在集合里的历史值也要留一个选项，否则一保存就被改掉
+              [...new Set([...dims, draft.dimension].filter(Boolean))].map((dim) =>
+                el('option', { value: dim, text: dim, selected: dim === draft.dimension })),
+            ),
+            removeButton(() => { drafts.splice(index, 1); renderRows(); })),
+          el('div', { class: 'field', style: 'margin:var(--s3) 0 0' },
+            el('p', { class: 'prep-edit-label', text: '重点验证什么' }),
+            el('textarea', {
+              class: 'textarea', rows: '2', value: draft.focus,
+              placeholder: '例如：把本场题目追问到具体做法与结果，而不是停在概念上',
+              onInput: (event) => { draft.focus = event.target.value; },
+            })),
+          el('div', { class: 'field', style: 'margin:var(--s2) 0 0' },
+            el('p', { class: 'prep-edit-label', text: '为什么是这一项（可不填）' }),
+            el('textarea', {
+              class: 'textarea', rows: '2', value: draft.reason,
+              placeholder: '例如：简历里有可交叉核实的经历，需确认表述与事实一致',
+              onInput: (event) => { draft.reason = event.target.value; },
+            }))));
+      });
+    }
+    renderRows();
+
+    return {
+      node: el('div', {},
+        rows,
+        el('div', { class: 'prep-edit-add' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm', text: '添加一项',
+            onClick: () => { drafts.push({ dimension: dims[0] || '', focus: '', reason: '' }); renderRows(); },
+          }))),
+      drafts,
+    };
+  }
+
+  function planEditor(prep) {
+    const rows = el('div', {});
+    const drafts = prep.question_plan.map((item) => ({
+      question: item.question, intent: item.intent, followups: (item.followups || []).join('\n'),
+    }));
+
+    function renderRows() {
+      clear(rows);
+      drafts.forEach((draft, index) => {
+        rows.append(el('div', { class: 'prep-edit-block' },
+          el('div', { class: 'prep-edit-head' },
+            el('span', { class: 'prep-edit-tag', text: '问题' }),
+            el('input', {
+              class: 'input', value: draft.question, placeholder: '准备问的问题',
+              onInput: (event) => { draft.question = event.target.value; },
+            }),
+            removeButton(() => { drafts.splice(index, 1); renderRows(); })),
+          el('div', { class: 'field', style: 'margin:var(--s3) 0 0' },
+            el('p', { class: 'prep-edit-label', text: '考察意图' }),
+            el('textarea', {
+              class: 'textarea', rows: '2', value: draft.intent,
+              placeholder: '例如：看他能不能讲清自己实际做了什么，而不是给出一个通用答案',
+              onInput: (event) => { draft.intent = event.target.value; },
+            })),
+          el('div', { class: 'field', style: 'margin:var(--s2) 0 0' },
+            el('p', { class: 'prep-edit-label', text: '可追问 · 每行一条' }),
+            el('textarea', {
+              class: 'textarea', rows: '2', value: draft.followups,
+              placeholder: '例如：当时有没有别的方案？你为什么没选那个？',
+              onInput: (event) => { draft.followups = event.target.value; },
+            }))));
+      });
+    }
+    renderRows();
+
+    return {
+      node: el('div', {},
+        rows,
+        el('div', { class: 'prep-edit-add' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm', text: '添加问题',
+            onClick: () => { drafts.push({ question: '', intent: '', followups: '' }); renderRows(); },
+          }))),
+      drafts,
+    };
+  }
+
+  /* -------------------------------- 页面 -------------------------------- */
+
+  async function render(container, params) {
+    const interviewId = params.id;
+    const { root, main } = createShell(contextTitle('面试', '面试准备'));
+    // 提纲是一份要读的东西：把正文收在 1000px 内，别让它横跨 1240px
+    main.classList.add('prep-page');
+    mount(container, root);
+    mount(main, loadingBlock('正在加载…'));
+
+    let detail;
+    let prep = null;
+    let prepFailed = null;
+    try {
+      detail = await api.get(`/interviews/${interviewId}`);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '返回列表', onClick: () => navigate('/interviews') }))));
+      return;
+    }
+    try {
+      prep = await api.get(`/interviews/${interviewId}/prep`);
+    } catch (error) {
+      prepFailed = error; // 404 = 还没生成，不是故障；其余才是
+    }
+
+    document.title = `${detail.candidate_name} · 面试准备`;
+
+    const dims = detail.evaluation_dimensions || [];
+    const editable = detail.status === 'draft' || detail.status === 'ongoing';
+    const missing = prepFailed && prepFailed.status === 404;
+
+    let editing = false;
+
+    async function generate(button) {
+      if (prep) {
+        const ok = await confirmModal({
+          title: '重新生成准备提纲？',
+          message: '新的提纲会整体覆盖当前这一份，包括你手工改过的内容。这一步无法撤销。',
+          confirmLabel: '重新生成',
+          danger: false,
+        });
+        if (!ok) return;
+      }
+      button.disabled = true;
+      button.textContent = '正在生成…';
+      try {
+        // 准备助手的产出是整批一次给全的，不做流式（PRD §4.11）
+        await api.post(`/interviews/${interviewId}/prep`);
+        render(container, params);
+      } catch (error) {
+        toast.error(error.message);
+        button.disabled = false;
+        button.textContent = prep ? '重新生成' : '生成准备提纲';
+      }
+    }
+
+    function refresh() {
+      if (editing && prep) renderEditor();
+      else renderView();
+    }
+
+    /* ---- 编辑态：整页换成表单，保存时把三块一起交上去 ---- */
+    function renderEditor() {
+      const outline = outlineEditor(prep);
+      const focus = focusEditor(prep, dims);
+      const plan = planEditor(prep);
+
+      const save = el('button', { class: 'btn btn--primary', text: '保存' });
+      save.addEventListener('click', async () => {
+        save.disabled = true;
+        save.textContent = '保存中…';
+        try {
+          await api.put(`/interviews/${interviewId}/prep`, {
+            outline: outline.drafts.map((draft) => ({
+              phase: draft.phase, minutes: Number(draft.minutes), points: linesOf(draft.points),
+            })),
+            focus_points: focus.drafts.map((draft) => ({
+              dimension: draft.dimension, focus: draft.focus, reason: draft.reason,
+            })),
+            question_plan: plan.drafts.map((draft) => ({
+              question: draft.question, intent: draft.intent, followups: linesOf(draft.followups),
+            })),
+          });
+          toast.success('准备提纲已保存');
+          render(container, params);
+        } catch (error) {
+          toast.error(error.message);
+          save.disabled = false;
+          save.textContent = '保存';
+        }
+      });
+
+      const head = el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: detail.candidate_name }),
+          el('p', { class: 'page-lede', text: '编辑准备提纲' }),
+          el('p', { class: 'meta', text: '三个部分会一起提交，保存后立即覆盖原来的内容。' })),
+        el('div', { class: 'page-head-actions' },
+          el('button', {
+            class: 'btn btn--ghost', text: '取消',
+            onClick: () => { editing = false; render(container, params); },
+          }),
+          save));
+
+      mount(main,
+        head,
+        el('div', { class: 'panel', style: 'margin-top:var(--s5)' },
+          panelHead('面试提纲', '分钟数与要点'),
+          el('div', { class: 'panel-body' }, outline.node)),
+        el('div', { class: 'panel' },
+          panelHead('考察重点', '按岗位的评估维度'),
+          el('div', { class: 'panel-body' }, focus.node)),
+        el('div', { class: 'panel' },
+          panelHead('问题预案', '来自本场已出的题目'),
+          el('div', { class: 'panel-body' }, plan.node)));
+    }
+
+    /* ---- 只读态 ---- */
+    function renderView() {
+      // 还没生成时，「生成」这个动作只留在空态面板里 —— 同一个动作不摆两处
+      const actions = prep
+        ? [el('button', {
+            class: 'btn btn--quiet',
+            text: '重新生成',
+            disabled: !editable,
+            title: editable ? '' : FROZEN_HINT,
+            onClick: (event) => generate(event.currentTarget),
+          })]
+        : [];
+      if (prep) {
+        actions.push(
+          el('button', {
+            class: 'btn btn--ghost', text: '编辑',
+            disabled: !editable,
+            title: editable ? '' : FROZEN_HINT,
+            onClick: () => { editing = true; refresh(); },
+          }),
+          el('button', {
+            class: 'btn btn--primary', text: '导出 PDF',
+            title: '走浏览器打印。候选人脱敏反馈不提供导出，准备提纲与报告才提供。',
+            onClick: () => window.print(),
+          }));
+      }
+
+      mount(main,
+        el('div', { class: 'page-head' },
+          el('div', {},
+            el('h1', { text: detail.candidate_name }),
+            el('p', { class: 'page-lede' },
+              detail.candidate_contact
+                ? `${detail.position_name} · ${detail.candidate_contact}`
+                : detail.position_name),
+            el('p', { class: 'meta' }, prep
+              ? `生成于 ${formatDateTime(prep.generated_at)}${prep.edited_at ? `，最后编辑 ${formatDateTime(prep.edited_at)}` : ''}`
+              : '尚未生成')),
+          el('div', { class: 'page-head-actions' },
+            el('button', { class: 'btn btn--ghost', text: '返回详情', onClick: () => navigate(`/interviews/${interviewId}`) }),
+            actions)),
+
+        // 准备助手与面试状态机正交，因此这里用一句话交代能不能改，而不是画状态轨
+        el('div', { class: 'prep-note' },
+          el('span', { text: editable
+            ? '准备提纲是面试前的工作稿，不影响面试本身的进度。'
+            : FROZEN_HINT }),
+          el('span', { text: `面试当前：${detail.status === 'draft' ? '草稿' : detail.status === 'ongoing' ? '进行中' : detail.status === 'completed' ? '已完成' : detail.status === 'evaluating' ? '评估中' : '已评估'}` })),
+
+        prep
+          ? el('div', { style: 'margin-top:var(--s5)' }, outlinePanel(prep), focusPanel(prep), planPanel(prep))
+          : el('div', { style: 'margin-top:var(--s5)' },
+              el('div', { class: 'panel' },
+                panelHead('尚未生成'),
+                el('div', { class: 'panel-body' },
+                  prepFailed && !missing
+                    ? el('p', { class: 'field-error', text: prepFailed.message })
+                    : el('div', {},
+                        el('p', { class: 'prose', text: '开始前先生成一份准备提纲：按时间排好的面试流程、需要重点验证的能力项，以及每个问题该往哪个方向追问。' }),
+                        el('p', { class: 'prose', style: 'margin-top:var(--s3)', text: editable
+                          ? 'AI 会读岗位的 JD 与评估维度、本场已有的题目' + (detail.resume_id != null ? '，以及候选人关联的简历' : '') + '来生成这份提纲。'
+                          : FROZEN_HINT }),
+                        editable
+                          ? el('div', { class: 'editor-actions' },
+                              el('button', {
+                                class: 'btn btn--primary', text: '生成准备提纲',
+                                onClick: (event) => generate(event.currentTarget),
+                              }))
+                          : null)))));
+    }
+
+    refresh();
   }
 
   exports.render = render;
@@ -5345,6 +7251,8 @@ __modules['./main.js'] = function (exports, __require) {
     login: __require('./pages/login.js'),
     interviews: __require('./pages/interviews.js'),
     interviewDetail: __require('./pages/interview-detail.js'),
+    evaluation: __require('./pages/evaluation.js'),
+    interviewPrep: __require('./pages/interview-prep.js'),
     positions: __require('./pages/positions.js'),
     questions: __require('./pages/questions.js'),
     users: __require('./pages/users.js'),
