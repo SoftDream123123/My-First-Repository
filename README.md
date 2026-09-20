@@ -38,7 +38,7 @@
 | 前端 | Vite 8 + 原生 HTML/CSS/JS（无 UI 框架、无图表库、无状态管理库） |
 | 数据库 | MySQL 8.0+ |
 | 分层 | `router → service → repository → MySQL`，严格单向依赖 |
-| 模块 | 七个独立 package：`core` / `auth` / `position` / `question` / `interview` / `evaluation` / `ai` |
+| 模块 | 八个独立 package：`core` / `auth` / `position` / `question` / `interview` / `evaluation` / `practice` / `ai` |
 | AI | 抽象 Provider 接口，`mock` 与 `openai` 可配置切换 |
 
 ---
@@ -189,7 +189,7 @@ npm run dev        # → http://localhost:5173，/api 被代理到 8000
 
 ```bash
 cd backend
-python -m pytest                       # 全部（462 项）
+python -m pytest                       # 全部（771 项）
 python -m pytest tests/test_interview.py -v
 ```
 
@@ -216,8 +216,11 @@ python scripts/smoke_e2e.py
 ## API 概览
 
 > 📖 **完整接口文档（前端对接版）**：[`docs/apis/API接口文档.md`](docs/apis/API接口文档.md)
-> —— 26 个接口的提交方式 / URL / 参数 / 响应 / 示例，以及 SSE 与错误处理的实现代码。
+> —— 各接口的提交方式 / URL / 参数 / 响应 / 示例，以及 SSE 与错误处理的实现代码。
 > 本节只是速查表。
+>
+> ⚠️ 该文档目前只覆盖 HR 侧接口；候选人侧（`/api/candidate/*`、`/api/practice/*`）
+> 尚未补入，以 `GET /api/openapi.json` 为准。
 
 统一前缀 `/api`，除登录与候选人自助注册外均需 `Authorization: Bearer <token>`。
 
@@ -308,13 +311,14 @@ backend/
     position/            # 岗位与评估维度
     question/            # 题库
     ai/                  # AI Provider 抽象 + Mock + 真实实现 + 工厂
-    interview/           # 面试、出题组装、回答记录、状态机
-    evaluation/          # 流式评估、报告
+    interview/           # 面试、出题组装、回答记录、状态机、作答邀请
+    evaluation/          # 流式评估、报告、候选人脱敏反馈
+    practice/            # 刷题：练习会话、逐题判分、错题本、统计
   alembic/               # 数据库迁移
   scripts/
     seed_admin.py        # 创建初始管理员（幂等）
     smoke_e2e.py         # 端到端冒烟
-  tests/                 # 462 项测试
+  tests/                 # 771 项测试
 
 frontend/
   index.html             # Vite 入口（ES 模块 —— 只能经 http:// 访问，不能双击）
@@ -356,17 +360,38 @@ draft → ongoing → completed → evaluating → evaluated
 
 **表中未列出的迁移一律返回 409**，并在 `detail` 中给出 `{from, to}`。
 
+### 作答邀请状态机（与面试状态解耦）
+
+```
+生成 → pending ─┬─ 候选人凭码接受 → accepted
+                ├─ HR 撤销         → revoked
+                └─ 超过 expires_at → expired（读取时派生，不落库）
+```
+
+| 迁移 | 触发 | 说明 |
+|---|---|---|
+| `pending` → `accepted` | 候选人接受 | 绑定 `candidate_user_id` |
+| `pending` → `revoked` | HR 撤销 | — |
+| `pending` → `expired` | `expires_at < now` | **派生**，库中 status 仍为 `pending` |
+| `accepted` → `revoked` | HR 撤销 | 立即切断该候选人的访问，但 `accepted_at` / `candidate_user_id` 保留 |
+
+> **候选人作答不进入面试状态机**：状态机描述的是 HR 侧推进流程。候选人交卷只写
+> `answer.submitted_at`，面试是否完成仍由 HR 决定。
+
 ---
 
 ## 已知限制（MVP 边界）
 
 | 限制 | 说明 |
 |---|---|
-| **单进程部署** | SSE 运行注册表是进程内的，必须 `--workers 1` |
+| **单进程部署** | SSE 运行注册表与刷题限流计数都是进程内的，必须 `--workers 1` |
 | **前端构建需手动触发** | `npm run build` 后由后端托管；未接入 CI |
 | **无 JWT 刷新** | 过期后需重新登录（有效期默认 12 小时） |
 | **评估不留历史版本** | 同一面试只保留最近一次评估结果 |
+| **作答不留历史版本** | HR 覆盖候选人作答时只保留最新内容（`source` 仍记录最初来源） |
+| **候选人不能撤回交卷** | 需补答时由 HR 回退到 `ongoing` 后重新发邀请 |
+| **邀请码明文存储** | HR 需在系统内复制（PRD §1.3）；缓解手段是长码 + 短有效期 + 一次性 + 可撤销 |
 | **列表不分页** | 内部系统数据量小 |
 | **仅 PC 端** | 不做移动端适配 |
 
-V1.1 规划：在线答题（候选人侧）、PDF 报告导出、报告分享。
+V1.1 规划：PDF 报告导出、报告分享。

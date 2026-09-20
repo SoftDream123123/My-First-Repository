@@ -6,7 +6,16 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 候选人反馈档位的**取值白名单**（PRD §4.9）。
+#
+# 与 ai.base 的 FEEDBACK_LEVELS 是同两个字符串，各自定义一份：core 不能 import ai
+# （那会让 core ↔ ai 形成双向依赖，破坏分层单向）。这与 question_type 常量在
+# question 与 ai 各定义一次是同一取舍 —— 模块解耦换来的重复，不是疏漏。
+# 改这里必须同步改 ai.base.FEEDBACK_LEVELS。
+CANDIDATE_FEEDBACK_LEVELS = ("summary", "full")
 
 
 class Settings(BaseSettings):
@@ -56,6 +65,27 @@ class Settings(BaseSettings):
     practice_session_list_max: int = 100
     # 每用户每分钟的计分动作上限（**进程内**计数，故单机部署须 --workers 1）
     practice_rate_limit_per_minute: int = 60
+
+    # ---- 候选人可见的评估反馈（PRD §4.9）----
+    # summary（默认）仅下发综合结论 / 优点 / 待改进；full 额外下发总分。
+    # 逐题分与维度分在任何档位都不下发。
+    candidate_feedback_level: str = "summary"
+
+    @field_validator("candidate_feedback_level")
+    @classmethod
+    def _check_feedback_level(cls, value: str) -> str:
+        """取值非法则**拒绝启动**（fail fast）。
+
+        它是部署配置：写错了应当立刻发现，而不是静默降级后让运维以为配置生效了。
+        Provider 层还有一道防御（未知档位按 summary 处理），两层职责不同：
+        这里拦住配置错误，那里保证调用方失误也不会泄露分数。
+        """
+        if value not in CANDIDATE_FEEDBACK_LEVELS:
+            raise ValueError(
+                f"CANDIDATE_FEEDBACK_LEVEL 取值非法：{value!r}；"
+                f"可选值为 {CANDIDATE_FEEDBACK_LEVELS}"
+            )
+        return value
 
     # ---- 其他 ----
     cors_origins: list[str] = ["http://localhost:5173"]

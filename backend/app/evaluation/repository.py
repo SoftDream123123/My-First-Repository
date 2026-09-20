@@ -8,7 +8,12 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.evaluation.models import DimensionScore, QuestionScore, Report
+from app.evaluation.models import (
+    CandidateFeedback,
+    DimensionScore,
+    QuestionScore,
+    Report,
+)
 
 
 def replace_question_scores(
@@ -75,4 +80,51 @@ def delete_all_for_interview(db: Session, interview_id: int) -> None:
         delete(DimensionScore).where(DimensionScore.interview_id == interview_id)
     )
     db.execute(delete(Report).where(Report.interview_id == interview_id))
+    db.flush()
+
+
+# -------------------------- 候选人脱敏反馈 --------------------------
+
+
+def get_candidate_feedback(
+    db: Session, interview_id: int
+) -> CandidateFeedback | None:
+    """缓存读取。"""
+    stmt = select(CandidateFeedback).where(
+        CandidateFeedback.interview_id == interview_id
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def upsert_candidate_feedback(
+    db: Session, interview_id: int, data: dict
+) -> CandidateFeedback:
+    """懒生成后落库。
+
+    刻意**不刷新** generated_at 之外的时间语义：反馈内容整体替换，
+    没有「哪一部分过期」的问题（见 models 的说明）。
+    """
+    feedback = get_candidate_feedback(db, interview_id)
+
+    if feedback is None:
+        feedback = CandidateFeedback(interview_id=interview_id, **data)
+        db.add(feedback)
+    else:
+        for key, value in data.items():
+            setattr(feedback, key, value)
+        feedback.generated_at = datetime.now(UTC).replace(tzinfo=None)
+
+    db.flush()
+    return feedback
+
+
+def delete_candidate_feedback(db: Session, interview_id: int) -> None:
+    """缓存失效。
+
+    重新评估会整体替换报告，若缓存不失效，候选人会看到**上一轮**的反馈。
+    删不存在的行是 no-op，不报错。
+    """
+    db.execute(
+        delete(CandidateFeedback).where(CandidateFeedback.interview_id == interview_id)
+    )
     db.flush()

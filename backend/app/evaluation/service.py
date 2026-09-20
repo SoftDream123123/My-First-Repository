@@ -7,15 +7,18 @@ stream.py 只负责把回调变成队列推送。
 
 from collections.abc import Callable
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.ai.base import QAPair
+from app.ai.base import FEEDBACK_LEVEL_FULL, QAPair
 from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
+from app.core.config import get_settings
 from app.core.exceptions import BusinessError, NotFoundError
 from app.evaluation import repository
 from app.evaluation.schemas import (
+    CandidateFeedbackOut,
     DimensionScoreItem,
     EvaluationEvent,
     QuestionScoreItem,
@@ -139,6 +142,16 @@ def evaluate_interview(
             "weaknesses": list(report.weaknesses),
         },
     )
+    # 缓存失效：重新评估整体替换了报告，旧的候选人反馈必须一并作废，
+    # 否则候选人会看到**上一轮**的反馈。
+    #
+    # 放在**同一事务**内，与报告替换同生共死 —— 开第二个事务会留下
+    # 「报告已换、反馈还是旧的」的窗口。删除是本地 DB 操作，不调 AI，
+    # 因此不会违反 PRD §7「AI 失败不阻塞其他功能」。
+    #
+    # 评估**失败**时不会走到这里，缓存自然保留 —— 报告未被替换，反馈仍有效。
+    repository.delete_candidate_feedback(db, interview_id)
+
     interview_service.transition_to_evaluated(db, interview_id)
 
 
@@ -202,6 +215,96 @@ def get_report(db: Session, user: User, interview_id: int) -> ReportDetail:
 
 def list_question_scores(db: Session, interview_id: int):
     return repository.list_question_scores(db, interview_id)
+
+
+# -------------------------- 候选人脱敏反馈 --------------------------
+
+
+def get_candidate_feedback(
+    db: Session, user: User, interview_id: int
+) -> CandidateFeedbackOut:
+    """候选人查看脱敏反馈（懒生成 + 缓存 + 档位裁剪）。
+
+    为什么是**懒生成**而不是在评估落库时生成：把反馈塞进评估事务有三个问题 ——
+      ① 评估事务多一次 AI 调用，**评估的成功率被第二个调用拖累**；
+      ② PRD §7 要求「AI 失败不阻塞其他功能」，塞进事务直接违反；
+      ③ 无人查看反馈时白花一次调用。
+    懒生成的代价（首次读取慢一次 AI 调用）只在评估完成后首次查看时发生。
+
+    **档位不影响缓存内容**：缓存的是中性文案（不含总分），因此 summary 与 full
+    共用同一份缓存 —— 切换配置立即生效、无需失效。
+
+    可见性经 `interview.get_interview_for_candidate` —— 候选人能否访问某面试的
+    **唯一判据**。本模块不重复实现它，否则「邀请撤销后是否仍可看反馈」会出现
+    两套答案。
+    """
+    interview = interview_service.get_interview_for_candidate(db, user, interview_id)
+
+    if interview.status != STATUS_EVALUATED:
+        raise BusinessError("评估尚未完成")
+
+    report = repository.get_report(db, interview_id)
+    if report is None:
+        # 防御：状态已是 evaluated 但报告缺失（理论不可达）
+        raise BusinessError("评估尚未完成")
+
+    level = get_settings().candidate_feedback_level
+    feedback = repository.get_candidate_feedback(db, interview_id)
+    if feedback is None:
+        feedback = _generate_and_cache_feedback(db, interview_id, report, level)
+
+    return CandidateFeedbackOut(
+        interview_id=interview_id,
+        level=level,
+        conclusion=feedback.conclusion,
+        strengths=list(feedback.strengths),
+        weaknesses=list(feedback.weaknesses),
+        # 总分**从 report 读**，不存进反馈表：存储层与可见性层解耦后，
+        # 改档位配置不需要重新生成反馈
+        overall_score=(
+            float(report.overall_score) if level == FEEDBACK_LEVEL_FULL else None
+        ),
+        generated_at=feedback.generated_at,
+    )
+
+
+def _generate_and_cache_feedback(
+    db: Session, interview_id: int, report, level: str
+):
+    """生成并落库。
+
+    AI 失败时 `AIProviderError` 向外传播（502）且**不落库** —— 下次读取可重试。
+    这与刷题判分返回 200 不同：反馈是**读接口**，读不到就是读不到；而刷题那边
+    作答已成功保存，报错会与事实不符。
+    """
+    result = get_provider().generate_candidate_feedback(
+        level,
+        report.conclusion,
+        list(report.strengths),
+        list(report.weaknesses),
+        float(report.overall_score),
+    )
+
+    payload = {
+        "conclusion": result.conclusion,
+        "strengths": list(result.strengths),
+        "weaknesses": list(result.weaknesses),
+    }
+
+    try:
+        feedback = repository.upsert_candidate_feedback(db, interview_id, payload)
+        db.commit()
+    except IntegrityError:
+        # 并发首次读取撞上 interview_id 唯一索引 —— 对候选人而言「拿到反馈」这一
+        # 目标已经达成，不报错：读取前者写入的那一行。
+        db.rollback()
+        existing = repository.get_candidate_feedback(db, interview_id)
+        if existing is None:  # pragma: no cover - 理论不可达
+            raise
+        return existing
+
+    db.refresh(feedback)  # generated_at 是 server_default，刷新后才可读
+    return feedback
 
 
 def list_dimension_scores(db: Session, interview_id: int):
