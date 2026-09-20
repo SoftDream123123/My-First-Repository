@@ -226,3 +226,44 @@ def position(db, hr_user):
             evaluation_dimensions=list(DEFAULT_DIMENSIONS),
         ),
     )
+
+
+CANDIDATE_PASSWORD = "cand12345678"
+
+
+@pytest.fixture
+def accepted_interview(
+    client, hr_headers, candidate_user, candidate_headers, position
+) -> dict:
+    """完整前置：HR 建面试 → 生成邀请码 → 候选人接受。
+
+    返回 {interview_id, invitation_id, code, candidate_id}。
+    供 module-12 / 14 / 15 的测试复用 —— 候选人侧的每个用例都需要一个
+    「已接受邀请」的面试，逐处重写这段前置既啰嗦又容易漏一步。
+    """
+    interview = client.post(
+        "/api/interviews",
+        json={"position_id": position.id, "candidate_name": "张三"},
+        headers=hr_headers,
+    ).json()
+
+    invitation = client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+    accepted = client.post(
+        f"/api/candidate/invitations/{invitation['code']}/accept",
+        json={
+            "username": candidate_user.username,
+            "password": CANDIDATE_PASSWORD,
+        },
+        headers=candidate_headers,
+    )
+    assert accepted.status_code == 200, accepted.text
+
+    return {
+        "interview_id": interview["id"],
+        "invitation_id": invitation["id"],
+        "code": invitation["code"],
+        "candidate_id": candidate_user.id,
+    }

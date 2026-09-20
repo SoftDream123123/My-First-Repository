@@ -1,7 +1,8 @@
-"""interview 模块业务逻辑：出题组装、回答记录、状态机。"""
+"""interview 模块业务逻辑：出题组装、回答记录、状态机、作答邀请、在线答题。"""
 
+import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -10,22 +11,36 @@ from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
 from app.core.config import get_settings
-from app.core.exceptions import BusinessError, NotFoundError
+from app.core.exceptions import BusinessError, ForbiddenError, NotFoundError
 from app.interview import repository
 from app.interview.models import (
+    ANSWER_SOURCE_CANDIDATE,
+    INVITATION_ACCEPTED,
+    INVITATION_EXPIRED,
+    INVITATION_PENDING,
+    INVITATION_REVOKED,
     STATUS_COMPLETED,
     STATUS_DRAFT,
     STATUS_EVALUATED,
     STATUS_EVALUATING,
     STATUS_ONGOING,
     Interview,
+    InterviewInvitation,
 )
 from app.interview.schemas import (
+    CandidateAnswerCreate,
+    CandidateAnswerView,
+    CandidateInterviewDetail,
+    CandidateInterviewItem,
+    CandidateQuestionItem,
     InterviewCreate,
     InterviewDetail,
     InterviewListItem,
     InterviewPatch,
+    InvitationAcceptResult,
+    InvitationView,
     QuestionItem,
+    SubmitResult,
 )
 from app.position import service as position_service
 from app.question import service as question_service
@@ -108,6 +123,7 @@ def _build_questions_and_answers(
                 source=entry.source_snapshot,
                 answer=answer.content if answer else None,
                 recorded_at=answer.recorded_at if answer else None,
+                answer_source=answer.source if answer else None,
             )
         )
     return items
@@ -310,7 +326,16 @@ def save_answer(
     interview_question_id: int,
     content: str,
 ) -> QuestionItem:
-    """保存/更新回答。仅 ongoing 状态允许 —— 保证评估依据不被篡改。"""
+    """HR 手工录入 / 覆盖作答。仅 ongoing 状态允许 —— 保证评估依据不被篡改。
+
+    **不传 source**：候选人交上来的作答被 HR 覆盖后，来源仍是 candidate
+    （PRD §5.2 要求保留「最初从哪条通道进来」这一事实）。
+    **传 answered_by=user.id**：记录最后修改者。HR 覆盖候选人作答后，
+    source='candidate' 而 answered_by=HR，两个事实并存。
+
+    **本方法对候选人交卷**不受影响 —— 交卷锁定只约束候选人通道，
+    HR 始终可以修订作答（PRD §4.4）。
+    """
     interview = _get_visible(db, user, interview_id)
 
     if interview.status != STATUS_ONGOING:
@@ -320,7 +345,9 @@ def save_answer(
     if entry is None or entry.interview_id != interview.id:
         raise NotFoundError("题目不属于该面试")
 
-    repository.upsert_answer(db, interview_question_id, content)
+    repository.upsert_answer(
+        db, interview_question_id, content, answered_by=user.id
+    )
     db.commit()
 
     for item in _build_questions_and_answers(db, interview.id):
@@ -473,3 +500,358 @@ def transition_back_to_completed(db: Session, interview_id: int) -> None:
     _assert_transition(interview.status, STATUS_COMPLETED)
     interview.status = STATUS_COMPLETED
     db.commit()
+
+
+# ==================== 作答邀请（HR 侧）====================
+
+# 四种失效原因（码不存在 / 已撤销 / 已接受 / 已过期）**共用同一文案**。
+# 区分它们等于提供了一个邀请码探测接口（PRD §7 明确「不泄露面试是否存在」）。
+# 注意这不适用于「用户名已被占用」「已接受过该面试」—— 它们发生在码校验**之后**，
+# 此时码已确定有效，泄露面为零。
+_INVITATION_INVALID_MESSAGE = "邀请码无效或已失效"
+
+
+def _generate_code(db: Session) -> str:
+    """secrets.token_urlsafe(16) → 22 个 URL-safe 字符（约 128 位熵）。
+
+    循环查重只为给出友好结果；UNIQUE 索引兜住并发插入。
+    """
+    while True:
+        code = secrets.token_urlsafe(16)
+        if repository.get_invitation_by_code(db, code) is None:
+            return code
+
+
+def _derive_status(invitation: InterviewInvitation, now: datetime) -> str:
+    """派生 expired —— **不回写**。
+
+    回写等于用一次读操作改变状态，会产生「谁先读谁写库」的隐式副作用。
+    「当前时间」由调用方传入而非写死在 SQL 里，保证可测。
+    """
+    if invitation.status == INVITATION_PENDING and invitation.expires_at < now:
+        return INVITATION_EXPIRED
+    return invitation.status
+
+
+def _invitation_view(db: Session, invitation: InterviewInvitation) -> InvitationView:
+    username = None
+    if invitation.candidate_user_id is not None:
+        candidate = auth_service.get_user_by_id(db, invitation.candidate_user_id)
+        username = candidate.username if candidate else None
+
+    return InvitationView(
+        id=invitation.id,
+        interview_id=invitation.interview_id,
+        code=invitation.code,
+        status=_derive_status(invitation, _now()),
+        expires_at=invitation.expires_at,
+        accepted_at=invitation.accepted_at,
+        candidate_username=username,
+        created_at=invitation.created_at,
+    )
+
+
+def create_invitation(db: Session, user: User, interview_id: int) -> InvitationView:
+    """生成作答邀请码。
+
+    只在 `ongoing` 面试上可发：面试一旦 completed，作答通道本就不接受写入，
+    此时邀请已无意义 —— 提前拦住比让候选人白答一场更友好。
+    """
+    interview = _get_visible(db, user, interview_id)
+
+    if interview.status != STATUS_ONGOING:
+        raise BusinessError(
+            "当前状态下不可生成邀请，请先将面试置为进行中",
+            detail={"status": interview.status},
+        )
+
+    invitation = repository.create_invitation(
+        db,
+        interview_id=interview.id,
+        code=_generate_code(db),
+        status=INVITATION_PENDING,
+        expires_at=_now() + timedelta(days=get_settings().invitation_expire_days),
+        created_by=user.id,
+    )
+    db.commit()
+    db.refresh(invitation)
+    return _invitation_view(db, invitation)
+
+
+def list_invitations(
+    db: Session, user: User, interview_id: int
+) -> list[InvitationView]:
+    _get_visible(db, user, interview_id)
+    return [
+        _invitation_view(db, invitation)
+        for invitation in repository.list_invitations(db, interview_id)
+    ]
+
+
+def revoke_invitation(
+    db: Session, user: User, interview_id: int, invitation_id: int
+) -> InvitationView:
+    """撤销邀请。
+
+      pending  → revoked
+      accepted → revoked   ← **有意允许**：这是切断已接受候选人访问的唯一手段，
+                              也是「回退后撤销旧邀请再发新邀请」这一恢复路径的前提。
+                              置 revoked 后 get_accepted_invitation 立即不再命中，
+                              而 candidate_user_id / accepted_at 仍留在该行上，
+                              「谁在何时接受了」这一事实没有被抹掉。
+      revoked  → 幂等返回，不报错
+      已过期的 pending → 允许置 revoked，语义上等于「不再重发」
+    """
+    _get_visible(db, user, interview_id)
+
+    invitation = repository.get_invitation_by_id(db, invitation_id)
+    if invitation is None or invitation.interview_id != interview_id:
+        raise NotFoundError("邀请不存在")
+
+    if invitation.status == INVITATION_REVOKED:
+        return _invitation_view(db, invitation)  # 幂等
+
+    repository.update_invitation(db, invitation, status=INVITATION_REVOKED)
+    db.commit()
+    db.refresh(invitation)
+    return _invitation_view(db, invitation)
+
+
+# ==================== 候选人侧 ====================
+
+
+def get_interview_for_candidate(db: Session, user: User, interview_id: int) -> Interview:
+    """候选人可见性判定的**唯一入口**。
+
+    所有候选人端点（含 evaluation 的 /feedback）都必须经此取面试 —— 任何直接
+    repository.get_by_id 的写法都会绕过隔离。
+
+    判据是「持有该面试的**有效邀请**」，**不是 created_by**：候选人不是面试的
+    创建者（那是 HR），按 created_by 过滤会让候选人看不到自己的任何面试。
+
+    不使用 ensure_resource_visible：它基于 created_by，且对 candidate 角色会
+    直接抛错（那是 HR 侧的纵深防御）。
+    """
+    interview = repository.get_by_id(db, interview_id)
+    if interview is None:
+        raise NotFoundError("面试不存在")
+
+    invitation = repository.get_accepted_invitation(db, interview_id, user.id)
+    if invitation is None:
+        raise ForbiddenError("无权限访问该面试")
+
+    return interview
+
+
+def accept_invitation(
+    db: Session, code: str, username: str, password: str
+) -> InvitationAcceptResult:
+    """凭邀请码激活并绑定面试。
+
+    账号创建**委托 auth**（auth_service.create_candidate_account），不在本模块
+    复制「用户名唯一性 / 密码哈希 / 角色约束」规则。
+
+    刻意不接 `user` 参数：绑定到哪个账号由请求体里的 username 决定（§5.3），
+    与调用者身份无关。角色守卫在 router 层。签名里放一个不用的 user 会让人
+    误以为「绑定的是当前登录者」。
+    """
+    invitation = repository.get_invitation_by_code(db, code)
+
+    if (
+        invitation is None
+        or invitation.status != INVITATION_PENDING
+        or invitation.expires_at < _now()
+    ):
+        raise BusinessError(_INVITATION_INVALID_MESSAGE)
+
+    candidate = auth_service.create_candidate_account(db, username, password)
+
+    # 否则同一候选人可用第二条码重复接受同一面试，产生两条绑定记录，
+    # 候选人端的面试列表会出现重复项。
+    if (
+        repository.get_accepted_invitation(
+            db, invitation.interview_id, candidate.id
+        )
+        is not None
+    ):
+        raise BusinessError("你已接受过该面试的邀请")
+
+    repository.update_invitation(
+        db,
+        invitation,
+        candidate_user_id=candidate.id,
+        accepted_at=_now(),
+        status=INVITATION_ACCEPTED,
+    )
+    db.commit()
+    db.refresh(invitation)
+
+    interview = repository.get_by_id(db, invitation.interview_id)
+    position = repository.get_position(db, interview.position_id)
+    question_count = len(repository.list_questions(db, interview.id))
+
+    return InvitationAcceptResult(
+        interview_id=interview.id,
+        interview={
+            "id": interview.id,
+            "position_name": position.name if position else "",
+            "candidate_name": interview.candidate_name,
+            "status": interview.status,
+            "question_count": question_count,
+        },
+    )
+
+
+def list_my_interviews(db: Session, user: User) -> list[CandidateInterviewItem]:
+    """我参与的面试（仅 accepted 且绑定本人）。"""
+    rows = repository.list_accepted_interviews_for_candidate(db, user.id)
+    interview_ids = [interview.id for interview, _ in rows]
+
+    question_counts = repository.count_questions(db, interview_ids)
+    answer_counts = repository.count_answers(db, interview_ids)
+
+    return [
+        CandidateInterviewItem(
+            id=interview.id,
+            position_name=position_name,
+            status=interview.status,
+            question_count=question_counts.get(interview.id, 0),
+            answered_count=answer_counts.get(interview.id, 0),
+            submitted=repository.get_submitted_at(db, interview.id) is not None,
+            created_at=interview.created_at,
+        )
+        for interview, position_name in rows
+    ]
+
+
+def get_candidate_interview_detail(
+    db: Session, user: User, interview_id: int
+) -> CandidateInterviewDetail:
+    """面试详情 —— **只含题目与我自己的作答**。
+
+    content / dimension 取自快照，因此天然不含参考答案
+    （content_snapshot 只快照题干），这是既有设计带来的安全收益。
+    """
+    interview = get_interview_for_candidate(db, user, interview_id)
+    position = repository.get_position(db, interview.position_id)
+
+    answers = {
+        answer.interview_question_id: answer
+        for answer in repository.list_answers(db, interview.id)
+    }
+    submitted_at = repository.get_submitted_at(db, interview.id)
+
+    questions = [
+        CandidateQuestionItem(
+            interview_question_id=entry.id,
+            seq=entry.seq,
+            content=entry.content_snapshot,
+            dimension=entry.dimension_snapshot,
+            my_answer=answers[entry.id].content if entry.id in answers else None,
+        )
+        for entry in repository.list_questions(db, interview.id)
+    ]
+
+    return CandidateInterviewDetail(
+        id=interview.id,
+        position_name=position.name if position else "",
+        status=interview.status,
+        created_at=interview.created_at,
+        submitted=submitted_at is not None,
+        submitted_at=submitted_at,
+        questions=questions,
+    )
+
+
+def save_candidate_answer(
+    db: Session, user: User, interview_id: int, data: CandidateAnswerCreate
+) -> CandidateAnswerView:
+    """候选人在线作答（仅 ongoing 且未交卷时允许）。
+
+    与 HR 通道共用同一条 `ongoing` 限定 —— 这不是巧合：**两条通道写的是同一份
+    数据**，对数据的写入约束自然应当一致。
+
+    source / answered_by 由服务端写入，请求体不接受（与 QuestionCreate 不接收
+    source 同一手法）。
+    """
+    interview = get_interview_for_candidate(db, user, interview_id)
+
+    if interview.status != STATUS_ONGOING:
+        raise BusinessError("当前状态下不可作答")
+
+    if repository.get_submitted_at(db, interview.id) is not None:
+        raise BusinessError("已交卷，不可修改作答")
+
+    entry = repository.get_question_entry(db, data.interview_question_id)
+    if entry is None or entry.interview_id != interview.id:
+        raise NotFoundError("题目不属于该面试")
+
+    answer = repository.upsert_answer(
+        db,
+        data.interview_question_id,
+        data.content,
+        source=ANSWER_SOURCE_CANDIDATE,
+        answered_by=user.id,
+    )
+    db.commit()
+    db.refresh(answer)
+
+    return CandidateAnswerView(
+        interview_question_id=answer.interview_question_id,
+        content=answer.content,
+        submitted_at=answer.submitted_at,
+    )
+
+
+def _count_non_empty_answers(db: Session, interview_id: int) -> int:
+    """实际有内容的作答数 —— **不含交卷时补的空串**。
+
+    它回答的是「候选人答了几题」，而不是「有几条记录」。
+    """
+    return sum(
+        1
+        for answer in repository.list_answers(db, interview_id)
+        if answer.content.strip() != ""
+    )
+
+
+def submit_interview(db: Session, user: User, interview_id: int) -> SubmitResult:
+    """交卷：给全部题写 submitted_at（未作答的补空串），候选人侧锁定。
+
+    **幂等检查先于状态检查**：已交卷后 HR 可能已把面试推进到 completed，
+    若先判状态会返回 409，让前端重试看到一个自相矛盾的错误。
+
+    **不改面试状态** —— PRD §5.1 的明确取舍，HR 仍需手动 /complete。
+    """
+    interview = get_interview_for_candidate(db, user, interview_id)
+
+    existing = repository.get_submitted_at(db, interview.id)
+    if existing is not None:
+        return SubmitResult(
+            interview_id=interview.id,
+            submitted_at=existing,  # 返回**首次**交卷时刻，不刷新它
+            answered_count=_count_non_empty_answers(db, interview.id),
+        )
+
+    if interview.status != STATUS_ONGOING:
+        raise BusinessError("当前状态下不可交卷")
+
+    submitted_at = _now()
+    entry_ids = [e.id for e in repository.list_questions(db, interview.id)]
+
+    repository.bulk_upsert_empty_answers(
+        db, entry_ids, submitted_at, user.id
+    )
+    repository.mark_all_submitted(db, interview.id, submitted_at)
+    db.commit()
+
+    # 返回**落库后**的值，而不是内存里的 submitted_at：
+    # MySQL 的 DATETIME 列不带小数秒，写进去的值会被取整。若直接返回内存值，
+    # 首次响应的时刻与后续幂等重试读到的时刻会差一个亚秒，看起来像「不幂等」。
+    stored = repository.get_submitted_at(db, interview.id) or submitted_at
+
+    return SubmitResult(
+        interview_id=interview.id,
+        submitted_at=stored,
+        answered_count=_count_non_empty_answers(db, interview.id),
+    )

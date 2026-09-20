@@ -117,6 +117,10 @@ def _register_routers() -> None:
 
     app.include_router(interview_router, prefix="/api")
 
+    from app.interview.candidate_router import router as interview_candidate_router
+
+    app.include_router(interview_candidate_router, prefix="/api")
+
     from app.evaluation.router import router as evaluation_router
 
     app.include_router(evaluation_router, prefix="/api")

@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # 此时候选人只能凭邀请码建号（凭邀请建号不受该开关影响）。
     candidate_self_register: bool = True
 
+    # ---- 作答邀请（PRD §4.4）----
+    # 邀请码有效期（天）。过期是**读取时派生**的，不落库、不需要调度器。
+    invitation_expire_days: int = 7
+
     # ---- 其他 ----
     cors_origins: list[str] = ["http://localhost:5173"]
     sql_echo: bool = False

@@ -16,6 +16,7 @@ from app.interview.schemas import (
     InterviewDetail,
     InterviewListItem,
     InterviewPatch,
+    InvitationView,
     QuestionItem,
 )
 
@@ -107,3 +108,56 @@ def rollback_interview(
     user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.rollback_interview(db, user, interview_id)
+
+
+# ---------------------------- 作答邀请 ----------------------------
+
+
+@router.post(
+    "/{interview_id}/invitations",
+    response_model=InvitationView,
+    status_code=status.HTTP_201_CREATED,
+    summary="生成作答邀请码",
+)
+def create_invitation(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_hr_guard),
+) -> InvitationView:
+    """无请求体 —— 有效期由配置项 INVITATION_EXPIRE_DAYS 推导。
+
+    响应含**明文** code 供 HR 复制（PRD §1.3：邀请码在系统内展示与复制，不发邮件）。
+    """
+    return service.create_invitation(db, user, interview_id)
+
+
+@router.get(
+    "/{interview_id}/invitations",
+    response_model=list[InvitationView],
+    summary="邀请列表与状态",
+)
+def list_invitations(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_hr_guard),
+) -> list[InvitationView]:
+    return service.list_invitations(db, user, interview_id)
+
+
+@router.delete(
+    "/{interview_id}/invitations/{invitation_id}",
+    response_model=InvitationView,
+    summary="撤销邀请",
+)
+def revoke_invitation(
+    interview_id: int,
+    invitation_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_hr_guard),
+) -> InvitationView:
+    """返回 200 + 更新后的对象，而不是 204。
+
+    撤销后前端需要展示该条的最终状态（revoked）；返回对象比空响应更有用。
+    与 `DELETE /questions/{id}` 的 204 不同，此处有明确的响应内容。
+    """
+    return service.revoke_invitation(db, user, interview_id, invitation_id)
