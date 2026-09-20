@@ -108,9 +108,9 @@ frontend/
     pages/                    7 个页面
     styles/                   tokens / base / components / pages
     __tests__/                sse.test.js · radar.test.js
-  standalone.html             原型期冻结的单文件快照（见下）
+  standalone.html             原型单文件快照（手工维护，见下）
   mock/                       Mock 联调测试（浏览器端，见「单测」一节）
-  .screenshots/               设计记录（10 张）
+  .screenshots/               设计记录（12 张，拍自 standalone.html）
 ```
 
 ### 关于 `standalone.html`
@@ -118,8 +118,15 @@ frontend/
 它是**原型阶段的单文件快照**：数据来自内存 mock，双击即可打开，用于给别人演示设计。
 **它不是本工程的构建产物，也不参与 `npm run build`** —— 真实应用走
 [`一键启动.bat`](../一键启动.bat)（后端托管 `dist/`）或 `npm run dev`。
-它刻意保持冻结，不再随 `src/` 更新；生成它的 `tools/build-standalone.py`
-已在 `01a7d20` 中删除，所以它也**无法**再重新生成。
+
+它现在是**手工维护**的设计交付物（覆盖面为 HR 侧 + 候选人侧全量），不再是构建产物 ——
+生成它的 `tools/build-standalone.py` 已在 `01a7d20` 中删除。
+
+> ⚠️ **原型与 `src/` 目前是两套视觉语言。** 下面「设计决策」三条规则描述的是
+> `src/`（荧光笔 + Georgia + 无品牌主色）。原型自 2026-09-21 起改用另一套
+> 「案卷工作台」语言：深墨蓝脊 + 纸白工作区 + 单一品牌靛蓝（只管身份与操作）
+> + 分数色带（只管评分）+ 灰阶（管结构），数字用 Cambria 衬线右对齐。
+> **原型的令牌以 `standalone.html` 顶部注释为唯一真相。** 两套是否收敛，另行决定。
 
 ### 为什么不用 `EventSource`
 
