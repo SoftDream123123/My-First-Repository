@@ -585,6 +585,10 @@ a:hover { text-decoration: underline; }
 }
 .filterbar-grow { flex: 1; }
 .filterbar-count { margin-left: auto; font-size: var(--t-sm); color: var(--muted); }
+/* 第二行（「取题方式」）：与筛选条件同排会让人以为它也是一项过滤，
+   但它不缩小题目池，只改变挑选与排序（PRD §4.7） */
+.filterbar--sub { border-bottom: none; padding-top: 0; }
+.filterbar-label { flex: none; font-size: var(--t-sm); color: var(--muted); }
 
 /* ---- 列表更宽的变体（题库的题干较长，左列放不下 300px） ---- */
 .split--wide { grid-template-columns: 384px 1fr; }
@@ -1522,6 +1526,49 @@ a:hover { text-decoration: underline; }
 .feedback-total .score-value { margin-left: 0; font-size: var(--t-2xl); }
 .feedback-total-label { font-size: var(--t-sm); color: var(--muted); }
 
+/* ---- 我的简历：正文是「一份文书」，因此右栏沿用案卷的读法（`.dossier-*`，
+   pre-wrap 保换行），而不是塞进表格单元格里截断 ---- */
+
+/* 「用于面试」里的多选行：与 `.choice-option` 同构，区别是这里多选，
+   且每行要说清「这场现在用的是哪一份」 */
+.pick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  cursor: pointer;
+}
+.pick-row + .pick-row { margin-top: var(--s2); }
+.pick-row:hover { background: #f7fafc; }
+.pick-row.is-picked { border-color: var(--brand); background: var(--brand-wash); }
+.pick-row input { flex: none; margin-top: 3px; }
+.pick-row-body { flex: 1; min-width: 0; }
+.pick-row-title { font-size: 14px; font-weight: 600; }
+.pick-row-note { margin-top: 2px; font-size: var(--t-xs); color: var(--muted); }
+.pick-row:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* 被这份简历用到的面试（右栏那段） */
+.used-row { display: flex; align-items: center; gap: var(--s2); }
+.used-row + .used-row { margin-top: var(--s2); }
+.used-row-name { font-size: 14px; }
+
+/* 长文编辑框：简历正文能写到两万字，三行可见的框改起来是折磨 */
+.textarea--tall { min-height: 260px; }
+
+/* 正文实时字数：越界要立刻看得见，而不是等提交被拒才知道 */
+.field-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.field-head .field-label { margin-bottom: 0; }
+.char-count {
+  flex: none;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+.char-count.is-over { color: var(--danger); font-weight: 600; }
+
 /* ---- 未实现的模块占位（原型建设期用） ---- */
 .placeholder {
   padding: var(--s9) var(--s6);
@@ -2160,7 +2207,7 @@ __modules['./mock.js'] = function (exports, __require) {
     practiceItems: [],
   };
 
-  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 7, practice: 1, practiceItem: 1 };
+  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 7, resume: 3, practice: 1, practiceItem: 1 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -3077,14 +3124,166 @@ __modules['./mock.js'] = function (exports, __require) {
     const resume = locateResume(located.row.resume_id);
     if (!resume) return fail(404, 'NOT_FOUND', '关联的简历已不可用');
 
-    return ok({
+    return ok(interviewResumeView(resume));
+  });
+
+  /* ---- 候选人侧的简历读写（PRD §4.10）----
+     **写入方只有候选人本人。** HR 侧没有任何简历 CRUD：HR 只经上面那个端点只读
+     「与自己名下某场面试关联」的简历。 */
+
+  const RESUME_MAX_CONTENT = 20000;
+
+  /** 与 ResumeOut 一致：**不含 created_by** —— 候选人无需知道自己的 user id。 */
+  function resumeView(resume) {
+    return {
+      id: resume.id,
+      title: resume.title,
+      content: resume.content,
+      candidate_name: resume.candidate_name,
+      candidate_contact: resume.candidate_contact,
+      created_at: resume.created_at,
+      updated_at: resume.updated_at,
+    };
+  }
+
+  /** 与 InterviewResumeOut 一致。HR 的只读路径与候选人的关联回执共用一份 ——
+      两处各写一遍必然漂移，而它们本该是同一个 schema。 */
+  function interviewResumeView(resume) {
+    return {
       resume_id: resume.id,
       title: resume.title,
       content: resume.content,
       candidate_name: resume.candidate_name,
       candidate_contact: resume.candidate_contact,
       updated_at: resume.updated_at,
-    });
+    };
+  }
+
+  /** 这份简历被谁用着 —— 删除前要说得清「被什么引用」，而不只是回一句冲突。 */
+  function resumeUsage(resumeId) {
+    const interviews = state.interviews.filter((i) => i.resume_id === resumeId);
+    const sessions = state.practiceSessions.filter((s) => s.resume_id === resumeId);
+    return { interview_count: interviews.length, session_count: sessions.length };
+  }
+
+  function myResumes(user) {
+    return state.resumes
+      .filter((r) => r.created_by === user.id)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+  }
+
+  /** 归属判据是 `created_by`（与 PRD §4.10 一致：候选人只读写自己的）。
+      不存在 404 / 非本人 403 —— 与后端 `ensure_mine` 同一组状态码。 */
+  function locateMyResume(user, resumeId) {
+    const resume = locateResume(resumeId);
+    if (!resume) return { error: fail(404, 'NOT_FOUND', '简历不存在') };
+    if (resume.created_by !== user.id) {
+      return { error: fail(403, 'FORBIDDEN', '无权限访问该简历') };
+    }
+    return { resume };
+  }
+
+  /**
+   * 校验简历字段。`partial` 为真时只处理**传了的**字段（PUT 的部分更新语义）。
+   * 正文长度**不在这里判** —— 它走 422 而不是 400，是另一类问题（见下）。
+   */
+  function validateResumeText(body, partial) {
+    const fields = [];
+    const values = {};
+
+    function text(key, max, required) {
+      const given = body != null && body[key] !== undefined;
+      if (partial && !given) return;
+      const value = given ? String(body[key] ?? '').trim() : '';
+      if (!value) {
+        // 空串表示「清空」，与缺省在展示上等价（后端 ResumeUpdate 同一取舍）
+        if (required) fields.push({ field: key, message: '不能为空' });
+        else values[key] = null;
+        return;
+      }
+      if (max != null && value.length > max) {
+        fields.push({ field: key, message: `长度不能超过 ${max} 个字符` });
+        return;
+      }
+      values[key] = value;
+    }
+
+    text('title', 100, true);
+    text('content', null, true);
+    text('candidate_name', 100, false);
+    text('candidate_contact', 200, false);
+    return { fields, values };
+  }
+
+  /** 正文超长 → **422**（全项目唯一一处 422，PRD §7）。前端据此给不同的提示。 */
+  function contentTooLong(values) {
+    return typeof values.content === 'string' && values.content.length > RESUME_MAX_CONTENT;
+  }
+  const CONTENT_TOO_LONG = `简历正文不能超过 ${RESUME_MAX_CONTENT} 字符`;
+
+  on('GET', '/candidate/resumes', ({ user }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    return ok(myResumes(user).map(resumeView));
+  });
+
+  on('POST', '/candidate/resumes', ({ user, body }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const { fields, values } = validateResumeText(body, false);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+    if (contentTooLong(values)) return fail(422, 'VALIDATION_ERROR', CONTENT_TOO_LONG);
+
+    const now = new Date().toISOString();
+    const resume = {
+      id: seq.resume++,
+      title: values.title,
+      content: values.content,
+      candidate_name: values.candidate_name ?? null,
+      candidate_contact: values.candidate_contact ?? null,
+      created_by: user.id, // 归属恒取自 token，请求体里没有这个字段
+      created_at: now,
+      updated_at: now,
+    };
+    state.resumes.push(resume);
+    return created(resumeView(resume));
+  });
+
+  on('GET', '/candidate/resumes/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateMyResume(user, params.id);
+    return located.error || ok(resumeView(located.resume));
+  });
+
+  on('PUT', '/candidate/resumes/:id', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateMyResume(user, params.id);
+    if (located.error) return located.error;
+
+    const { fields, values } = validateResumeText(body, true);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+    if (contentTooLong(values)) return fail(422, 'VALIDATION_ERROR', CONTENT_TOO_LONG);
+
+    Object.assign(located.resume, values, { updated_at: new Date().toISOString() });
+    return ok(resumeView(located.resume));
+  });
+
+  on('DELETE', '/candidate/resumes/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateMyResume(user, params.id);
+    if (located.error) return located.error;
+
+    // 删除保护：被面试或练习引用就拒绝。后端靠外键 RESTRICT，结论同一条
+    const usage = resumeUsage(located.resume.id);
+    if (usage.interview_count || usage.session_count) {
+      return fail(409, 'BUSINESS_ERROR', '该简历已被面试或练习关联，无法删除');
+    }
+    state.resumes = state.resumes.filter((r) => r.id !== located.resume.id);
+    return ok({ deleted: true });
   });
 
   /* 与后端 MockProvider.match_questions_by_resume 同构：维度命中 > 题干重合 > 分类命中。
@@ -3121,6 +3320,34 @@ __modules['./mock.js'] = function (exports, __require) {
     return '本题与岗位评估维度相关，作为通用考察项。';
   }
 
+  /**
+   * 按简历给题目打分并排序 —— **只挑不生成**（PRD §6）。
+   *
+   * 面试的「按简历补题」与刷题的「按简历推荐」共用这一个打分器：后端那边两条路
+   * 调的是**同一个** Provider 方法（`match_questions_by_resume`），原型里自然也
+   * 该只有一份打分，否则两处会各挑各的、谁也说不清哪个对。
+   *
+   * 同分必须有序：按 id 升序兜底，否则结果依赖传入顺序。
+   */
+  function scoreQuestionsByResume(resumeText, questions) {
+    return questions
+      .map((item) => {
+        const dimensionHit = resumeText.includes(item.dimension);
+        const categoryHit = resumeText.includes(item.category);
+        const overlap = resumeOverlap(item.content, resumeText);
+        return {
+          item,
+          dimensionHit,
+          categoryHit,
+          overlap,
+          score: MATCH_WEIGHT_DIMENSION * (dimensionHit ? 1 : 0)
+            + MATCH_WEIGHT_CATEGORY * (categoryHit ? 1 : 0)
+            + MATCH_WEIGHT_OVERLAP * overlap,
+        };
+      })
+      .sort((a, b) => (b.score - a.score) || (a.item.id - b.item.id));
+  }
+
   on('POST', '/interviews/:id/questions/match', ({ user, body, params }) => {
     const denied = requireLogin(user);
     if (denied) return denied;
@@ -3151,22 +3378,7 @@ __modules['./mock.js'] = function (exports, __require) {
     const resumeText = resume ? resume.content : '';
     const count = Math.max(1, Math.min(20, Number(body?.count) || 3));
 
-    const scored = candidates.map((item) => {
-      const dimensionHit = resumeText.includes(item.dimension);
-      const categoryHit = resumeText.includes(item.category);
-      const overlap = resumeOverlap(item.content, resumeText);
-      return {
-        item,
-        score: MATCH_WEIGHT_DIMENSION * (dimensionHit ? 1 : 0)
-          + MATCH_WEIGHT_CATEGORY * (categoryHit ? 1 : 0)
-          + MATCH_WEIGHT_OVERLAP * overlap,
-        dimensionHit,
-        categoryHit,
-        overlap,
-      };
-    });
-    // 同分必须有序：按 id 升序兜底，否则结果依赖传入顺序
-    scored.sort((a, b) => (b.score - a.score) || (a.item.id - b.item.id));
+    const scored = scoreQuestionsByResume(resumeText, candidates);
 
     const picked = scored.slice(0, count);
     const baseSeq = Math.max(0, ...(interview.questions || []).map((q) => q.seq));
@@ -3840,6 +4052,9 @@ __modules['./mock.js'] = function (exports, __require) {
       question_count: questions.length,
       answered_count: questions.filter((q) => q.answer != null).length,
       submitted: candidateSubmittedAt(interview) != null,
+      // 本场关联的简历 —— 候选人要在「我的简历」页回显「这场用的是哪一份」，
+      // 否则「用于面试」只能盲勾（解除关联也无从判断该不该给）
+      resume_id: interview.resume_id ?? null,
       created_at: interview.created_at,
     };
   }
@@ -3940,6 +4155,7 @@ __modules['./mock.js'] = function (exports, __require) {
       created_at: interview.created_at,
       submitted: candidateSubmittedAt(interview) != null,
       submitted_at: candidateSubmittedAt(interview),
+      resume_id: interview.resume_id ?? null,
       questions: (interview.questions || []).map(candidateQuestionView),
     });
   });
@@ -4025,6 +4241,37 @@ __modules['./mock.js'] = function (exports, __require) {
       // 总分在**读取时**按当前档位裁剪，不落进反馈记录 —— 改档无需重新生成
       overall_score: level === 'full' ? report.overall_score : null,
     });
+  });
+
+  /* ---- 候选人把简历关联到面试（PRD §4.13）----
+     简历由候选人提供，因此关联动作也由候选人发起 —— 这是 HR 看到候选人简历的
+     **唯一通路**（HR 侧没有任何简历 CRUD）。 */
+
+  on('PUT', '/candidate/interviews/:id/resume', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const found = getInterviewForCandidate(user, params.id);
+    if (found.error) return found.error;
+    const interview = found.interview;
+
+    // 只允许 ongoing（**白名单**写法）：draft 对候选人本就不可达，而 evaluating /
+    // evaluated 是可达的（HR 可以先 complete 再评估），写成「completed 及之后拒绝」
+    // 的黑名单极易漏掉这两态
+    if (interview.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '面试已结束，不可变更简历关联');
+    }
+
+    // `resume_id: null` 是显式的「解除关联」，不是「不修改」（PRD §4.13）
+    const resumeId = body?.resume_id ?? null;
+    if (resumeId == null) {
+      interview.resume_id = null;
+      return ok(null);
+    }
+
+    const located = locateMyResume(user, resumeId); // 404 / 403 由它给
+    if (located.error) return located.error;
+    interview.resume_id = located.resume.id;
+    return ok(interviewResumeView(located.resume));
   });
 
   /* ---- 刷题：筛选项、取题、会话、判分 ---- */
@@ -4151,7 +4398,9 @@ __modules['./mock.js'] = function (exports, __require) {
       session: sessionView(session),
       items: practiceItemsOf(session.id).map(practiceItemView),
       resume_id: session.resume_id ?? null,
-      resume_match_applied: false,
+      // 由**取题时的事实**决定，不看「题目顺序像不像按简历排的」——
+      // 降级时 resume_id 仍非空，这两个字段回答的是不同的问题
+      resume_match_applied: session.resume_match_applied === true,
     };
   }
 
@@ -4276,7 +4525,27 @@ __modules['./mock.js'] = function (exports, __require) {
       question_type: body?.question_type || null,
     };
     const size = Math.min(PRACTICE_MAX_SIZE, Math.max(1, Number(body?.size) || PRACTICE_DEFAULT_SIZE));
-    const picked = practiceCandidates(filters).slice(0, size);
+
+    // 关联了简历 → 由 AI 从**符合条件的候选中**按相关度挑（只挑不生成）。
+    // 归属校验先于取题：否则「查了一堆题才发现简历不是你的」（404 / 403 由它给）
+    let resume = null;
+    if (body?.resume_id != null) {
+      const located = locateMyResume(user, body.resume_id);
+      if (located.error) return located.error;
+      resume = located.resume;
+    }
+
+    const pool = practiceCandidates(filters);
+    let picked = pool.slice(0, size);
+    // 降级（AI 不可用 / 没命中）**不阻塞开始练习**：退回既有筛选取题（PRD §7）
+    let resumeMatchApplied = false;
+    if (resume && !aiFails()) {
+      const matched = scoreQuestionsByResume(resume.content, pool).slice(0, size);
+      if (matched.length) {
+        picked = matched.map((row) => row.item);
+        resumeMatchApplied = true;
+      }
+    }
 
     // 取不到题**不创建会话** —— 留一个空会话只会让「继续练习」指向一片空白
     if (!picked.length) {
@@ -4292,7 +4561,10 @@ __modules['./mock.js'] = function (exports, __require) {
       dimension: filters.dimension,
       difficulty: filters.difficulty,
       question_type: filters.question_type,
-      resume_id: body?.resume_id ?? null,
+      // 降级时**仍保留** resume_id —— 它表达「候选人想用哪份」这一事实；
+      // 「系统实际做到了没有」由 resume_match_applied 回答
+      resume_id: resume ? resume.id : null,
+      resume_match_applied: resumeMatchApplied,
       status: 'ongoing',
       started_at: now,
       finished_at: null,
@@ -4697,7 +4969,7 @@ __modules['./router.js'] = function (exports, __require) {
     { path: '/candidate/practice/:id',             key: 'practiceSession',   side: 'candidate', label: '练习' },
     { path: '/candidate/wrong-book',               key: 'wrongBook',         side: 'candidate', nav: '错题本',   label: '错题本' },
     { path: '/candidate/stats',                    key: 'practiceStats',     side: 'candidate', nav: '练习统计', label: '练习统计' },
-    { path: '/candidate/resumes',                  key: 'candidateResumes',  side: 'candidate', nav: '我的简历', label: '我的简历', pending: true },
+    { path: '/candidate/resumes',                  key: 'candidateResumes',  side: 'candidate', nav: '我的简历', label: '我的简历' },
   ];
 
   const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };
@@ -8796,13 +9068,15 @@ __modules['./pages/candidate-practice.js'] = function (exports, __require) {
     let positions = [];
     let sessions = [];
     let pool = [];
+    let resumes = [];
     try {
       const loaded = await Promise.all([
         api.get('/candidate/positions'),
         api.get('/practice/sessions'),
         api.get('/practice/questions'),
+        api.get('/candidate/resumes'),
       ]);
-      [positions, sessions, pool] = loaded;
+      [positions, sessions, pool, resumes] = loaded;
     } catch (error) {
       mount(main, el('div', { class: 'panel' }, emptyState('加载失败', error.message,
         el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container) }))));
@@ -8820,6 +9094,10 @@ __modules['./pages/candidate-practice.js'] = function (exports, __require) {
     };
     const size = makeSelect('题量', SIZES.map((n) => [n, `${n} 题`]));
     size.value = String(SIZES[0]);
+    // 简历**不是筛选条件**（它不缩小题目池），而是取题方式：关联后由 AI 从符合
+    // 筛选条件的题里按相关度挑选排序（PRD §4.7）。因此与「题量」同组，放在末尾。
+    const resume = makeSelect('按简历推荐', resumes.map((r) => [r.id, r.title]));
+    resume.title = '选一份自己的简历后，取题会按与它的相关度挑选排序；不选就按原有筛选取题。';
 
     const count = el('span', { class: 'practice-count' });
     const start = el('button', { class: 'btn btn--primary', text: '开始练习' });
@@ -8864,6 +9142,8 @@ __modules['./pages/candidate-practice.js'] = function (exports, __require) {
         const detail = await api.post('/practice/sessions', {
           ...currentFilters(),
           size: Number(size.value) || SIZES[0],
+          // 未选简历时显式传 null：与「不关联」语义一致（不是缺省）
+          resume_id: resume.value ? Number(resume.value) : null,
         });
         navigate(`/candidate/practice/${detail.session.id}`);
       } catch (error) {
@@ -8880,6 +9160,11 @@ __modules['./pages/candidate-practice.js'] = function (exports, __require) {
       el('span', { class: 'filterbar-grow' }),
       count,
       start);
+    // 简历**另起一行**：它不是筛选条件（不缩小题目池），只改变挑选与排序。
+    // 同排会让人以为多了一项过滤，两行则把「筛什么」与「怎么挑」分开了
+    const resumeBar = el('div', { class: 'filterbar filterbar--sub' },
+      el('span', { class: 'filterbar-label', text: '取题方式' }),
+      resume);
 
     /* -------------------------- 我的练习 -------------------------- */
 
@@ -8916,7 +9201,7 @@ __modules['./pages/candidate-practice.js'] = function (exports, __require) {
           el('p', { class: 'page-lede' },
             '选好条件开始一次练习。题目提交即判分，答错的会自动进错题本。'))),
 
-      el('div', { class: 'panel' }, filterBar),
+      el('div', { class: 'panel' }, filterBar, resumeBar),
 
       ongoing.length
         ? el('div', { class: 'panel' },
@@ -9090,6 +9375,13 @@ __modules['./pages/practice-session.js'] = function (exports, __require) {
     document.title = `${title} · 刷题`;
 
     const progressHolder = el('div', { class: 'practice-progress' });
+    // 降级提示：关联了简历却没按它推荐（AI 不可用或未命中）。这是**正常状态**
+    // 而不是错误 —— 取题照常完成了，所以用提示条，不用报错样式（PRD §7）。
+    // 注意这两个字段在**详情顶层**（`PracticeSessionDetail`），不在 `session` 里
+    const resumeNote = detail.resume_id != null && detail.resume_match_applied !== true
+      ? el('p', { class: 'note-box', style: 'margin-top:var(--s4)' },
+          '按简历推荐这次没有生效，已按筛选条件取题。')
+      : null;
     const summaryHolder = el('div', {});
     const listHolder = el('div', { class: 'panel' });
     const actionsHolder = el('div', { class: 'page-head-actions' });
@@ -9275,6 +9567,7 @@ __modules['./pages/practice-session.js'] = function (exports, __require) {
             : '提交即判分，可以随时离开，回来接着做。' })),
         actionsHolder),
       progressHolder,
+      resumeNote,
       summaryHolder,
       el('div', { style: 'margin-top:var(--s5)' }, listHolder),
     );
@@ -10092,6 +10385,351 @@ __modules['./pages/candidate-feedback.js'] = function (exports, __require) {
 };
 
 /* ==========================================================================
+   pages/candidate-resumes.js —— 我的简历
+   左索引 + 右案卷。简历正文是**一份文书**（纯文本粘贴、保留换行），所以右栏
+   沿用案卷的读法，而不是把它塞进表格里截断。
+
+   关联动作（PRD §4.13）也放在这里：「这份简历用在哪几场面试上」是**这一份
+   简历的属性**，所以和增删改查在同一处 —— 候选人不必先翻到某个面试页才能接上。
+
+   ⚠️ 本页依赖 `GET /candidate/interviews` 下发每场的 `resume_id`：
+   没有它就只能盲勾，而且「解除关联」也无从判断该不该给。
+   ========================================================================== */
+__modules['./pages/candidate-resumes.js'] = function (exports, __require) {
+  const { el, clear, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal, openModal } = __require('./components/modal.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const {
+    candidateStateTag, contextTitle, createShell, emptyState, formatDateTime,
+    loadingBlock,
+  } = __require('./components/shell.js');
+
+  // 与后端 `resume_content_max_length` / 原型 mock 的 RESUME_MAX_CONTENT 一致
+  const MAX_CONTENT = 20000;
+
+  /** 实时字数：越界立刻变红 —— 硬上限不能等提交被拒才知道（module-22 §4.2）。 */
+  function charCount(textarea) {
+    const node = el('span', { class: 'char-count' });
+    function paint() {
+      const length = textarea.value.length;
+      node.textContent = `${length} / ${MAX_CONTENT}`;
+      node.className = `char-count${length > MAX_CONTENT ? ' is-over' : ''}`;
+    }
+    textarea.addEventListener('input', paint);
+    paint();
+    return node;
+  }
+
+  /* --------------------------- 新建 / 编辑 --------------------------- */
+
+  function resumeModal(resume, onDone) {
+    const title = el('input', {
+      class: 'input', id: 'resume-title', maxlength: '100', value: resume?.title ?? '',
+    });
+    const titleError = fieldError();
+    const name = el('input', {
+      class: 'input', id: 'resume-name', maxlength: '100', value: resume?.candidate_name ?? '',
+    });
+    const nameError = fieldError();
+    const contact = el('input', {
+      class: 'input', id: 'resume-contact', maxlength: '200',
+      value: resume?.candidate_contact ?? '',
+    });
+    const contactError = fieldError();
+    const content = el('textarea', {
+      class: 'textarea textarea--tall', id: 'resume-content', value: resume?.content ?? '',
+    });
+    const contentError = fieldError();
+    const errors = fieldErrors({
+      title: titleError,
+      content: contentError,
+      candidate_name: nameError,
+      candidate_contact: contactError,
+    });
+
+    const save = el('button', {
+      class: 'btn btn--primary',
+      text: resume ? '保存修改' : '创建简历',
+    });
+
+    const handle = openModal({
+      title: resume ? '编辑简历' : '新建简历',
+      wide: true,
+      body: el('div', {},
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'resume-title', text: '标题' }),
+          title,
+          el('p', { class: 'field-note', text: '给自己认的，比如「后端开发 · 主投版」。' }),
+          titleError),
+
+        el('div', { class: 'form-grid' },
+          el('div', { class: 'field' },
+            el('label', { class: 'field-label', for: 'resume-name', text: '姓名（可选）' }),
+            name,
+            nameError),
+          el('div', { class: 'field' },
+            el('label', { class: 'field-label', for: 'resume-contact', text: '联系方式（可选）' }),
+            contact,
+            contactError)),
+
+        el('div', { class: 'field' },
+          el('div', { class: 'field-head' },
+            el('label', { class: 'field-label', for: 'resume-content', text: '简历正文' }),
+            charCount(content)),
+          content,
+          el('p', {
+            class: 'field-note',
+            text: '直接粘贴纯文本，换行会原样保留。不支持上传文件或解析格式。',
+          }),
+          contentError)),
+      footer: [
+        el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+        save,
+      ],
+    });
+
+    save.addEventListener('click', async () => {
+      errors.clear();
+      if (!title.value.trim()) { errors.show('title', '请填写标题'); title.focus(); return; }
+      if (!content.value.trim()) { errors.show('content', '简历正文不能为空'); content.focus(); return; }
+      if (content.value.length > MAX_CONTENT) {
+        errors.show('content', `简历正文不能超过 ${MAX_CONTENT} 字符`);
+        content.focus();
+        return;
+      }
+
+      const body = {
+        title: title.value.trim(),
+        content: content.value,
+        candidate_name: name.value.trim() || null,
+        candidate_contact: contact.value.trim() || null,
+      };
+      handle.setBusy(true);
+      try {
+        if (resume) await api.put(`/candidate/resumes/${resume.id}`, body);
+        else await api.post('/candidate/resumes', body);
+        handle.close();
+        toast.success(resume ? '已保存' : '已创建');
+        onDone();
+      } catch (error) {
+        handle.setBusy(false);
+        // 400 落到具体字段；422（正文超长）由后端给整句文案
+        if (!errors.fromServer(error)) toast.error(error.message);
+      }
+    });
+  }
+
+  /* ------------------------------ 删除 ------------------------------ */
+
+  async function removeResume(resume, onDone) {
+    const ok = await confirmModal({
+      title: '删除这份简历？',
+      message: `《${resume.title}》删除后无法恢复。它如果已经被面试或练习关联，删除会被拒绝。`,
+      confirmLabel: '删除',
+    });
+    if (!ok) return;
+    try {
+      await api.del(`/candidate/resumes/${resume.id}`);
+      toast.success('已删除');
+      onDone();
+    } catch (error) {
+      toast.error(error.message); // 409 的文案来自后端，前端不重编
+    }
+  }
+
+  /* ---------------------------- 用于面试 ----------------------------
+     一场面试只挂一份简历，因此「这份用在哪几场」只能一场一次 PUT（PRD §4.13）。
+     勾上 = 本场改用这份；取消勾 = 本场不用简历 —— 但只在这一场当前用的确实是
+     这份时才给取消（用着别的简历时，改由那一份的「用于面试」去换）。 */
+
+  function useForInterviewsModal(resume, interviews, resumes, onDone) {
+    const changed = new Map();
+    const body = el('div', {});
+
+    if (!interviews.length) {
+      body.append(emptyState('还没有可关联的面试',
+        '被邀请并接受之后，那场面试才会出现在这里。'));
+    }
+
+    for (const interview of interviews) {
+      const linked = interview.resume_id ?? null;
+      const isMine = linked === resume.id;
+      const other = linked != null && !isMine ? resumes.find((r) => r.id === linked) : null;
+      const frozen = interview.status !== 'ongoing';
+
+      let note;
+      if (frozen) note = '本场面试已结束，关联已冻结';
+      else if (isMine) note = '本场现在用的就是这份简历';
+      else if (other) note = `本场现在用的是《${other.title}》`;
+      else note = '本场还没有关联简历';
+
+      const box = el('input', { type: 'checkbox', checked: isMine, disabled: frozen });
+      const row = el('label', { class: `pick-row${isMine ? ' is-picked' : ''}` },
+        box,
+        el('div', { class: 'pick-row-body' },
+          el('div', { class: 'pick-row-title', text: interview.position_name }),
+          el('div', { class: 'pick-row-note', text: note })));
+
+      if (!frozen) {
+        box.addEventListener('change', () => {
+          row.classList.toggle('is-picked', box.checked);
+          changed.set(interview.id, box.checked ? resume.id : null);
+        });
+      }
+      body.append(row);
+    }
+
+    const save = el('button', { class: 'btn btn--primary', text: '保存' });
+    const handle = openModal({
+      title: '这份简历用在哪些面试？',
+      body,
+      footer: [
+        el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+        save,
+      ],
+    });
+
+    save.addEventListener('click', async () => {
+      if (!changed.size) { handle.close(); return; }
+      handle.setBusy(true);
+      try {
+        for (const [interviewId, resumeId] of changed) {
+          await api.put(`/candidate/interviews/${interviewId}/resume`, { resume_id: resumeId });
+        }
+        handle.close();
+        toast.success('已更新关联');
+      } catch (error) {
+        // 逐场提交，中途失败会留下**部分成功**。关掉弹窗并重载，让界面与
+        // 事实一致 —— 比留着勾选状态更不容易让人误判已经生效
+        handle.close();
+        toast.error(error.message);
+      }
+      onDone();
+    });
+  }
+
+  /* ------------------------------ 页面 ------------------------------ */
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('我的简历'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载你的简历…'));
+
+    let resumes = [];
+    let interviews = [];
+    try {
+      // 「用于面试」要拿每场的 resume_id 才能回显与解除，因此两份一起取
+      [resumes, interviews] = await Promise.all([
+        api.get('/candidate/resumes'),
+        api.get('/candidate/interviews'),
+      ]);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('加载失败', error.message,
+        el('button', {
+          class: 'btn btn--primary',
+          text: '重新加载',
+          onClick: () => render(container),
+        }))));
+      return;
+    }
+
+    let currentId = resumes.length ? resumes[0].id : null;
+    const reload = () => render(container);
+    const newButton = (cls) => el('button', {
+      class: cls,
+      text: '新建简历',
+      onClick: () => resumeModal(null, reload),
+    });
+
+    const head = el('div', { class: 'page-head' },
+      el('div', {},
+        el('h1', { text: '我的简历' }),
+        el('p', { class: 'page-lede' },
+          '简历只由你自己录入。招聘方看不到任何简历，除非你把某一份关联到那场面试 —— 关联之后，对方才能按它补题。')),
+      el('div', { class: 'page-head-actions' }, newButton('btn btn--primary')));
+
+    if (!resumes.length) {
+      mount(main, head, el('div', { class: 'panel' }, emptyState(
+        '还没有简历',
+        '把简历正文粘贴进来就行（纯文本，不做文件上传）。关联到面试后招聘方才能按它补题，刷题时也能按它推荐题目。',
+        newButton('btn btn--primary'))));
+      return;
+    }
+
+    const listBody = el('div', { class: 'split-list-body' });
+    const dossier = el('div', { class: 'panel' });
+    const split = el('div', { class: 'split' },
+      el('div', { class: 'split-list' }, listBody), dossier);
+
+    const usedBy = (resumeId) => interviews.filter((i) => i.resume_id === resumeId);
+
+    function paintList() {
+      clear(listBody);
+      for (const resume of resumes) {
+        const used = usedBy(resume.id);
+        listBody.append(el('button', {
+          class: `split-item${resume.id === currentId ? ' is-active' : ''}`,
+          type: 'button',
+          onClick: () => { currentId = resume.id; paintList(); paintDossier(); },
+        },
+          el('div', { class: 'split-item-name', text: resume.title }),
+          el('div', {
+            class: 'split-item-meta',
+            text: `${used.length ? `用于 ${used.length} 场面试` : '尚未用于面试'} · 更新于 ${formatDateTime(resume.updated_at)}`,
+          })));
+      }
+    }
+
+    function paintDossier() {
+      clear(dossier);
+      const resume = resumes.find((r) => r.id === currentId);
+      if (!resume) {
+        dossier.append(emptyState('请选择一份简历', '左侧选中后，这里显示它的正文与关联情况。'));
+        return;
+      }
+      const used = usedBy(resume.id);
+
+      dossier.append(
+        el('div', { class: 'dossier-head' },
+          el('div', {},
+            el('h2', { class: 'dossier-title', text: resume.title }),
+            el('div', { class: 'dossier-meta' },
+              resume.candidate_name ? el('span', { text: resume.candidate_name }) : null,
+              resume.candidate_contact ? el('span', { text: resume.candidate_contact }) : null,
+              el('span', { text: `更新于 ${formatDateTime(resume.updated_at)}` }))),
+          el('div', { class: 'dossier-actions' },
+            el('button', { class: 'btn btn--ghost', text: '编辑', onClick: () => resumeModal(resume, reload) }),
+            el('button', {
+              class: 'btn btn--ghost',
+              text: '用于面试',
+              onClick: () => useForInterviewsModal(resume, interviews, resumes, reload),
+            }),
+            el('button', { class: 'btn btn--ghost', text: '删除', onClick: () => removeResume(resume, reload) }))),
+
+        el('div', { class: 'dossier-section' },
+          el('div', { class: 'dossier-label', text: '用于面试' }),
+          used.length
+            ? el('div', {}, used.map((interview) => el('div', { class: 'used-row' },
+                el('span', { class: 'used-row-name', text: interview.position_name }),
+                candidateStateTag(interview))))
+            : el('p', { class: 'meta', text: '还没有关联到任何面试。点上面的「用于面试」挑一场。' })),
+
+        el('div', { class: 'dossier-section' },
+          el('div', { class: 'dossier-label', text: '简历正文' }),
+          el('p', { class: 'dossier-text', text: resume.content })));
+    }
+
+    paintList();
+    paintDossier();
+    mount(main, head, split);
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -10156,6 +10794,7 @@ __modules['./main.js'] = function (exports, __require) {
     practiceSession: __require('./pages/practice-session.js'),
     wrongBook: __require('./pages/candidate-wrong-book.js'),
     practiceStats: __require('./pages/candidate-stats.js'),
+    candidateResumes: __require('./pages/candidate-resumes.js'),
     placeholder: __require('./pages/placeholder.js'),
   });
 
