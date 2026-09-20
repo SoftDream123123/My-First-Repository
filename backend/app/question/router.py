@@ -39,6 +39,9 @@ def list_questions(
     category: str | None = Query(default=None, description="精确匹配分类"),
     dimension: str | None = Query(default=None, description="精确匹配维度"),
     source: str | None = Query(default=None, description="bank | ai"),
+    question_type: str | None = Query(
+        default=None, description="single_choice | short_answer"
+    ),
     keyword: str | None = Query(default=None, description="按题干模糊匹配"),
     db: Session = Depends(get_db),
     user: User = Depends(_hr_guard),
@@ -48,6 +51,7 @@ def list_questions(
         category=category,
         dimension=dimension,
         source=source,
+        question_type=question_type,
         keyword=keyword,
     )
     return [
@@ -89,3 +93,22 @@ def delete_question(
 ) -> Response:
     service.delete_question(db, user, question_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{question_id}/reference-answer",
+    response_model=QuestionOut,
+    summary="调 AI 生成参考答案与解析并落库",
+)
+def generate_reference_answer(
+    question_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_hr_guard),
+) -> QuestionOut:
+    """无请求体 —— 题目信息从路径与库中读取，避免客户端指定生成依据。
+
+    单选题若 AI 给出的答案不在选项内，返回 409 且**不落库**（见 service）。
+    """
+    return QuestionOut.model_validate(
+        service.generate_reference_answer(db, user, question_id)
+    )

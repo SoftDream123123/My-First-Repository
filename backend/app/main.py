@@ -107,6 +107,12 @@ def _register_routers() -> None:
 
     app.include_router(question_router, prefix="/api")
 
+    # 候选人侧路由：与 HR 端点在 URL 上不重叠（/candidate/* 前缀），
+    # 守卫也不同，故单独注册。
+    from app.question.candidate_router import router as question_candidate_router
+
+    app.include_router(question_candidate_router, prefix="/api")
+
     from app.interview.router import router as interview_router
 
     app.include_router(interview_router, prefix="/api")
