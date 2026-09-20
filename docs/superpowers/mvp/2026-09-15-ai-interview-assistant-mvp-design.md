@@ -352,6 +352,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | `question_score`（改） | id, interview_id, interview_question_id, score, comment | evaluation |
 | `dimension_score` | id, interview_id, dimension, score, comment | evaluation |
 | `report` | id, interview_id, overall_score, conclusion, strengths, weaknesses | evaluation |
+| `candidate_feedback`（新） | id, interview_id, conclusion, strengths(JSON), weaknesses(JSON), generated_at | evaluation |
 | `practice_session`（新） | id, candidate_user_id, position_id, **resume_id**, category, dimension, difficulty, status, total, answered_count, correct_count, started_at, finished_at | practice |
 | `practice_item`（新） | id, session_id, question_id, content_snapshot, options_snapshot(JSON), reference_answer_snapshot, user_answer, is_correct, score, explanation, answered_at | practice |
 
@@ -368,6 +369,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 - **`interview.resume_id` 由候选人侧写入**（4.13），不是 HR 创建面试时写入。`interview.resume_id` / `practice_session.resume_id` 都只记录引用、不复制简历内容。删除简历前会校验引用（4.10），因此不存在悬空引用。**简历更新后不影响已补的题**——题目内容与匹配理由已快照在 `interview_question` 中。
 - **`interview_question.match_reason` 与 `source_snapshot='resume_match'` 成对出现**：前者存 AI 给出的匹配理由，后者标记来源。非简历匹配来源的题 `match_reason` 为 `null`。
 - **`interview_prep` 一场面试唯一**（`interview_id` 加唯一约束）：重新生成即覆盖，不做版本历史；三个 JSON 字段整体替换，不做字段级合并。
+- **`candidate_feedback` 独立成表，而非给 `report` 加列**（MVP-2 补充）：两份文本**受众不同、可见性规则不同**。混在一张表里，`report` 的任何读取路径（含 HR 报告接口）都可能不小心把候选人字段带出去；独立成表让可见性边界落在**表**这一层——HR 报告接口**结构上读不到**候选人字段，`report` 的 schema 也完全不动，直接满足 §4.9「HR 端报告视图保持不变」。另有两处刻意缺失：**不设 `updated_at`**（反馈的输入就是报告，报告重评即整行重建，支持「更新」就必须回答「哪部分过期了」）；**不存总分**（总分属「评估结果」而非「候选人文案」，可见性层与存储层解耦后，改 `CANDIDATE_FEEDBACK_LEVEL` **不需要重新生成反馈**）。
 
 ### 5.3 五条核心流程
 
