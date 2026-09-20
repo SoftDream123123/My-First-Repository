@@ -37,6 +37,7 @@ import app.interview.models  # noqa: E402,F401
 import app.position.models  # noqa: E402,F401
 import app.practice.models  # noqa: E402,F401
 import app.question.models  # noqa: E402,F401
+import app.resume.models  # noqa: E402,F401
 
 
 def _ensure_database(url: str) -> None:
@@ -367,4 +368,44 @@ def practice_session(db, candidate_user, practice_questions):
 
     return practice_service.start_session(
         db, candidate_user, PracticeSessionCreate(size=4)
+    )
+
+
+# ---------------------------- 简历夹具 ----------------------------
+
+
+RESUME_CONTENT = (
+    "五年 Python 后端开发经验，负责过订单与支付系统的重构。\n"
+    "熟悉 FastAPI / MySQL / Redis，主导过服务拆分与性能优化。"
+)
+
+
+@pytest.fixture
+def resume(db, candidate_user):
+    """candidate_user 的一份简历（module-17 / 19 / 20 的公共前置）。"""
+    from app.resume import service as resume_service
+    from app.resume.schemas import ResumeCreate
+
+    return resume_service.create_resume(
+        db,
+        candidate_user,
+        ResumeCreate(
+            title="张三-后端开发",
+            content=RESUME_CONTENT,
+            candidate_name="张三",
+            candidate_contact="zhangsan@example.com",
+        ),
+    )
+
+
+@pytest.fixture
+def other_resume(db, other_candidate):
+    """other_candidate 的简历 —— 用于验证候选人之间的简历隔离。"""
+    from app.resume import service as resume_service
+    from app.resume.schemas import ResumeCreate
+
+    return resume_service.create_resume(
+        db,
+        other_candidate,
+        ResumeCreate(title="李四-前端开发", content="三年前端开发经验，熟悉原生 JS。"),
     )

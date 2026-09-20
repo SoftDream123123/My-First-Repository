@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     # 每用户每分钟的计分动作上限（**进程内**计数，故单机部署须 --workers 1）
     practice_rate_limit_per_minute: int = 60
 
+    # ---- 简历（PRD §4.10）----
+    # 简历正文长度上限。它是「避免超长文本打爆 AI 上下文」的护栏，与模型上下文
+    # 长度绑死，将来换模型可能需要调，因此进配置而不是写死在 schema 里。
+    resume_content_max_length: int = 20000
+
     # ---- 候选人可见的评估反馈（PRD §4.9）----
     # summary（默认）仅下发综合结论 / 优点 / 待改进；full 额外下发总分。
     # 逐题分与维度分在任何档位都不下发。

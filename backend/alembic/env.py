@@ -23,7 +23,9 @@ import app.auth.models  # noqa: E402,F401
 import app.evaluation.models  # noqa: E402,F401
 import app.interview.models  # noqa: E402,F401
 import app.position.models  # noqa: E402,F401
+import app.practice.models  # noqa: E402,F401
 import app.question.models  # noqa: E402,F401
+import app.resume.models  # noqa: E402,F401
 
 config = context.config
 

@@ -7,7 +7,7 @@
   · core 无对业务模块的顶层导入，只有函数体内延迟导入（§5.3-6）
   · 业务模块之间无反向依赖（§5.4-3）
   · 分层单向：router → service → repository → models（§5.4-2、§5.4-6）
-  · 八个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
+  · 九个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
 
 判定只看**模块级**导入：写在函数体内的延迟导入、以及 `if TYPE_CHECKING:`
 块内的类型专用导入都不算运行时依赖 —— 后者正是 core.deps 保持单向的手法。
@@ -29,22 +29,47 @@ ALL_MODULES = [
     "evaluation",
     "ai",
     "practice",
+    "resume",
 ]
-BUSINESS_MODULES = {"auth", "position", "question", "interview", "evaluation", "practice"}
+BUSINESS_MODULES = {
+    "auth",
+    "position",
+    "question",
+    "interview",
+    "evaluation",
+    "practice",
+    "resume",
+}
 
-LAYERED_MODULES = ["auth", "position", "question", "interview", "evaluation", "practice"]
+LAYERED_MODULES = [
+    "auth",
+    "position",
+    "question",
+    "interview",
+    "evaluation",
+    "practice",
+    "resume",
+]
 LAYER_FILES = ["models.py", "schemas.py", "repository.py", "service.py", "router.py"]
 
 # 模块 → 其**禁止**依赖的业务模块（计划书 §5.4-3「无反向依赖」）
+#
+# 注意：interview / practice 的禁止集合**不含** resume —— 它们各自单向依赖
+# resume（HR 读简历 + 分类补题 / 刷题推荐）是允许的。resume 则不得反向依赖
+# 任何业务模块，否则会把 practice ↔ interview 的循环引进来（PRD §9）。
 FORBIDDEN_DEPENDENCIES = {
-    "auth": {"position", "question", "interview", "evaluation", "practice"},
-    "position": {"question", "interview", "evaluation", "practice"},
-    "question": {"interview", "evaluation", "practice"},
+    "auth": {"position", "question", "interview", "evaluation", "practice", "resume"},
+    "position": {"question", "interview", "evaluation", "practice", "resume"},
+    "question": {"interview", "evaluation", "practice", "resume"},
     "interview": {"evaluation", "practice"},
-    "evaluation": {"position", "question", "practice"},
+    "evaluation": {"position", "question", "practice", "resume"},
     # practice 与真实面试**完全解耦**：刷题是另一条业务线，
     # 既不读 interview 的数据，也不该被 interview 反向依赖。
     "practice": {"interview", "position", "evaluation"},
+    # resume 是「被依赖但不依赖」的节点：删除保护交给外键 RESTRICT，
+    # 因此零业务模块依赖、零跨表查询。允许依赖 core / auth（归属校验用
+    # auth 的 ensure_owner_match），但不得依赖任何业务模块。
+    "resume": {"position", "question", "interview", "evaluation", "practice"},
 }
 
 
@@ -96,9 +121,16 @@ def _own_module_refs(path: Path, module: str) -> set[str]:
 # ---------------------------- 包与分层存在性 ----------------------------
 
 
-def test_eight_modules_exist():
+def test_nine_modules_exist():
+    """九个独立 package 齐备。
+
+    `len(ALL_MODULES) == 9` 是**防漏登记**的断言：只写 `<=` 时，新增包却忘了
+    登记进本文件，会表现为「这个包的分层与依赖方向不受任何测试保护」，
+    而全部用例依然全绿 —— 这是最容易被忽视的一类失效。
+    """
     actual = {p.name for p in APP.iterdir() if p.is_dir() and (p / "__init__.py").exists()}
     assert set(ALL_MODULES) <= actual
+    assert len(ALL_MODULES) == 9
 
 
 @pytest.mark.parametrize("module", LAYERED_MODULES)

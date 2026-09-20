@@ -90,7 +90,7 @@ async def health() -> dict[str, str]:
 
 
 # ------------------------------- 路由注册 -------------------------------
-# 顺序按模块依赖方向：auth → position → question → interview → evaluation
+# 顺序按模块依赖方向：auth → position → question → resume → interview → evaluation
 # ai 模块不注册路由（它是被调用的能力包，无对外端点）。
 
 
@@ -112,6 +112,12 @@ def _register_routers() -> None:
     from app.question.candidate_router import router as question_candidate_router
 
     app.include_router(question_candidate_router, prefix="/api")
+
+    # 简历：由候选人单侧写入，被 interview 与 practice 单向依赖，
+    # 因此注册在 interview 之前（顺序与依赖方向一致）。
+    from app.resume.router import router as resume_router
+
+    app.include_router(resume_router, prefix="/api")
 
     from app.interview.router import router as interview_router
 
