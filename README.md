@@ -176,6 +176,10 @@ npm run dev        # → http://localhost:5173，/api 被代理到 8000
 | 配置项 | 默认 | 含义 |
 |---|---|---|
 | `CANDIDATE_SELF_REGISTER` | **true** | 候选人自助注册开关 |
+| `RESUME_MATCH_COUNT` | **3** | 按简历补题的**默认**追加题数（请求体可覆盖，上限 20） |
+
+其余 MVP-3 旋钮是**实现内部常量，不进配置**：刷题推荐的候选池 = `min(size*4, 100)`、
+准备助手的问题预案上限 = 4。它们调的是 prompt 大小与挑选空间，不是产品语义。
 
 **默认开启是为了开箱演示** —— 无 Key 的 Mock 环境也能跑通刷题闭环。
 
@@ -192,7 +196,7 @@ npm run dev        # → http://localhost:5173，/api 被代理到 8000
 
 ```bash
 cd backend
-python -m pytest                       # 全部（771 项）
+python -m pytest                       # 全部（1034 项）
 python -m pytest tests/test_interview.py -v
 ```
 
@@ -259,6 +263,14 @@ python scripts/smoke_e2e.py
 | POST | `/interviews/{id}/answers` | 保存 / 更新某题回答 |
 | POST | `/interviews/{id}/complete` | 标记完成 |
 | POST | `/interviews/{id}/rollback` | 回退到进行中 |
+| POST | `/interviews/{id}/invitations` | 生成作答邀请码（返回**明文** code 供复制） |
+| GET | `/interviews/{id}/invitations` | 邀请列表与状态（含派生出的 `expired`） |
+| DELETE | `/interviews/{id}/invitations/{inv_id}` | 撤销邀请 |
+| GET | `/interviews/{id}/resume` | 读取**本场关联的**候选人简历（未关联 → **404**） |
+| POST | `/interviews/{id}/questions/match` | **按简历补题**（追加、不重复；会累加） |
+| POST | `/interviews/{id}/prep` | 生成 / 重新生成**面试前准备提纲**（整体覆盖） |
+| GET | `/interviews/{id}/prep` | 查看准备提纲（未生成 → 404） |
+| PUT | `/interviews/{id}/prep` | 编辑准备提纲（**三部分全必填**，整体替换） |
 
 ### 评估
 
@@ -267,6 +279,11 @@ python scripts/smoke_e2e.py
 | POST | `/interviews/{id}/evaluate` | 触发评估（**202**，幂等），返回 SSE 地址 |
 | GET | `/interviews/{id}/evaluation/stream` | SSE 事件流 |
 | GET | `/interviews/{id}/report` | 完整报告（逐题 + 多维 + 汇总） |
+| GET | `/interviews/{id}/report/export` | 导出报告 **DOCX**（`?format=docx`，返回文件流） |
+
+> **PDF 不走后端**：报告页与准备助手页的「导出 PDF」由**前端浏览器打印**
+> （`window.print()` + `@media print`）实现，因此**没有**后端的 PDF 接口，
+> 也不支持脱离浏览器的批量 / 后台导出。两条路径共用同一份数据。
 
 **SSE 事件契约**：
 
@@ -383,6 +400,38 @@ draft → ongoing → completed → evaluating → evaluated
 
 ---
 
+## MVP-3 演示路径（简历驱动）
+
+> ⚠️ **先看这里，否则会以为环境搭错了**：MVP-3 的**后端接口全部可用**，但
+> **① 候选人端（简历录入 / 关联 / 刷题）与 ② HR 端的简历面板、按简历补题按钮、
+> 准备助手页、打印样式都还没有 UI** —— 它们属 module-15 / 22 / 23，尚未执行
+> （前端目前只有 MVP-1 的 HR 侧 7 屏原型）。因此下面带 `[UI]` 的步骤现在只能
+> 走接口（参考 [`docs/apis/API接口文档.md`](docs/apis/API接口文档.md) 或用 curl）。
+> 后端不受前端阻塞，可直接按接口验证全链路。
+
+```
+① 候选人录入简历        [UI 待做]  POST /api/candidate/resumes
+② 关联到面试            [UI 待做]  PUT  /api/candidate/interviews/{id}/resume
+③ HR 读简历             [UI 待做]  GET  /api/interviews/{id}/resume
+④ 按简历补题            [UI 待做]  POST /api/interviews/{id}/questions/match
+⑤ 面试前准备            [UI 待做]  POST /api/interviews/{id}/prep
+⑥ 在线作答 / 评估       [已可用]   既有流程（招募 → 作答 → 交卷 → 流式评估）
+⑦ 导出 DOCX             [已可用]   GET  /api/interviews/{id}/report/export?format=docx
+⑧ 导出 PDF              [UI 待做]  报告页 / 准备助手页 window.print()
+```
+
+**接口侧的最小演示顺序**（Mock Provider，无需任何 Key）：
+
+1. HR 建岗位 → 建面试（同步出题）→ `POST /interviews/{id}/invitations` 拿邀请码
+2. 候选人自助注册并登录 → 凭邀请码 `POST /candidate/invitations/{code}/accept`
+3. 候选人 `POST /candidate/resumes` 建简历 → `PUT /candidate/interviews/{id}/resume` 关联
+4. HR `GET /interviews/{id}/resume` 看到简历 → `POST /interviews/{id}/questions/match` 补题
+   （响应里的 `added_count` / `total_questions` 就是给界面提示「本次新增 N 题，本场共 M 题」用的）
+5. HR `POST /interviews/{id}/prep` 生成提纲，`PUT` 手改，再 `POST` 可整体重生成
+6. HR 标记完成 → 触发评估 → `GET /interviews/{id}/report/export` 下载 `.docx`
+
+---
+
 ## 已知限制（MVP 边界）
 
 | 限制 | 说明 |
@@ -396,5 +445,10 @@ draft → ongoing → completed → evaluating → evaluated
 | **邀请码明文存储** | HR 需在系统内复制（PRD §1.3）；缓解手段是长码 + 短有效期 + 一次性 + 可撤销 |
 | **列表不分页** | 内部系统数据量小 |
 | **仅 PC 端** | 不做移动端适配 |
+| **按简历补题会累加** | 每次调用都追加一批新题（候选池会剔除本场已有题，故**永不重复**，但也不等于「重复调用无效果」）。响应回 `added_count` / `total_questions`，界面须显示本场总数，否则连点几次会以为界面卡了 |
+| **刷题推荐只从池内挑** | 候选池是按 `id` 取前 `min(size*4, 100)` 条，因此符合条件的题超过池上限时，排在后面的题永远进不了推荐。演示规模下无影响 |
+| **准备助手不流式、不做 DOCX** | 一次生成即整批落库；它是 HR 的现场工作稿，打印 PDF 足够（DOCX 留给需要留档 / 转发的报告） |
+| **候选人看不到补题理由** | `match_reason` 描述的是 HR 的评估思路，按 PRD §4.6 不下发给候选人 |
+| **候选人端 / MVP-3 前端未实现** | 见上面的「MVP-3 演示路径」。后端接口齐备，前端待做 |
 
 V1.1 规划：PDF 报告导出、报告分享。

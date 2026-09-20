@@ -294,7 +294,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 
 | # | 验证 | 预期 |
 |---|---|---|
-| 1 | 检查 `backend/app/` 目录结构 | **七个独立 package**：`core` / `auth` / `position` / `question` / `interview` / `evaluation` / `ai`（对应 PRD §3.3 的六个 + core） |
+| 1 | 检查 `backend/app/` 目录结构 | **九个独立 package**：`core` / `auth` / `position` / `question` / `resume` / `interview` / `evaluation` / `ai` / `practice`（对应 PRD §3.3 的八个 + core） |
 | 2 | 检查每个模块内部文件 | 均有 `models.py` / `schemas.py` / `repository.py` / `service.py` / `router.py` 分层（`ai` 除外，它无 router/models） |
 | 3 | 检查依赖方向 | 无**反向依赖**（如 position 不 import interview） |
 | 4 | 检查 router 层 | **只做**参数校验、鉴权、响应包装，**不含业务逻辑** |
@@ -634,7 +634,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 - [ ] **数据隔离**：hr 之间完全不可见（列表与详情两条路径均验证）；admin 可见全部
 - [ ] **安全**：密码为哈希；响应无 `password_hash`；401/403 正确；无堆栈泄漏；无 `innerHTML` 注入
 - [ ] **可测试性**：`pytest` 与 `npm test` 全通过，**不依赖网络与 Key**
-- [ ] **可维护性**：**八个**独立 package（MVP-2 新增 `practice`）；三层职责清晰；**无反向依赖**；`ai` 不 import 任何业务模块；`test_architecture.py` 的模块名列表**已登记 `practice`**
+- [ ] **可维护性**：**九个**独立 package（MVP-2 新增 `practice`，MVP-3 新增 `resume`）；三层职责清晰；**无反向依赖**；`ai` 不 import 任何业务模块；`test_architecture.py` 的模块名列表**已登记 `practice` 与 `resume`**
 
 ### 9.5 需求覆盖（PRD §4、§6、§8）
 
