@@ -40,6 +40,10 @@ class QuestionItem(BaseModel):
     # （bank / ai），同名会把两个不同概念混在一起。
     # 该字段只出现在 HR 侧视图 —— 对候选人而言「谁写的」没有意义（只可能是他自己）。
     answer_source: str | None = None
+    # AI 给出的简历匹配理由；**仅 HR 侧视图**，非匹配来源的题为 null。
+    # 它描述「候选人简历的哪段经历对应这道题」，属于 HR 的评估思路，
+    # **绝不下发给候选人**（PRD §4.6）。
+    match_reason: str | None = None
 
 
 class InterviewListItem(BaseModel):
@@ -61,6 +65,8 @@ class InterviewDetail(InterviewListItem):
     jd: str
     evaluation_dimensions: list[str]
     questions: list[QuestionItem]
+    # 该面试关联的候选人简历 id；null = 尚未关联（前端据此显示「等待候选人提交简历」）
+    resume_id: int | None = None
 
 
 # ==================== 作答邀请（HR 侧）====================
@@ -163,3 +169,113 @@ class SubmitResult(BaseModel):
     interview_id: int
     submitted_at: datetime
     answered_count: int
+
+
+# ==================== 简历关联（HR 只读 / 候选人写入）====================
+
+# 单次补题的题数上限。它是接口卫生，不随产品调整，故写死在 schema 而不是配置
+# （默认题数才是产品可调的量，见 RESUME_MATCH_COUNT）。
+MATCH_COUNT_MAX = 20
+
+
+class InterviewResumeOut(BaseModel):
+    """HR 看到的候选人简历（只读）。
+
+    `updated_at` 必须下发：HR 据此判断手上这份是不是最新的
+    （候选人改了简历后需重新触发补题，PRD §4.13）。
+    `created_by` / `created_at` **不下发** —— HR 不需要知道候选人的 user id。
+    """
+
+    resume_id: int
+    title: str
+    content: str
+    candidate_name: str | None
+    candidate_contact: str | None
+    updated_at: datetime
+
+
+class ResumeLinkRequest(BaseModel):
+    """候选人把简历关联到面试（或解除）。
+
+    `resume_id` **必填且可为 null**：与「可选字段」的语义不同，这里
+    `null` 是显式的「解除关联」动作。若允许缺省，就无法区分「没传」与
+    「要清空」—— 而在本场景**清空是有意义的操作**（PRD §4.13）。
+    """
+
+    resume_id: int | None
+
+
+class MatchRequest(BaseModel):
+    """按简历补题的请求体。缺省题数取配置 RESUME_MATCH_COUNT。"""
+
+    count: int | None = Field(default=None, ge=1, le=MATCH_COUNT_MAX)
+
+
+class MatchAddedItem(BaseModel):
+    interview_question_id: int
+    seq: int
+    content: str
+    dimension: str
+    match_reason: str | None
+
+
+class MatchResult(BaseModel):
+    """补题结果。
+
+    `added_count == 0` 是**正常结果**（200）：AI 认为候选池里没有更相关的题了。
+    `total_questions` 供前端显示「本场共 N 题」—— 补题会累加，不显示总数
+    的话 HR 连点几次会以为界面卡了（module-19 §5.3）。
+    """
+
+    added_count: int
+    added: list[MatchAddedItem]
+    total_questions: int
+
+
+# ==================== 面试前准备助手 ====================
+
+
+class PrepOutlineStageOut(BaseModel):
+    seq: int = Field(ge=1)
+    phase: str = Field(min_length=1)
+    duration_min: int = Field(ge=1)
+    notes: str
+
+
+class PrepFocusPointOut(BaseModel):
+    dimension: str = Field(min_length=1)
+    point: str = Field(min_length=1)
+    reason: str
+
+
+class PrepQuestionItemOut(BaseModel):
+    question: str = Field(min_length=1)
+    intent: str
+    follow_ups: list[str]
+
+
+class PrepOut(BaseModel):
+    """查看 / 生成 / 编辑的统一响应。
+
+    `edited_at` 为 null 表示当前内容是 AI 原样产出；非 null 表示 HR 改过。
+    """
+
+    interview_id: int
+    outline: list[PrepOutlineStageOut]
+    focus_points: list[PrepFocusPointOut]
+    question_plan: list[PrepQuestionItemOut]
+    generated_at: datetime
+    edited_at: datetime | None
+
+
+class PrepUpdate(BaseModel):
+    """编辑准备提纲 —— **三部分全部必填**。
+
+    整体替换、不做字段级合并（PRD §5.2）：允许部分提交就需要回答「没提交的
+    那部分保留还是清空」，而这个问题的答案依场景而变，语义无法唯一。
+    未生成就编辑 → 404（先 POST 生成、再 PUT 编辑是显式且唯一的顺序）。
+    """
+
+    outline: list[PrepOutlineStageOut]
+    focus_points: list[PrepFocusPointOut]
+    question_plan: list[PrepQuestionItemOut]

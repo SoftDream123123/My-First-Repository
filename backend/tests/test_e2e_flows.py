@@ -327,3 +327,205 @@ class TestDataIsolationAcrossModules:
             ).status_code
             == 200
         )
+
+
+# ------------- 流程⑥ 简历关联与按简历补题（MVP-3） -------------
+
+
+@pytest.fixture
+def candidate_session(client):
+    """候选人自助注册 → 登录 → 返回登录头。"""
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": "e2e_candidate", "password": "cand12345678"},
+    )
+    assert registered.status_code == 201, registered.text
+
+    login = client.post(
+        "/api/auth/login",
+        json={"username": "e2e_candidate", "password": "cand12345678"},
+    )
+    assert login.status_code == 200, login.text
+    return {"Authorization": f"Bearer {login.json()['token']}"}
+
+
+@pytest.fixture
+def accepted_interview_id(client, hr_headers, candidate_session, interview):
+    """HR 发邀请码 → 候选人凭码接受并绑定该面试。"""
+    invitation = client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+    accepted = client.post(
+        f"/api/candidate/invitations/{invitation['code']}/accept",
+        json={"username": "e2e_candidate", "password": "cand12345678"},
+        headers=candidate_session,
+    )
+    assert accepted.status_code == 200, accepted.text
+    return interview["id"]
+
+
+def _create_resume(client, candidate_session, title="张三-后端开发"):
+    resp = client.post(
+        "/api/candidate/resumes",
+        json={
+            "title": title,
+            "content": (
+                "五年 Python 后端开发经验，熟悉 FastAPI 与 MySQL，"
+                "主导过订单系统重构与支付链路拆分。"
+            ),
+        },
+        headers=candidate_session,
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+def _add_bank_questions(client, hr_headers, position_id, dimensions, prefix="补题用"):
+    """往岗位题库补题 —— 本场面试已把原题库抽空，补题需要新的候选。"""
+    for index, dimension in enumerate(dimensions):
+        created = client.post(
+            "/api/questions",
+            json={
+                "position_id": position_id,
+                "dimension": dimension,
+                "content": f"{prefix}的{dimension}题目第{index + 1}道内容描述",
+            },
+            headers=hr_headers,
+        )
+        assert created.status_code == 201, created.text
+
+
+class TestFlow6ResumeDrivenMatching:
+    def test_link_resume_then_match(
+        self, client, hr_headers, candidate_session, accepted_interview_id, position_with_bank
+    ):
+        interview_id = accepted_interview_id
+
+        # 1) 候选人录入简历并关联到面试（这是简历进入出题流程的唯一通路）
+        resume = _create_resume(client, candidate_session)
+        linked = client.put(
+            f"/api/candidate/interviews/{interview_id}/resume",
+            json={"resume_id": resume["id"]},
+            headers=candidate_session,
+        )
+        assert linked.status_code == 200, linked.text
+
+        # 2) HR 只读该简历 —— 权限判据是「面试属于我」
+        seen = client.get(f"/api/interviews/{interview_id}/resume", headers=hr_headers)
+        assert seen.status_code == 200
+        assert seen.json()["resume_id"] == resume["id"]
+        assert "created_by" not in seen.json()
+
+        # 3) 补题
+        _add_bank_questions(client, hr_headers, position_with_bank, DIMS[:3])
+        before = client.get(f"/api/interviews/{interview_id}", headers=hr_headers).json()
+
+        body = client.post(
+            f"/api/interviews/{interview_id}/questions/match", headers=hr_headers
+        ).json()
+        assert body["added_count"] > 0
+        assert body["total_questions"] == before["question_count"] + body["added_count"]
+
+        # 4) 追加项带来源与理由；HR 看得到，候选人看不到
+        detail = client.get(
+            f"/api/interviews/{interview_id}", headers=hr_headers
+        ).json()
+        added_ids = {item["interview_question_id"] for item in body["added"]}
+        added_rows = [
+            q for q in detail["questions"] if q["interview_question_id"] in added_ids
+        ]
+        assert all(q["source"] == "resume_match" for q in added_rows)
+        assert all(q["match_reason"] for q in added_rows)
+
+        mine = client.get(
+            f"/api/candidate/interviews/{interview_id}", headers=candidate_session
+        ).json()
+        assert all("match_reason" not in q for q in mine["questions"])
+
+    def test_repeated_match_never_duplicates(
+        self, client, hr_headers, candidate_session, accepted_interview_id, position_with_bank
+    ):
+        interview_id = accepted_interview_id
+        resume = _create_resume(client, candidate_session)
+        client.put(
+            f"/api/candidate/interviews/{interview_id}/resume",
+            json={"resume_id": resume["id"]},
+            headers=candidate_session,
+        )
+        _add_bank_questions(client, hr_headers, position_with_bank, DIMS[:3] + DIMS[:3])
+
+        client.post(f"/api/interviews/{interview_id}/questions/match", headers=hr_headers)
+        client.post(f"/api/interviews/{interview_id}/questions/match", headers=hr_headers)
+
+        detail = client.get(
+            f"/api/interviews/{interview_id}", headers=hr_headers
+        ).json()
+        question_ids = [q["interview_question_id"] for q in detail["questions"]]
+        assert len(question_ids) == len(set(question_ids))
+
+    def test_match_without_resume_409(self, client, hr_headers, accepted_interview_id):
+        resp = client.post(
+            f"/api/interviews/{accepted_interview_id}/questions/match", headers=hr_headers
+        )
+        assert resp.status_code == 409
+
+
+# ------------- 流程⑦ 面试前准备（MVP-3） -------------
+
+
+class TestFlow7InterviewPrep:
+    def _url(self, interview_id):
+        return f"/api/interviews/{interview_id}/prep"
+
+    def _link_resume(self, client, candidate_session, interview_id):
+        resume = _create_resume(client, candidate_session)
+        client.put(
+            f"/api/candidate/interviews/{interview_id}/resume",
+            json={"resume_id": resume["id"]},
+            headers=candidate_session,
+        )
+
+    def test_generate_edit_regenerate_then_freeze(
+        self, client, hr_headers, candidate_session, accepted_interview_id
+    ):
+        interview_id = accepted_interview_id
+        self._link_resume(client, candidate_session, interview_id)
+
+        # 未生成时读取 → 404（前端据此显示「生成准备提纲」按钮）
+        assert client.get(self._url(interview_id), headers=hr_headers).status_code == 404
+
+        created = client.post(self._url(interview_id), headers=hr_headers)
+        assert created.status_code == 200, created.text
+        body = created.json()
+        assert body["outline"] and body["focus_points"] and body["question_plan"]
+        assert body["edited_at"] is None
+        # 已关联简历 → 考察重点里应有「简历核对」
+        assert any(point["dimension"] == "简历核对" for point in body["focus_points"])
+
+        # 编辑：整体覆盖三部分，edited_at 落上，generated_at 不变
+        payload = {
+            "outline": [{**body["outline"][0], "notes": "HR 手改过的要点"}],
+            "focus_points": body["focus_points"],
+            "question_plan": body["question_plan"],
+        }
+        edited = client.put(
+            self._url(interview_id), json=payload, headers=hr_headers
+        ).json()
+        assert edited["outline"][0]["notes"] == "HR 手改过的要点"
+        assert edited["edited_at"]
+        assert edited["generated_at"] == body["generated_at"]
+
+        # 重新生成：整体覆盖，并清掉编辑标记
+        regenerated = client.post(self._url(interview_id), headers=hr_headers).json()
+        assert regenerated["edited_at"] is None
+
+        # 面试完成后冻结：生成与编辑都 409
+        client.post(f"/api/interviews/{interview_id}/complete", headers=hr_headers)
+        assert client.post(self._url(interview_id), headers=hr_headers).status_code == 409
+        assert (
+            client.put(
+                self._url(interview_id), json=payload, headers=hr_headers
+            ).status_code
+            == 409
+        )

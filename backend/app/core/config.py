@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     # 邀请码有效期（天）。过期是**读取时派生**的，不落库、不需要调度器。
     invitation_expire_days: int = 7
 
+    # ---- 按简历补题（PRD §4.14）----
+    # 单次补题的默认追加题数；请求体可覆盖（上限 20，由 schema 固定）。
+    # 进配置是因为它属**产品可调**的量：题太少展示不出效果、太多会让面试过长。
+    resume_match_count: int = 3
+
     # ---- 刷题练习（PRD §4.7）----
     # 开始练习未指定题数时的默认题量
     practice_session_size_default: int = 10

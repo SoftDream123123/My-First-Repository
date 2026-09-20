@@ -1,12 +1,12 @@
 """interview 模块业务逻辑：出题组装、回答记录、状态机、作答邀请、在线答题。"""
 
 import secrets
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.ai.base import QAPair
+from app.ai.base import QAPair, QuestionBrief
 from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
@@ -19,6 +19,7 @@ from app.interview.models import (
     INVITATION_EXPIRED,
     INVITATION_PENDING,
     INVITATION_REVOKED,
+    SOURCE_RESUME_MATCH,
     STATUS_COMPLETED,
     STATUS_DRAFT,
     STATUS_EVALUATED,
@@ -37,13 +38,23 @@ from app.interview.schemas import (
     InterviewDetail,
     InterviewListItem,
     InterviewPatch,
+    InterviewResumeOut,
     InvitationAcceptResult,
     InvitationView,
+    MatchAddedItem,
+    MatchResult,
+    PrepOut,
+    PrepUpdate,
     QuestionItem,
     SubmitResult,
 )
 from app.position import service as position_service
 from app.question import service as question_service
+# interview → resume 是单向依赖（resume 不反向依赖任何业务模块）。
+# ⚠️ 只 import **service**：直接 import `resume.repository` 会跳过 service 层，
+#    而架构测试的层校验只统计**同模块内**引用，跨模块跳层无人监管
+#    （module-17 §4.5、module-19 §4.5），只能靠评审与一条静态断言守住。
+from app.resume import service as resume_service
 
 # ------------------------------ 状态机 ------------------------------
 
@@ -124,6 +135,7 @@ def _build_questions_and_answers(
                 answer=answer.content if answer else None,
                 recorded_at=answer.recorded_at if answer else None,
                 answer_source=answer.source if answer else None,
+                match_reason=entry.match_reason,
             )
         )
     return items
@@ -147,6 +159,7 @@ def _detail(db: Session, interview: Interview) -> InterviewDetail:
         jd=position.jd if position else "",
         evaluation_dimensions=list(position.evaluation_dimensions) if position else [],
         questions=questions,
+        resume_id=interview.resume_id,
     )
 
 
@@ -314,6 +327,340 @@ def create_interview(
 
     db.refresh(interview)
     return _detail(db, interview)
+
+
+# ------------------ 简历关联 / HR 只读 / 按简历补题 ------------------
+# 简历由候选人提供（module-17），本模块只经 resume.service 的两个契约方法读写：
+#   load_unchecked —— HR 读的是**候选人的**简历，归属校验必然失败
+#   ensure_mine    —— 候选人只能关联**自己的**简历
+
+
+def _resume_view(resume) -> InterviewResumeOut:
+    return InterviewResumeOut(
+        resume_id=resume.id,
+        title=resume.title,
+        content=resume.content,
+        candidate_name=resume.candidate_name,
+        candidate_contact=resume.candidate_contact,
+        updated_at=resume.updated_at,
+    )
+
+
+def get_interview_resume(
+    db: Session, user: User, interview_id: int
+) -> InterviewResumeOut:
+    """HR 读取本场关联的候选人简历（只读）。
+
+    权限判据**只有「面试属于我」**：简历是通过 `interview.resume_id` 关联进来的，
+    而候选人只能关联自己被邀请的面试、HR 只能读自己创建的面试 —— 两条链叠加
+    即构成完整隔离，不需要新增 auth 函数（module-19 §5.2）。
+    """
+    _get_visible(db, user, interview_id)
+
+    resume_id = repository.get_resume_id_of_interview(db, interview_id)
+    if resume_id is None:
+        # 404 而非 403：前端据此显示「候选人尚未提交简历」，不是「无权限」
+        raise NotFoundError("该面试尚未关联简历")
+
+    resume = resume_service.load_unchecked(db, resume_id)
+    if resume is None:
+        # 外键 RESTRICT 保证不该发生。但依赖「外键不会失效」是跨三层的隐式假设，
+        # 一行防御换来「假设失效时是 404 而不是 500」。
+        raise NotFoundError("关联的简历已不可用")
+
+    return _resume_view(resume)
+
+
+def link_resume(
+    db: Session, user: User, interview_id: int, resume_id: int | None
+) -> InterviewResumeOut | None:
+    """候选人把简历关联到面试（传 None 解除）—— PRD §4.13。
+
+    只允许 `ongoing`（白名单写法）：`draft` 对候选人本就不可达，
+    而 `evaluating` / `evaluated` 是可达的（HR 可先 complete 再评估），
+    写成「completed 及之后拒绝」的黑名单极易漏掉这两态。
+    """
+    interview = get_interview_for_candidate(db, user, interview_id)
+
+    if interview.status != STATUS_ONGOING:
+        raise BusinessError("面试已结束，不可变更简历关联")
+
+    if resume_id is None:
+        repository.update_interview(db, interview, resume_id=None)
+        db.commit()
+        return None
+
+    resume = resume_service.ensure_mine(db, user, resume_id)  # 404 / 403 由它抛
+    repository.update_interview(db, interview, resume_id=resume.id)
+    db.commit()
+    return _resume_view(resume)
+
+
+def _briefs(questions) -> list[QuestionBrief]:
+    """**题库题**（`Question`）→ `ai.QuestionBrief` —— interview → ai 的唯一转换点。
+
+    ai 层只接收原始值、不接收 ORM 对象，这是它不依赖任何业务模块的前提。
+    喂 ORM 对象进去会让 Mock 的单测必须起数据库，也会让分层约束悄悄失效。
+    """
+    return [
+        QuestionBrief(
+            question_id=q.id,
+            content=q.content,
+            dimension=q.dimension,
+            category=q.category,
+        )
+        for q in questions
+    ]
+
+
+def _briefs_from_entries(entries) -> list[QuestionBrief]:
+    """**面试题**（`InterviewQuestion`）→ `QuestionBrief`，供准备助手使用。
+
+    刻意不复用 `_briefs`：面试题没有 `content` / `dimension`（那是 question 表的列），
+    只有 `content_snapshot` / `dimension_snapshot` —— 这正是快照字段的用途
+    （冻结历史，题库删改不影响本场）。直接套用 `_briefs` 会 AttributeError。
+
+    `question_id` 取 `entry.id`（面试题自身的标识，本场唯一），而非 `question_id`
+    （题库题 id，同一道题可能在本场出现两次）。准备助手不使用该字段，
+    但取唯一值可避免将来被误用为「题库题标识」。
+    `category` 无快照可依，给空串 —— 准备助手不读它。
+    """
+    return [
+        QuestionBrief(
+            question_id=entry.id,
+            content=entry.content_snapshot,
+            dimension=entry.dimension_snapshot,
+            category="",
+        )
+        for entry in entries
+    ]
+
+
+def _added_view(entry) -> MatchAddedItem:
+    return MatchAddedItem(
+        interview_question_id=entry.id,
+        seq=entry.seq,
+        content=entry.content_snapshot,
+        dimension=entry.dimension_snapshot,
+        match_reason=entry.match_reason,
+    )
+
+
+def match_questions_by_resume(
+    db: Session, user: User, interview_id: int, count: int
+) -> MatchResult:
+    """按候选人简历从题库**追加**题目 —— PRD §4.14。
+
+    ⚠️ 「幂等」的准确含义：**重复调用不会产生重复题目**（本场已有题已从候选池
+    剔除），但**每次调用都会再加 count 题**（池子变小后 AI 挑的是下一批）。
+    PRD 有意允许累加（「HR 想再补几题可再次调用」），因此响应回 `added_count`
+    与 `total_questions` 让前端显示总数。
+
+    AI 调用与全部写入之间没有任何写操作，因此**失败时数据库零改动**，
+    不需要任何补偿 / 回滚逻辑（PRD §7）。
+    """
+    interview = _get_visible(db, user, interview_id)
+
+    if interview.status != STATUS_ONGOING:
+        raise BusinessError("当前状态下不可按简历补题")
+
+    resume_id = repository.get_resume_id_of_interview(db, interview_id)
+    if resume_id is None:
+        raise BusinessError("该面试尚未关联简历")
+
+    resume = resume_service.load_unchecked(db, resume_id)
+    if resume is None:
+        raise BusinessError("关联的简历已不可用")
+
+    position = repository.get_position(db, interview.position_id)
+    dimensions = list(position.evaluation_dimensions) if position else []
+    if not dimensions:
+        raise BusinessError("岗位未定义评估维度，无法补题")
+
+    existing_ids = repository.list_question_ids(db, interview_id)
+
+    # 候选池与出题组装**同源**：否则会出现「出题时能抽到、补题时抽不到」这种
+    # 无法解释的差异。再剔除本场已有题 —— 这就是幂等的实现。
+    candidates = question_service.list_candidates_for_position(
+        db, user.id, position.id
+    )
+    candidates = _filter_valid_candidates(candidates, dimensions)
+    candidates = [q for q in candidates if q.id not in existing_ids]
+    if not candidates:
+        raise BusinessError("题库中没有可补充的题目")
+
+    matched = get_provider().match_questions_by_resume(
+        resume_text=resume.content,
+        position_name=position.name,
+        jd=position.jd,
+        dims=dimensions,
+        candidates=_briefs(candidates),
+        count=count,
+    )
+
+    if not matched:
+        # 「没有更相关的题」是正当结论，不是故障 → 200 + added_count=0
+        # （「没有」与「坏了」必须可区分，module-18 §5.3 同一原则）
+        return MatchResult(added_count=0, added=[], total_questions=len(existing_ids))
+
+    by_id = {q.id: q for q in candidates}
+    seq = repository.max_seq(db, interview_id)  # 续接，不重排既有题目
+    items: list[dict] = []
+    for hit in matched:  # 顺序即相关度顺序
+        question = by_id.get(hit.question_id)
+        if question is None:
+            # ai 层已保证 id 来自池内（module-18 §5.3）。此处再挡一次是刻意的冗余：
+            # ai 是抽象接口，将来换实现时不能假定它必然守约。
+            continue
+        seq += 1
+        items.append(
+            {
+                "interview_id": interview.id,
+                "question_id": question.id,
+                "seq": seq,
+                "content_snapshot": question.content,
+                "dimension_snapshot": question.dimension,
+                "source_snapshot": SOURCE_RESUME_MATCH,
+                "match_reason": hit.reason,
+            }
+        )
+
+    created = repository.create_questions(db, items)
+    db.commit()
+
+    return MatchResult(
+        added_count=len(created),
+        added=[_added_view(entry) for entry in created],
+        total_questions=len(existing_ids) + len(created),
+    )
+
+
+# -------------------------- 面试前准备 --------------------------
+# 准备助手是面试开始前的**工作稿**，与「创建 → 出题 → 记录 → 评估」主流程正交，
+# 因此**不进入面试状态机**：只用 generated_at / edited_at 记录事实，
+# 是否可生成由 interview.status 判定（PRD §4.11、§5.1）。
+
+_PREP_EDITABLE_STATUSES = (STATUS_DRAFT, STATUS_ONGOING)
+
+
+def _prep_view(prep) -> PrepOut:
+    return PrepOut(
+        interview_id=prep.interview_id,
+        outline=prep.outline,
+        focus_points=prep.focus_points,
+        question_plan=prep.question_plan,
+        generated_at=prep.generated_at,
+        edited_at=prep.edited_at,
+    )
+
+
+def _load_prep_or_404(db: Session, interview_id: int):
+    prep = repository.get_prep_by_interview(db, interview_id)
+    if prep is None:
+        raise NotFoundError("尚未生成准备提纲")
+    return prep
+
+
+def generate_prep(db: Session, user: User, interview_id: int) -> PrepOut:
+    """调 AI 生成三部分并落库（已存在则**整体覆盖**）。
+
+    AI 调用先于任何写入：失败时数据库无改动 —— 已有提纲自然保留，
+    不需要「生成失败则恢复旧值」的补偿逻辑（PRD §7）。
+    """
+    interview = _get_visible(db, user, interview_id)
+
+    if interview.status not in _PREP_EDITABLE_STATUSES:
+        raise BusinessError("面试已进入评估或已完成，不可再生成准备提纲")
+
+    position = repository.get_position(db, interview.position_id)
+    dimensions = list(position.evaluation_dimensions) if position else []
+    if not dimensions:
+        raise BusinessError("岗位未定义评估维度，无法生成准备提纲")
+
+    resume_text = None
+    resume_id = repository.get_resume_id_of_interview(db, interview_id)
+    if resume_id is not None:
+        resume = resume_service.load_unchecked(db, resume_id)
+        # 未关联简历不是错误：走无简历分支照常生成（PRD §4.11）
+        resume_text = resume.content if resume else None
+
+    result = get_provider().generate_interview_prep(
+        position_name=position.name,
+        jd=position.jd,
+        dims=dimensions,
+        candidate_name=interview.candidate_name,
+        resume_text=resume_text,
+        questions=_briefs_from_entries(
+            repository.list_questions(db, interview_id)  # 可能为空
+        ),
+    )
+
+    fields = {
+        "outline": [asdict(stage) for stage in result.outline],
+        "focus_points": [asdict(point) for point in result.focus_points],
+        "question_plan": [asdict(item) for item in result.question_plan],
+    }
+
+    prep = repository.get_prep_by_interview(db, interview_id)
+    if prep is None:
+        prep = repository.create_prep(
+            db,
+            interview_id=interview_id,
+            generated_at=_now(),
+            edited_at=None,
+            **fields,
+        )
+    else:
+        repository.update_prep(
+            db,
+            prep,
+            generated_at=_now(),
+            # 重新生成覆盖了 HR 此前的编辑，标记必须同步清除 ——
+            # 否则界面显示「已手工编辑」而内容其实是 AI 的
+            edited_at=None,
+            **fields,
+        )
+
+    db.commit()
+    db.refresh(prep)
+    return _prep_view(prep)
+
+
+def get_prep(db: Session, user: User, interview_id: int) -> PrepOut:
+    """查看准备提纲；未生成 → 404（前端据此显示「生成准备提纲」按钮）。"""
+    _get_visible(db, user, interview_id)
+    return _prep_view(_load_prep_or_404(db, interview_id))
+
+
+def update_prep(
+    db: Session, user: User, interview_id: int, data: PrepUpdate
+) -> PrepOut:
+    """HR 编辑准备提纲 —— **三部分整体替换**，不做字段级合并。
+
+    未生成时 404 而**不自动创建**：若编辑时不存在就自动建，
+    「生成」与「编辑」会产生同一条记录的两条创建路径，且 `generated_at`
+    无从取值。先 POST 生成、再 PUT 编辑是显式且唯一的顺序。
+
+    `generated_at` **不被编辑改动** —— 它回答「这份提纲是哪次 AI 生成的」。
+    """
+    interview = _get_visible(db, user, interview_id)
+
+    if interview.status not in _PREP_EDITABLE_STATUSES:
+        raise BusinessError("面试已进入评估或已完成，不可再生成准备提纲")
+
+    prep = _load_prep_or_404(db, interview_id)
+
+    repository.update_prep(
+        db,
+        prep,
+        outline=[stage.model_dump() for stage in data.outline],
+        focus_points=[point.model_dump() for point in data.focus_points],
+        question_plan=[item.model_dump() for item in data.question_plan],
+        edited_at=_now(),
+    )
+    db.commit()
+    db.refresh(prep)
+    return _prep_view(prep)
 
 
 # ---------------------------- 回答记录 ----------------------------

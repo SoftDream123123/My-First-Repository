@@ -409,3 +409,77 @@ def other_resume(db, other_candidate):
         other_candidate,
         ResumeCreate(title="李四-前端开发", content="三年前端开发经验，熟悉原生 JS。"),
     )
+
+
+# ------------------ 简历关联 / 按简历补题 / 准备助手夹具 ------------------
+
+
+@pytest.fixture
+def match_pool(db, position, hr_user, practice_questions):
+    """补题候选池：在 practice_questions（4 题）之上再补 5 题，共 9 题。
+
+    直接落库，且**维度全部取自岗位维度** —— 补题的候选池口径是
+    「岗位题库里 dimension 仍在岗位维度内的题」，夹具必须与之一致。
+    """
+    from app.question import repository
+
+    extra_dimensions = ["沟通能力", "专业能力", "逻辑思维", "沟通能力", "专业能力"]
+    created = [
+        repository.create(
+            db,
+            position_id=position.id,
+            category="通用",
+            dimension=dimension,
+            content=f"{dimension}匹配池第{i}题的内容描述文本",
+            difficulty="medium",
+            tags=[],
+            source="bank",
+            created_by=hr_user.id,
+        )
+        for i, dimension in enumerate(extra_dimensions, start=1)
+    ]
+    db.commit()
+    for question in created:
+        db.refresh(question)
+    return practice_questions + created
+
+
+@pytest.fixture
+def linked_interview(client, accepted_interview, candidate_headers, resume):
+    """候选人已把 `resume` 关联到其受邀面试（MVP-3 流程 ⑥ 的前两步）。"""
+    resp = client.put(
+        f"/api/candidate/interviews/{accepted_interview['interview_id']}/resume",
+        json={"resume_id": resume.id},
+        headers=candidate_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return accepted_interview
+
+
+@pytest.fixture
+def prep_payload() -> dict:
+    """`PUT /interviews/{id}/prep` 的合法请求体（三部分全必填）。"""
+    return {
+        "outline": [
+            {
+                "seq": 1,
+                "phase": "开场与自我介绍",
+                "duration_min": 5,
+                "notes": "请候选人自我介绍",
+            }
+        ],
+        "focus_points": [
+            {
+                "dimension": "沟通能力",
+                "point": "验证沟通能力",
+                "reason": "岗位需要跨部门协作",
+            }
+        ],
+        "question_plan": [
+            {
+                "question": "请介绍一下你最近的一个项目",
+                "intent": "了解项目经验",
+                "follow_ups": ["你在其中的角色是什么？"],
+            }
+        ],
+    }

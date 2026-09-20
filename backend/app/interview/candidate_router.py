@@ -19,8 +19,10 @@ from app.interview.schemas import (
     CandidateAnswerView,
     CandidateInterviewDetail,
     CandidateInterviewItem,
+    InterviewResumeOut,
     InvitationAcceptRequest,
     InvitationAcceptResult,
+    ResumeLinkRequest,
     SubmitResult,
 )
 
@@ -103,3 +105,22 @@ def submit_my_interview(
 ) -> SubmitResult:
     """无请求体。重复调用返回**首次**交卷时刻，不刷新它。"""
     return service.submit_interview(db, user, interview_id)
+
+
+@router.put(
+    "/interviews/{interview_id}/resume",
+    response_model=InterviewResumeOut | None,
+    summary="关联 / 解除关联我的一份简历",
+)
+def link_my_resume(
+    interview_id: int,
+    payload: ResumeLinkRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(_candidate_guard),
+) -> InterviewResumeOut | None:
+    """`resume_id` 传 `null` 表示**解除关联**（不是「不修改」）。
+
+    这是 HR 能看到候选人简历的**唯一通路** —— HR 侧没有任何简历 CRUD。
+    仅 `ongoing` 允许变更；只能关联属于本人的简历（403）/ 存在的简历（404）。
+    """
+    return service.link_resume(db, user, interview_id, payload.resume_id)

@@ -244,3 +244,37 @@ class TestDeleteEndpoint:
 
     def test_delete_missing_404(self, client, candidate_headers):
         assert client.delete(f"{URL}/999999", headers=candidate_headers).status_code == 404
+
+    def test_delete_referenced_by_interview_409(
+        self, client, candidate_headers, resume, linked_interview
+    ):
+        """被面试关联的简历不可删除（外键 RESTRICT）。
+
+        这两条（本用例与下一条）原属 module-17 §7.4，因依赖 module-19 才添加的
+        `interview.resume_id` 外键列而推迟到此 —— 与开工前确认的方案一致。
+        """
+        resp = client.delete(f"{URL}/{resume.id}", headers=candidate_headers)
+
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+        # 409 之后行**仍在**
+        assert client.get(f"{URL}/{resume.id}", headers=candidate_headers).status_code == 200
+
+    def test_delete_conflict_keeps_session_usable(
+        self, client, candidate_headers, resume, linked_interview
+    ):
+        """冲突后必须 rollback，否则污染的事务会让后续操作连带失败。
+
+        不 rollback 时，同一个连接上的下一个请求会在已中止（aborted）的事务上
+        执行 SQL —— 表现为一串与本用例无关的 500。
+        """
+        assert (
+            client.delete(f"{URL}/{resume.id}", headers=candidate_headers).status_code
+            == 409
+        )
+
+        spare = _create_via_api(client, candidate_headers, title="未被关联的简历")
+        assert (
+            client.delete(f"{URL}/{spare['id']}", headers=candidate_headers).status_code
+            == 204
+        )

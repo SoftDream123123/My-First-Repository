@@ -11,6 +11,7 @@ from app.interview.models import (
     Answer,
     Interview,
     InterviewInvitation,
+    InterviewPrep,
     InterviewQuestion,
 )
 from app.position.models import Position
@@ -87,6 +88,62 @@ def list_questions(db: Session, interview_id: int) -> list[InterviewQuestion]:
 
 def get_question_entry(db: Session, entry_id: int) -> InterviewQuestion | None:
     return db.get(InterviewQuestion, entry_id)
+
+
+def list_question_ids(db: Session, interview_id: int) -> set[int]:
+    """本场已有的**题库题目 id** 集合 —— 补题幂等的依据。
+
+    补题前把本场已有题从候选池里剔除，AI 因此不可能再挑到它们：
+    「重复调用不产生重复题目」由此保证（注意它**不**意味着「重复调用无效果」，
+    池子变小后 AI 会挑下一批不存在的题，见 service.match_questions_by_resume）。
+    """
+    stmt = select(InterviewQuestion.question_id).where(
+        InterviewQuestion.interview_id == interview_id
+    )
+    return set(db.execute(stmt).scalars().all())
+
+
+def max_seq(db: Session, interview_id: int) -> int:
+    """本场最大 seq；无题时返回 0（追加时从 +1 续接，不重排既有题目）。"""
+    stmt = select(func.max(InterviewQuestion.seq)).where(
+        InterviewQuestion.interview_id == interview_id
+    )
+    return db.execute(stmt).scalar_one_or_none() or 0
+
+
+def get_resume_id_of_interview(db: Session, interview_id: int) -> int | None:
+    """集中一处读 `interview.resume_id`。
+
+    「HR 读简历 / 补题 / 生成准备提纲」三处都经此读取。未关联时**如何表现由
+    调用方决定**（404 / 409 / 走无简历分支），这里只给事实 —— 集中一处是为了
+    让这条约定有地方可写，而不是把三种语义统一掉。
+    """
+    stmt = select(Interview.resume_id).where(Interview.id == interview_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+# ---------------------------- 面试前准备 ----------------------------
+
+
+def get_prep_by_interview(db: Session, interview_id: int) -> InterviewPrep | None:
+    """不带权限过滤 —— 权限判定在 service（与既有约定一致）。"""
+    stmt = select(InterviewPrep).where(InterviewPrep.interview_id == interview_id)
+    return db.execute(stmt).scalars().first()
+
+
+def create_prep(db: Session, **fields: object) -> InterviewPrep:
+    prep = InterviewPrep(**fields)
+    db.add(prep)
+    db.flush()
+    return prep
+
+
+def update_prep(
+    db: Session, prep: InterviewPrep, **fields: object
+) -> InterviewPrep:
+    for key, value in fields.items():
+        setattr(prep, key, value)
+    return prep
 
 
 # ------------------------------ 回答 ------------------------------
