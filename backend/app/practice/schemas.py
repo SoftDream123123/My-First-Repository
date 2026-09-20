@@ -26,6 +26,10 @@ class PracticeSessionCreate(BaseModel):
     question_type: QuestionTypeLiteral | None = None
     # 上限由配置项 PRACTICE_SESSION_SIZE_MAX 决定，故在 service 层校验而非此处
     size: int | None = Field(default=None, ge=1)
+    # 传了就按简历推荐取题；不传则完全走既有筛选逻辑。
+    # `ge=1` 在这里拦（纯参数形态问题）；题数上限在 service 拦（上限来自配置项）
+    # —— 两者处理方式不同，原因不同，不是不一致。
+    resume_id: int | None = Field(default=None, ge=1)
 
 
 class PracticeItemSubmit(BaseModel):
@@ -78,8 +82,20 @@ class PracticeItemOut(BaseModel):
 
 
 class PracticeSessionDetail(BaseModel):
+    """会话详情。
+
+    两个新字段只出现在**详情**（含创建响应），列表项刻意不加：列表主要在回答
+    「我练过哪些」，不是在回答「当时用了哪份简历」，且它要保持轻量。
+    """
+
     session: PracticeSessionOut
     items: list[PracticeItemOut]
+    # 本次练习关联的简历；null = 未关联
+    resume_id: int | None = None
+    # 本次是否**真的**按简历选排了题目。
+    # 与 resume_id 不同：AI 失败 / 未命中时会降级为普通筛选，此时
+    # resume_id 仍有值（候选人想用的那份）而本字段为 false。
+    resume_match_applied: bool = False
 
 
 class PracticeItemResult(BaseModel):

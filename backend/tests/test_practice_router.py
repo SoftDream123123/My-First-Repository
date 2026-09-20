@@ -265,3 +265,169 @@ class TestEndpoints:
             headers=candidate_headers,
         )
         assert resp.status_code == 400
+
+
+# ============ MVP-3：按简历推荐（module-20 §7.4 / §7.5）============
+
+SESSION_URL = "/api/practice/sessions"
+
+
+def _practice_top_level_modules() -> set[str]:
+    """`practice/` 下所有文件的**顶层** app.* 导入（函数体内延迟导入不算）。"""
+    import ast
+    from pathlib import Path
+
+    app_dir = Path(__file__).resolve().parent.parent / "app" / "practice"
+    modules: set[str] = set()
+
+    for path in sorted(app_dir.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.startswith("app.")
+            ):
+                modules.update(f"{node.module}.{alias.name}" for alias in node.names)
+            elif isinstance(node, ast.Import):
+                modules.update(
+                    alias.name for alias in node.names if alias.name.startswith("app.")
+                )
+
+    return modules
+
+
+class TestResumeRecommendationEndpoint:
+    def test_create_response_carries_new_fields(
+        self, client, candidate_headers, practice_questions, resume
+    ):
+        created = client.post(
+            SESSION_URL, json={"size": 1, "resume_id": resume.id}, headers=candidate_headers
+        )
+
+        assert created.status_code == 201, created.text
+        assert created.json()["resume_id"] == resume.id
+        assert "resume_match_applied" in created.json()
+
+    def test_session_detail_exposes_new_fields(
+        self, client, candidate_headers, practice_questions
+    ):
+        created = client.post(
+            SESSION_URL, json={"size": 1}, headers=candidate_headers
+        ).json()
+        session_id = created["session"]["id"]
+
+        fetched = client.get(
+            f"{SESSION_URL}/{session_id}", headers=candidate_headers
+        ).json()
+
+        assert fetched["resume_id"] is None
+        assert fetched["resume_match_applied"] is False
+
+    def test_list_items_unchanged(
+        self, client, candidate_headers, practice_questions, resume
+    ):
+        """列表项刻意不加这两个字段（保持轻量，回答的是「练过哪些」）。"""
+        client.post(
+            SESSION_URL, json={"size": 1, "resume_id": resume.id}, headers=candidate_headers
+        )
+
+        listed = client.get(SESSION_URL, headers=candidate_headers).json()
+
+        assert listed
+        assert all("resume_id" not in item for item in listed)
+        assert all("resume_match_applied" not in item for item in listed)
+
+    def test_preview_ignores_resume_param_and_never_calls_ai(
+        self, client, candidate_headers, practice_questions, monkeypatch
+    ):
+        """预览接口不接 `resume_id`：它不建会话、不写快照，也不该消耗未计入限流的 AI。"""
+        from app.ai.mock_provider import MockProvider
+
+        calls: list[dict] = []
+
+        class _Spy(MockProvider):
+            def match_questions_by_resume(self, *args, **kwargs):
+                calls.append(kwargs)
+                return []
+
+        monkeypatch.setattr("app.practice.service.get_provider", lambda: _Spy())
+
+        resp = client.get(
+            "/api/practice/questions", params={"resume_id": 1}, headers=candidate_headers
+        )
+
+        assert resp.status_code == 200
+        assert calls == []
+
+    def test_start_rejects_hr_and_admin(
+        self, client, hr_headers, admin_headers, practice_questions
+    ):
+        for headers in (hr_headers, admin_headers):
+            resp = client.post(SESSION_URL, json={"size": 1}, headers=headers)
+            assert resp.status_code == 403
+
+    def test_other_candidates_resume_403(
+        self, client, candidate_headers, other_resume, practice_questions
+    ):
+        resp = client.post(
+            SESSION_URL,
+            json={"size": 1, "resume_id": other_resume.id},
+            headers=candidate_headers,
+        )
+        assert resp.status_code == 403
+
+    def test_missing_resume_404(self, client, candidate_headers, practice_questions):
+        resp = client.post(
+            SESSION_URL, json={"size": 1, "resume_id": 999999}, headers=candidate_headers
+        )
+        assert resp.status_code == 404
+
+    def test_resume_id_below_one_is_400(
+        self, client, candidate_headers, practice_questions
+    ):
+        resp = client.post(
+            SESSION_URL, json={"size": 1, "resume_id": 0}, headers=candidate_headers
+        )
+        assert resp.status_code == 400
+
+    def test_ai_failure_still_creates_session(
+        self, client, candidate_headers, practice_questions, resume, monkeypatch
+    ):
+        """AI 推荐失败**不是**错误：照常 201 建会话，只是标记为未按简历推荐。"""
+        from app.ai.mock_provider import MockProvider
+        from app.core.exceptions import AIProviderError
+
+        class _Failing(MockProvider):
+            def match_questions_by_resume(self, *args, **kwargs):
+                raise AIProviderError("模拟推荐失败")
+
+        monkeypatch.setattr("app.practice.service.get_provider", lambda: _Failing())
+
+        resp = client.post(
+            SESSION_URL, json={"size": 2, "resume_id": resume.id}, headers=candidate_headers
+        )
+
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["resume_match_applied"] is False
+        assert resp.json()["resume_id"] == resume.id
+
+
+class TestModuleBoundaries:
+    def test_practice_does_not_import_resume_repository(self):
+        """跨模块跳层无人监管（架构测试只看同模块内引用），用静态断言补上。"""
+        offenders = [
+            module
+            for module in _practice_top_level_modules()
+            if module.startswith("app.resume") and module != "app.resume.service"
+        ]
+        assert not offenders, f"practice 越过 resume 的 service 层：{offenders}"
+
+    def test_practice_does_not_import_position(self):
+        """取岗位名必须走 question 的既有供给 —— 为拿个名字 import position 会让架构测试变红。"""
+        offenders = [
+            module
+            for module in _practice_top_level_modules()
+            if module.startswith("app.position")
+        ]
+        assert not offenders, f"practice 引入了被禁止的 position 依赖：{offenders}"

@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -62,6 +63,25 @@ class PracticeSession(Base):
     )
     position_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("position.id", ondelete="RESTRICT"), nullable=True
+    )
+    # 本次练习关联的简历；NULL = 未关联（绝大多数练习如此）。
+    # RESTRICT 而非 SET NULL：被练习关联的简历不可删除（module-17 §5.4 的 409
+    # 依赖它），SET NULL 会让历史练习静默失去「这次是按哪份简历推荐的」这一事实。
+    resume_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("resume.id", ondelete="RESTRICT"), nullable=True
+    )
+    # 本次**是否真的**用 AI 按简历选排了题目。
+    #
+    # 它不是 resume_id 的冗余：resume_id 非空**不代表**真的按简历推荐了 ——
+    # AI 可能失败或未命中，此时已降级为普通筛选（PRD §7）。两个字段回答两个
+    # 不同问题：「候选人想用哪份简历」vs「系统实际做到了没有」。
+    # 合并成一个字段会让降级变成**静默**：候选人关联了简历却拿到一堆通用题，
+    # 界面上没有任何解释，只能认为功能坏了。
+    resume_match_applied: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("0"),  # MySQL 无 false 字面量，用 0
     )
     category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     dimension: Mapped[str | None] = mapped_column(String(50), nullable=True)

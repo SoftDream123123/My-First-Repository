@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.ai.base import QUESTION_TYPE_SINGLE_CHOICE, SCORE_MAX, SCORE_MIN
+from app.ai.base import QUESTION_TYPE_SINGLE_CHOICE, SCORE_MAX, SCORE_MIN, QuestionBrief
 from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
@@ -46,6 +46,10 @@ from app.practice.schemas import (
 )
 from app.question import service as question_service
 from app.question.schemas import PracticeFilters, PracticeQuestionOut
+# practice → resume 是单向依赖（resume 不依赖任何业务模块）。
+# ⚠️ 只 import **service**：直接 import `resume.repository` 会跳过 service 层，
+#    而架构测试的层校验只统计同模块内引用，跨模块跳层无人监管。
+from app.resume import service as resume_service
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,15 @@ SESSION_LIST_DEFAULT_LIMIT = 20
 
 # 限流窗口长度（秒）。模块级常量便于测试缩短它而不必真的等 60 秒。
 RATE_WINDOW_SECONDS = 60
+
+# ---- 按简历推荐的候选池放大倍数与上限（module-20 §5.2）----
+#
+# **这是本功能最关键的一个数字**：若只取 size 题再让 AI 排序，AI 只能重排、
+# 不能改选，「按简历推荐」就退化成「同一批题换个顺序」。
+# 上限 100 是给 AI 上下文上的护栏（size 上限 20 ⇒ 池 <= 80，通常到不了 100）。
+# 用模块常量而非配置项：它是实现内部的比例，不是运维旋钮。
+_RESUME_POOL_FACTOR = 4
+_RESUME_POOL_MAX = 100
 
 # 进程内滑动窗口：{candidate_user_id: deque[单调时间戳]}。
 #
@@ -181,7 +194,134 @@ def _session_detail(db: Session, session: PracticeSession) -> PracticeSessionDet
     return PracticeSessionDetail(
         session=_session_out(session),
         items=[_item_view(item, supply.get(item.question_id)) for item in items],
+        resume_id=session.resume_id,
+        resume_match_applied=session.resume_match_applied,
     )
+
+
+# ---------------------- 按简历推荐取题（module-20）----------------------
+# 四个辅助的职责边界必须分清：
+#   _pick_questions  流程编排 + 降级决策（返回「题目 + 是否用了 AI」）
+#   _match_by_resume 只封装一次 AI 调用（失败 / 未命中 / 结果无效一律 None）
+#   _resume_pool_size / _position_name_for 是两个纯函数
+
+
+def _resume_pool_size(size: int) -> int:
+    """关联简历时的候选池大小。"""
+    return min(size * _RESUME_POOL_FACTOR, _RESUME_POOL_MAX)
+
+
+def _briefs(questions) -> list[QuestionBrief]:
+    """ORM `Question` → `ai.QuestionBrief`（ai 层只接收原始值）。"""
+    return [
+        QuestionBrief(
+            question_id=question.id,
+            content=question.content,
+            dimension=question.dimension,
+            category=question.category,
+        )
+        for question in questions
+    ]
+
+
+def _position_name_for(db: Session, position_id: int | None) -> str:
+    """按 id 取岗位名 —— 走 question 的既有供给，**绝不 import position**。
+
+    `FORBIDDEN_DEPENDENCIES["practice"]` 含 `position`，为拿一个名字破戒会让
+    架构测试立刻变红。该供给只下发 id / 名称 / 题量、**不下发 JD**（PRD §4.7），
+    因此刷题场景拿不到 JD，也不需要。未指定岗位时返回空串。
+    """
+    if position_id is None:
+        return ""
+
+    for item in question_service.list_practice_positions(db):
+        if item.id == position_id:
+            return item.name
+    return ""
+
+
+def _match_by_resume(
+    db: Session,
+    user: User,
+    resume,
+    position_id: int | None,
+    dims: list[str],
+    pool: list,
+    size: int,
+):
+    """AI 选排这一段。**任何形式的失败都返回 None**，由调用方决定降级。
+
+    返回 None 的三种情形刻意分开记日志：
+      · AI 故障       → warning（那是故障）
+      · 未命中（空结果）→ info（那是正常结论）
+      · 结果全为池外 id → warning（输出不合格，虽然理论上不可达）
+    """
+    try:
+        matched = get_provider().match_questions_by_resume(
+            resume_text=resume.content,
+            position_name=_position_name_for(db, position_id),
+            # 刷题不绑定岗位，且该供给刻意不下发 JD —— 真实 Provider 的 prompt
+            # 里这一行为空，属已知且可接受的措辞损失（module-20 §10）
+            jd="",
+            dims=dims,
+            candidates=_briefs(pool),
+            count=size,
+        )
+    except AIProviderError:
+        logger.warning("按简历推荐失败，降级为筛选取题（user=%s）", user.id)
+        return None
+
+    if not matched:
+        logger.info("按简历推荐未命中，降级为筛选取题（user=%s）", user.id)
+        return None
+
+    by_id = {question.id: question for question in pool}
+    picked = [by_id[hit.question_id] for hit in matched if hit.question_id in by_id]
+    if not picked:
+        # ai 层已保证 id 来自池内；此处冗余是刻意的（不能假定将来换的实现也守约）
+        logger.warning("按简历推荐结果全为池外 id，降级为筛选取题（user=%s）", user.id)
+        return None
+
+    return picked  # 顺序即相关度顺序，**本模块不再排序**
+
+
+def _pick_questions(
+    db: Session,
+    user: User,
+    filters: PracticeFilters,
+    size: int,
+    resume,
+) -> tuple[list, bool]:
+    """取题总入口 → `(题目, 是否真的用了 AI 选排)`。
+
+    `resume_match_applied` 必须由**取题时的事实**决定，不能靠「题目顺序像不像
+    按相关度排的」这类隐式推断。
+    """
+    if resume is None:
+        # 未关联简历：与既有行为逐字一致（连 SQL 都一样）
+        return question_service.list_practice_questions(db, filters, size), False
+
+    pool = question_service.list_practice_questions(
+        db, filters, _resume_pool_size(size)
+    )
+    if not pool:
+        # 交给 start_session 报既有的 409「没有符合条件的题目」
+        return [], False
+
+    # dims 由池内维度推导：既绕开对 position 的依赖，又保证必然非空
+    # （池子非空 ⇒ 至少有一个维度），从根上避免 ai 层因 dims 为空而抛错
+    dims = sorted({question.dimension for question in pool if question.dimension})
+
+    picked = _match_by_resume(
+        db, user, resume, filters.position_id, dims, pool, size
+    )
+    if picked is None:
+        # **降级**：池是按同一条 SQL 取的前 pool_size 条，其前 size 条正是
+        # 「不传 resume_id」时取到的那 size 条 —— 同一入口取两次，结果必然相同。
+        # 执行时不得改动候选池的取法，否则降级结果会与不关联简历时不同。
+        return pool[:size], False
+
+    return picked, True
 
 
 # ---------------------------- 取题预览 ----------------------------
@@ -248,7 +388,13 @@ def start_session(
         difficulty=data.difficulty,
         question_type=data.question_type,
     )
-    questions = question_service.list_practice_questions(db, filters, size)
+
+    resume = None
+    if data.resume_id is not None:
+        # 归属校验**先于取题**：避免「查了一堆题才发现简历不是你的」（404 / 403 由它抛）
+        resume = resume_service.ensure_mine(db, user, data.resume_id)
+
+    questions, resume_match_applied = _pick_questions(db, user, filters, size, resume)
 
     if not questions:
         # 不建空会话：它对候选人毫无价值，且会污染「练习次数」统计
@@ -258,6 +404,10 @@ def start_session(
         db,
         candidate_user_id=user.id,
         position_id=data.position_id,
+        # 降级时仍保留 resume_id —— 它表达「候选人想用哪份」这一事实，
+        # 「系统实际做到了没有」由 resume_match_applied 回答
+        resume_id=resume.id if resume is not None else None,
+        resume_match_applied=resume_match_applied,
         category=data.category,
         dimension=data.dimension,
         difficulty=data.difficulty,

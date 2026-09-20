@@ -278,3 +278,24 @@ class TestDeleteEndpoint:
             client.delete(f"{URL}/{spare['id']}", headers=candidate_headers).status_code
             == 204
         )
+
+    def test_delete_referenced_by_practice_409(
+        self, client, candidate_headers, resume, practice_questions
+    ):
+        """被练习会话关联的简历同样不可删除（module-17 §7.4 的最后一条）。
+
+        它与上面那条因同一个原因推迟到此：依赖 module-20 才添加的
+        `practice_session.resume_id` 外键列。
+        """
+        started = client.post(
+            "/api/practice/sessions",
+            json={"size": 1, "resume_id": resume.id},
+            headers=candidate_headers,
+        )
+        assert started.status_code == 201, started.text
+
+        resp = client.delete(f"{URL}/{resume.id}", headers=candidate_headers)
+
+        assert resp.status_code == 409
+        assert resp.json()["code"] == "BUSINESS_ERROR"
+        assert client.get(f"{URL}/{resume.id}", headers=candidate_headers).status_code == 200

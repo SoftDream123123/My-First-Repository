@@ -6,9 +6,16 @@
 
 import pytest
 
-from app.ai.base import PracticeGradeResult
+from app.ai.base import MatchedQuestion, PracticeGradeResult
+from app.ai.mock_provider import MockProvider
 from app.core.config import get_settings
-from app.core.exceptions import AIProviderError, BusinessError, ValidationError
+from app.core.exceptions import (
+    AIProviderError,
+    BusinessError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.practice import repository, service as practice_service
 from app.practice.models import (
     STATUS_FINISHED,
@@ -834,3 +841,370 @@ class TestPreview:
         items = practice_service.preview_questions(db, candidate_user, PracticeFilters(), None)
         single = next(i for i in items if i["question_type"] == "single_choice")
         assert single["options"]
+
+
+# ============ MVP-3：按简历推荐取题（module-20 §7.1 – §7.4）============
+
+
+class _MatchStub(MockProvider):
+    """只覆写「按简历匹配」那一路，并记录调用参数。
+
+    继承 `MockProvider` 而非直接实现 `AIProvider`：后者是 ABC，每新增一个抽象
+    方法都会让本类无法实例化。
+    """
+
+    def __init__(self, result=None, error=None):
+        self.calls = []
+        self._result = result
+        self._error = error
+
+    def match_questions_by_resume(self, *args, **kwargs):
+        self.calls.append(kwargs)
+        if self._error is not None:
+            raise self._error
+        return list(self._result or [])
+
+
+def _matched(question_ids, reason="与简历相关"):
+    return [MatchedQuestion(question_id=qid, reason=reason) for qid in question_ids]
+
+
+def _seed_extra(db, position, owner, count, dimension="沟通能力"):
+    """再落 count 道题，把候选池撑到足以体现「池子被放大」。"""
+    created = [
+        question_repository.create(
+            db,
+            position_id=position.id,
+            category="通用",
+            dimension=dimension,
+            content=f"推荐池第{i}题的内容描述文本",
+            difficulty="medium",
+            tags=[],
+            source="bank",
+            question_type="short_answer",
+            reference_answer=f"推荐池第{i}题的参考答案",
+            explanation=f"推荐池第{i}题的解析",
+            created_by=owner.id,
+        )
+        for i in range(count)
+    ]
+    db.commit()
+    for question in created:
+        db.refresh(question)
+    return created
+
+
+def _question_ids(detail) -> list[int]:
+    return [item.question["id"] for item in detail.items]
+
+
+def _start(db, user, **kwargs):
+    return practice_service.start_session(db, user, PracticeSessionCreate(**kwargs))
+
+
+def _session_count(db) -> int:
+    from sqlalchemy import func, select
+
+    return db.execute(select(func.count(PracticeSession.id))).scalar_one()
+
+
+# ------------------------- §7.1 未关联简历：零回归 -------------------------
+
+
+class TestNoResumeUnchanged:
+    def test_without_resume_has_null_fields(self, db, candidate_user, practice_questions):
+        detail = _start(db, candidate_user, size=2)
+
+        assert detail.resume_id is None
+        assert detail.resume_match_applied is False
+
+    def test_without_resume_returns_filter_results(
+        self, db, candidate_user, practice_questions
+    ):
+        detail = _start(db, candidate_user, size=2)
+        expected = question_repository.list_practice_candidates(db, PracticeFilters(), 2)
+
+        assert _question_ids(detail) == [question.id for question in expected]
+
+    def test_without_resume_does_not_call_ai(
+        self, db, candidate_user, practice_questions, monkeypatch
+    ):
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        detail = _start(db, candidate_user, size=2)
+
+        assert stub.calls == []  # 连调用都没有
+        assert detail.resume_match_applied is False
+
+
+# ------------------------- §7.2 正常路径 -------------------------
+
+
+class TestResumeMatchApplied:
+    def test_applies_match(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        wanted = [question.id for question in practice_questions[:3]]
+        _use_provider(monkeypatch, _MatchStub(result=_matched(wanted)))
+
+        detail = _start(db, candidate_user, size=3, resume_id=resume.id)
+
+        assert detail.resume_match_applied is True
+        assert detail.resume_id == resume.id
+        assert _question_ids(detail) == wanted
+
+    def test_orders_by_match_result(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """会话内顺序 **就是** AI 的相关度顺序 —— 本模块不二次排序。"""
+        reversed_ids = [question.id for question in reversed(practice_questions)]
+        _use_provider(monkeypatch, _MatchStub(result=_matched(reversed_ids)))
+
+        detail = _start(
+            db, candidate_user, size=4, resume_id=resume.id, position_id=None
+        )
+
+        assert _question_ids(detail) == reversed_ids
+
+    def test_uses_larger_pool(
+        self, db, candidate_user, position, hr_user, practice_questions, resume, monkeypatch
+    ):
+        """池子必须比 size 大，否则 AI 只能重排、不能改选。"""
+        _seed_extra(db, position, hr_user, 12)  # 池 = 4 + 12 = 16
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=3, resume_id=resume.id)
+
+        assert len(stub.calls[0]["candidates"]) == 12  # min(3*4, 100)
+        assert 12 > 3
+
+    def test_pool_size_formula(self):
+        assert practice_service._resume_pool_size(3) == 12
+        assert practice_service._resume_pool_size(20) == 80
+        assert practice_service._resume_pool_size(50) == 100  # 上限护栏
+
+    def test_pool_capped_at_max(
+        self, db, candidate_user, position, hr_user, practice_questions, resume, monkeypatch
+    ):
+        _seed_extra(db, position, hr_user, 30)
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=20, resume_id=resume.id)
+
+        assert len(stub.calls[0]["candidates"]) <= practice_service._RESUME_POOL_MAX
+
+    def test_passes_resume_content(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        assert stub.calls[0]["resume_text"] == resume.content
+
+    def test_derives_dims_from_pool(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """dims 由**池内维度**推导：既绕开 position 依赖，又保证必然非空。"""
+        expected = sorted({question.dimension for question in practice_questions})
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        assert stub.calls[0]["dims"] == expected
+
+    def test_position_name_from_supply(
+        self, db, candidate_user, position, practice_questions, resume, monkeypatch
+    ):
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=2, resume_id=resume.id, position_id=position.id)
+        assert stub.calls[0]["position_name"] == position.name
+
+        _start(db, candidate_user, size=2, resume_id=resume.id)
+        assert stub.calls[1]["position_name"] == ""  # 未指定岗位
+
+    def test_jd_is_empty(
+        self, db, candidate_user, position, practice_questions, resume, monkeypatch
+    ):
+        """刷题没有 JD 上下文；该供给刻意不下发 JD（PRD §4.7）。"""
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        _start(db, candidate_user, size=2, resume_id=resume.id, position_id=position.id)
+
+        assert stub.calls[0]["jd"] == ""
+
+    def test_writes_snapshots(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """推荐不改变快照机制 —— 5 个快照字段照写。"""
+        wanted = [question.id for question in practice_questions[:2]]
+        _use_provider(monkeypatch, _MatchStub(result=_matched(wanted)))
+
+        detail = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        by_id = {question.id: question for question in practice_questions}
+        for item in detail.items:
+            question = by_id[item.question["id"]]
+            assert item.question["content"] == question.content
+            assert item.question["dimension"] == question.dimension
+            assert item.question["question_type"] == question.question_type
+
+    def test_seq_starts_at_one(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        wanted = [question.id for question in practice_questions[:3]]
+        _use_provider(monkeypatch, _MatchStub(result=_matched(wanted)))
+
+        detail = _start(db, candidate_user, size=3, resume_id=resume.id)
+
+        assert [item.seq for item in detail.items] == [1, 2, 3]
+
+
+# ------------------------- §7.3 降级路径（最重要的测试组）-------------------------
+
+
+class TestResumeMatchDegradation:
+    def test_ai_failure_degrades(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        _use_provider(monkeypatch, _MatchStub(error=AIProviderError("模拟推荐失败")))
+
+        detail = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        assert len(detail.items) == 2  # 照常建成
+        assert detail.resume_match_applied is False
+
+    def test_ai_failure_keeps_resume_id(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """降级时 resume_id 仍保留 —— 它表达「候选人想用哪份」这一事实。"""
+        _use_provider(monkeypatch, _MatchStub(error=AIProviderError("模拟推荐失败")))
+
+        detail = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        assert detail.resume_id == resume.id
+
+    def test_ai_failure_result_equals_no_resume(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """降级取到的题与「不传 resume_id」**逐条相同**（同一入口取前缀）。"""
+        _use_provider(monkeypatch, _MatchStub(error=AIProviderError("模拟推荐失败")))
+        degraded = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        plain = _start(db, candidate_user, size=2)
+
+        assert _question_ids(degraded) == _question_ids(plain)
+
+    def test_ai_failure_still_counts_rate_limit(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        monkeypatch.setenv("PRACTICE_RATE_LIMIT_PER_MINUTE", "1")
+        get_settings.cache_clear()
+        practice_service.reset_rate_limit()
+
+        try:
+            _use_provider(
+                monkeypatch, _MatchStub(error=AIProviderError("模拟推荐失败"))
+            )
+            _start(db, candidate_user, size=1, resume_id=resume.id)
+
+            with pytest.raises(BusinessError):
+                _start(db, candidate_user, size=1)
+        finally:
+            get_settings.cache_clear()
+            practice_service.reset_rate_limit()
+
+    def test_ai_empty_result_degrades(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        _use_provider(monkeypatch, _MatchStub(result=[]))
+
+        detail = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        expected = question_repository.list_practice_candidates(db, PracticeFilters(), 2)
+        assert detail.resume_match_applied is False
+        assert _question_ids(detail) == [question.id for question in expected]
+
+    def test_ai_unknown_ids_degrade_safely(
+        self, db, candidate_user, practice_questions, resume, monkeypatch
+    ):
+        """池外 id 全部被过滤 → picked 为空 → 安全降级（不建空会话）。"""
+        _use_provider(monkeypatch, _MatchStub(result=_matched([999999, 888888])))
+
+        detail = _start(db, candidate_user, size=2, resume_id=resume.id)
+
+        assert detail.resume_match_applied is False
+        assert len(detail.items) == 2
+
+    def test_log_levels_distinguish_failure_from_miss(
+        self, db, candidate_user, practice_questions, resume, monkeypatch, caplog
+    ):
+        """故障走 warning、正常未命中走 info —— 两者都降级，但可区分。"""
+        with caplog.at_level("INFO"):
+            _use_provider(monkeypatch, _MatchStub(result=[]))
+            _start(db, candidate_user, size=2, resume_id=resume.id)
+            miss_records = [
+                r for r in caplog.records if "按简历推荐未命中" in r.getMessage()
+            ]
+            assert miss_records and all(r.levelname == "INFO" for r in miss_records)
+
+            caplog.clear()
+            _use_provider(
+                monkeypatch, _MatchStub(error=AIProviderError("模拟推荐失败"))
+            )
+            _start(db, candidate_user, size=2, resume_id=resume.id)
+            fail_records = [
+                r for r in caplog.records if "按简历推荐失败" in r.getMessage()
+            ]
+            assert fail_records and all(r.levelname == "WARNING" for r in fail_records)
+
+    def test_pool_empty_reports_409_and_creates_nothing(
+        self, db, candidate_user, resume
+    ):
+        with pytest.raises(BusinessError) as exc:
+            _start(
+                db,
+                candidate_user,
+                size=2,
+                resume_id=resume.id,
+                dimension="不存在的维度",
+            )
+
+        assert "没有符合条件的题目" in exc.value.message
+        assert _session_count(db) == 0  # 不建空会话
+
+
+# ------------------------- §7.4 归属与隔离 -------------------------
+
+
+class TestResumeOwnership:
+    def test_other_candidates_resume_403(
+        self, db, candidate_user, other_resume, practice_questions
+    ):
+        with pytest.raises(ForbiddenError):
+            _start(db, candidate_user, size=2, resume_id=other_resume.id)
+
+    def test_missing_resume_404(self, db, candidate_user, practice_questions):
+        with pytest.raises(NotFoundError):
+            _start(db, candidate_user, size=2, resume_id=999999)
+
+    def test_validation_precedes_picking(
+        self, db, candidate_user, other_resume, practice_questions, monkeypatch
+    ):
+        """归属校验先于取题：越权时不该查题、更不该调 AI、也不该建会话。"""
+        stub = _MatchStub(result=_matched([practice_questions[0].id]))
+        _use_provider(monkeypatch, stub)
+
+        with pytest.raises(ForbiddenError):
+            _start(db, candidate_user, size=2, resume_id=other_resume.id)
+
+        assert stub.calls == []
+        assert _session_count(db) == 0
