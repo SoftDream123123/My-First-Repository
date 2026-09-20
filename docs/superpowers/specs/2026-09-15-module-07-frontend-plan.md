@@ -7,7 +7,11 @@
 **所属目录**：`frontend/`
 **上游 PRD**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
 **对应 PRD 章节**：§2（技术栈约束）、§3.1（前后端分离）、§4（各功能界面）、§5.3 ③（流式评估的前端侧）、§7（SSE 断连重连）
-**前置依赖**：全部后端模块（core / auth / position / question / interview / evaluation）
+**前置依赖**：全部后端模块（core / auth / position / question / interview / evaluation）；**MVP-2 起再加 `practice`**
+
+> **MVP-2 增量（2026-09-20）**：本文档描述的是**HR 端**前端。MVP-2 新增的**候选人端**（同一 Vite 工程内的 `#/candidate/*` 路由组、9 个页面、按端分 key 的会话）见 [module-15 候选人前端](./2026-09-20-module-15-candidate-frontend-plan.md)。本文档的 Global Constraints、§1.1、§2、§3.1、§3.3、§4.2、§5.3、§5.6、§8.4、§10 已同步修正，另有**两处「as-built 对照」修正**（实际代码与本文档原描述不符，见 §2.3）。
+>
+> ⚠️ **改动面提示**：`session.js` / `api.js` / `auth.js` / `router.js` / `main.js` 是**两端共用**的，由 module-15 负责改造；本文档只登记「HR 端因此受到的影响」，不重复给实现。
 
 ---
 
@@ -16,10 +20,13 @@
 - **前端使用原生 HTML + CSS + JavaScript + Vite 构建，无 UI 框架**（§2）
 - **仅 PC 端，不考虑移动端响应式**（§2、§1.3）
 - 前后端**分离**：后端纯 API，前端通过 **REST + SSE** 与后端交互（§3.1）
-- **在线答题（候选人侧）属于 V1.1，不在 MVP**（§1.3）
+- ~~**在线答题（候选人侧）属于 V1.1，不在 MVP**（§1.3）~~ ⚠️ **MVP-2 起已在范围内**（§4.8）：候选人端与 HR 端**在同一个 Vite 工程内**（§2、§3.1）。实现见 [module-15](./2026-09-20-module-15-candidate-frontend-plan.md)
 - 统一错误响应格式 `{code, message, detail}` —— 前端据此统一展示错误（§7）
 - **评估以 SSE 流式呈现**（§4.5、§5.3 ③）
 - **SSE 断连后前端重连可继续拉取进度或查询最终结果**（§7）
+- **（MVP-2）HR 端与候选人端共用一个工程，但登录态按端分 key 存储**（`hr.*` / `candidate.*`），保证单浏览器可同时登录两端（§9）
+- **（MVP-2）HR 端页面不得出现候选人侧入口，候选人端页面不得出现 HR 侧入口**（§4.6）
+- **（MVP-2）候选人看不到逐题分、维度分与雷达图**——前端不得渲染这些内容（§1.3、§4.9）
 
 ---
 
@@ -37,12 +44,16 @@ PRD §3.1 定义前端为「`/hr` 后台（**登录、岗位、题库、面试�
 | 面试管理 | 面试列表、创建面试（**同步出题**）、详情、逐题录入回答、完成 / 回退 | §4.4、§5.3 ①② |
 | **评估与报告** | 触发评估、**SSE 实时进度**、雷达图、完整报告渲染 | §4.5、§5.3 ③ |
 | 用户管理 | admin 创建 / 列出 / 修改 HR 账号 | §4.1、§8 |
+| **候选人端（MVP-2）** | `#/candidate/*` 路由组与 9 个页面；**同一工程内**，完整契约见 [module-15](./2026-09-20-module-15-candidate-frontend-plan.md) | §3.1、§4.6 |
+| **两端共用的基础设施（MVP-2）** | `session.js` 按端分 key、`router.js` 按端门禁、`api.js` 按端取 token；由 module-15 负责改造 | §9 |
 
 ### 1.2 边界（明确不做）
 
 | 不做 | 理由 |
 |---|---|
-| **候选人侧答题页** | PRD §1.3 明确列为 V1.1 |
+| ~~**候选人侧答题页**~~ | ⚠️ **MVP-2 起已在范围内**（PRD §4.8），与 HR 端同工程。实现见 [module-15](./2026-09-20-module-15-candidate-frontend-plan.md) |
+| **候选人端的雷达图 / 逐题分展示（MVP-2）** | PRD §1.3、§4.9 明确不下发；候选人统计页用条形进度替代雷达图 |
+| **在 HR 端页面里嵌入候选人功能（MVP-2）** | 两组路由页互不 import，避免入口耦合与导航混乱 |
 | **任何 UI 框架 / 组件库** | PRD §2 明确「无 UI 框架」 |
 | **图表库** | 雷达图用 Canvas 2D 手写（不引入 ECharts 等数百 KB 依赖） |
 | **前端权威权限校验** | 前端只隐藏入口，权限由后端强制（PRD §4.1） |
@@ -63,22 +74,40 @@ frontend ──→ 后端 SSE 端点（/api/interviews/{id}/evaluation/stream，
   pages/* ──→ auth.js（登录态）
   pages/* ──→ router.js（跳转）
   evaluation 页 ──→ sse.js（流式）
+
+MVP-2 追加（候选人端，见 module-15）：
+  pages/candidate-*.js ──→ components/candidate-shell.js
+  pages/candidate-*.js ──→ api.js ──→ session.js（**按端**取 token）
+  候选人端 ✗→ sse.js（候选人侧无流式能力，PRD §1.3「仅评估环节流式」）
+  HR 页面 ✗→ 候选人页面（两组路由互不 import）
 ```
 
 ---
 
 ## 2. 文件结构
 
+### 2.1 交付物
+
 | 文件 | 单一职责 |
 |---|---|
 | `frontend/package.json` | 依赖（仅 vite 与 vitest）与脚本 |
-| `frontend/vite.config.js` | Vite 配置 + `/api` 代理到后端 |
-| `frontend/index.html` | 唯一 HTML 入口，含 `#app` 挂载点 |
-| `frontend/src/main.js` | 应用启动：初始化路由、注入 401 处理器、挂载默认页 |
-| `frontend/src/api.js` | `fetch` 封装：注入 JWT、统一错误、401 处理 |
-| `frontend/src/sse.js` | **SSE 客户端**：`fetch` + `ReadableStream` 手动解析（见 §4.3） |
-| `frontend/src/auth.js` | token 存取、登录态判断、当前用户信息 |
-| `frontend/src/router.js` | hash 路由：注册表、参数解析、导航守卫 |
+| `frontend/vite.config.js` | Vite 配置 + `/api` 代理 + Vitest 配置 |
+| `frontend/index.html` | 唯一 HTML 入口，含 `#app` 挂载点；按 `tokens → base → components → pages` 顺序 link 四个 CSS |
+| `frontend/standalone.html` | ⚠️ **已冻结的单文件原型快照**，不参与构建、与 `src/` 不同步、生成脚本已删除 → **不可编辑** |
+| `frontend/README.md` | 前端说明与启动方式 |
+| `frontend/mock/*.html` | 浏览器侧联调台（stub `window.fetch` 驱动真实页面代码），替代 DOM 单测 |
+
+### 2.2 `frontend/src/` 模块清单（**as-built，以代码为准**）
+
+| 文件 | 单一职责 |
+|---|---|
+| `frontend/src/main.js` | 应用启动：静态注册页面、注入 401 处理器、刷新用户信息、挂载路由 |
+| `frontend/src/router.js` | hash 路由：**静态注册表**、`:param` 解析、导航守卫 |
+| `frontend/src/api.js` | `fetch` 封装：注入 JWT、统一错误、401 集中处理 |
+| `frontend/src/sse.js` | SSE 客户端：`fetch` + `ReadableStream` 手动分帧（见 §4.3） |
+| `frontend/src/session.js` | 登录态存储（**token 与 user 的键只在此处定义**） |
+| `frontend/src/auth.js` | 登录态语义：`isLoggedIn` / `isAdmin` / `logout` / `refreshUser` |
+| `frontend/src/dom.js` | DOM 原语：`el` / `append` / `clear` / `mount` / `frag` / `when`（`text:` 是**唯一**文本写入路径） |
 | `frontend/src/pages/login.js` | 登录页 |
 | `frontend/src/pages/interviews.js` | 面试列表 + 创建弹窗 |
 | `frontend/src/pages/interview-detail.js` | 面试详情：题目、录入回答、完成 / 回退 |
@@ -86,14 +115,32 @@ frontend ──→ 后端 SSE 端点（/api/interviews/{id}/evaluation/stream，
 | `frontend/src/pages/positions.js` | 岗位管理 |
 | `frontend/src/pages/questions.js` | 题库管理 |
 | `frontend/src/pages/users.js` | 用户管理（admin） |
-| `frontend/src/components/sidebar.js` | 侧边导航（按角色过滤入口） |
-| `frontend/src/components/table.js` | 表格渲染与空态 |
-| `frontend/src/components/modal.js` | 弹窗（表单容器） |
-| `frontend/src/components/radar.js` | Canvas 雷达图 |
-| `frontend/src/components/toast.js` | 成功 / 失败消息提示 |
-| `frontend/src/styles/main.css` | 全部样式（CSS 变量主题） |
+| `frontend/src/components/shell.js` | 外壳：侧栏品牌、`NAV`（支持 `adminOnly` 过滤）、顶栏、状态/来源/维度标签、日期格式化、空态与加载态 |
+| `frontend/src/components/form.js` | `fieldError()` / `fieldErrors()`（字段级错误映射） |
+| `frontend/src/components/modal.js` | `openModal()`（含 `setBusy`）/ `confirmModal()` |
+| `frontend/src/components/radar.js` | Canvas 2D 手写雷达图 |
+| `frontend/src/components/toast.js` | `toast.info/success/error` |
+| `frontend/src/styles/tokens.css` | 设计令牌（颜色 / 字号 / 间距 / 圆角 / 阴影 / 布局） |
+| `frontend/src/styles/base.css` | 基础排版与重置 |
+| `frontend/src/styles/components.css` | 组件类（`.panel` / `.btn` / `.field` / `.table` / `.tag` …） |
+| `frontend/src/styles/pages.css` | 页面级类 |
 
-**测试文件**：`frontend/src/__tests__/sse.test.js`、`frontend/src/__tests__/radar.test.js`
+**测试文件**：`frontend/src/__tests__/sse.test.js`、`frontend/src/__tests__/radar.test.js`（**只测纯函数**，无 jsdom）
+
+### 2.3 ⚠️ as-built 修正（原文与实现的偏差）
+
+> 本文档原文列出的以下文件**在实现中并不存在**，实现采用了不同的切分。此处按代码校正，避免后来者照文档找不存在的文件：
+
+| 原文列出的文件 | 实际情况 | 说明 |
+|---|---|---|
+| `components/sidebar.js` | **不存在**，外壳实现在 `components/shell.js` | 侧栏与顶栏在同一外壳模块内，且含有大量共用展示辅助（标签、格式化、空态），拆成 `sidebar.js` 反而会切碎一个内聚单元 |
+| `components/table.js` | **不存在** | 表格在各页面内用 `el('table')` + `el('tbody')` 直接构建。抽成通用表格组件需要抽象列定义与渲染回调，对 7 个页面属过度设计 |
+| `components/tabs.js`、`components/` 的其它 | 未实现 | — |
+| `styles/main.css` | **不存在**，改为 `tokens.css` / `base.css` / `components.css` / `pages.css` **四个文件** | 按**层叠顺序**拆分，使「令牌 → 基础 → 组件 → 页面」的覆盖关系在 `index.html` 里一眼可见 |
+| — | **新增** `session.js` | 原文把存储逻辑含在 `auth.js` 里。抽出的理由：打断 `api.js ←→ auth.js` 的循环依赖，并让「存储键只定义在一处」 |
+| — | **新增** `dom.js` | 原文未定义 DOM 构建方式。实现统一用 `el()` 原语，全仓 `innerHTML` 出现 **0 次**（这既是安全边界，也让「无 XSS 注入点」成为可验证的事实） |
+
+> **（MVP-2）本次改造涉及的文件**：`session.js` / `router.js` / `api.js` / `auth.js` / `main.js` 五个，加上新增的候选人页面与外壳。改造方案见 [module-15](./2026-09-20-module-15-candidate-frontend-plan.md)——**本文档不重复给出**，只登记对 HR 端的影响：`session.js` 的键名由 `hr.token` / `hr.user` 改为按端拼接后，**HR 端的键名保持不变**，既有登录态不丢失。
 
 ---
 
@@ -101,18 +148,44 @@ frontend ──→ 后端 SSE 端点（/api/interviews/{id}/evaluation/stream，
 
 ### 3.1 路由表
 
+**HR 端（所属「端」= `hr`）**
+
 | hash 路由 | 页面模块 | 权限 | PRD |
 |---|---|---|---|
 | `#/login` | `login.js` | 公开 | §4.1 |
-| `#/interviews` | `interviews.js` | 登录 | §4.4 |
-| `#/interviews/:id` | `interview-detail.js` | 登录 | §4.4 |
-| `#/interviews/:id/evaluation` | `evaluation.js` | 登录 | §4.5 |
-| `#/positions` | `positions.js` | 登录 | §4.2 |
-| `#/questions` | `questions.js` | 登录 | §4.3 |
+| `#/interviews` | `interviews.js` | **hr / admin** | §4.4 |
+| `#/interviews/:id` | `interview-detail.js` | **hr / admin** | §4.4 |
+| `#/interviews/:id/evaluation` | `evaluation.js` | **hr / admin** | §4.5 |
+| `#/positions` | `positions.js` | **hr / admin** | §4.2 |
+| `#/questions` | `questions.js` | **hr / admin** | §4.3 |
 | `#/users` | `users.js` | **admin** | §4.1、§8 |
 
-- **默认落地页**：`#/interviews`
-- **未知路由** → 重定向到 `#/interviews`
+**候选人端（所属「端」= `candidate`，MVP-2）**
+
+| hash 路由 | 页面模块 |
+|---|---|
+| `#/candidate/login` | `candidate-login.js`（公开；登录与注册同页切换） |
+| `#/candidate/activate` | `candidate-activate.js` |
+| `#/candidate/practice` | `candidate-practice.js` |
+| `#/candidate/practice/:id` | `candidate-practice-session.js` |
+| `#/candidate/wrong-book` | `candidate-wrong-book.js` |
+| `#/candidate/stats` | `candidate-stats.js` |
+| `#/candidate/interviews` | `candidate-interviews.js` |
+| `#/candidate/interviews/:id` | `candidate-interview-detail.js` |
+| `#/candidate/interviews/:id/feedback` | `candidate-feedback.js` |
+
+**默认落地页（MVP-2 起按端区分）**
+
+| 端 | 默认页 | 未知路由的兜底 |
+|---|---|---|
+| `hr` | `#/interviews` | `#/interviews` |
+| `candidate` | `#/candidate/interviews` | **按 hash 前缀决定**：`#/candidate/*` → 候选人默认页；其余 → HR 默认页 |
+
+> **（MVP-2）为何默认落地页按端区分**：原文只有一个 `#/interviews`。候选人被弹到 HR 默认页会立刻吃一个 403，体验与安全语义都不对。
+>
+> **（MVP-2）路由表新增 `side` 字段**：上表的「所属端」即路由条目上的 `side`，守卫据此判定角色门禁。字段与守卫决策函数的完整设计见 [module-15 §3.1、§3.4](./2026-09-20-module-15-candidate-frontend-plan.md)。
+>
+> **as-built 提示**：实现的页面注册键为 `interviewDetail`（非 `interview-detail`），路由表条目形如 `{ path, key, isPublic?, adminOnly? }`（`router.js`）。MVP-2 在此基础上增加 `side` 字段。
 
 ### 3.2 页面模块契约
 
@@ -127,19 +200,31 @@ frontend ──→ 后端 SSE 端点（/api/interviews/{id}/evaluation/stream，
 
 ### 3.3 导航守卫
 
+**as-built（原文写作 `router.beforeEach`，实际是 `render()` 内调用的 `guard(route)` 函数）**
+
 ```
-router.beforeEach：
-  1. 若 hash == '#/login'
-       已登录 → 跳 '#/interviews'
+guard(route)：
+  1. 若 route.isPublic
+       该端已登录 → location.replace(该端默认页)，返回 false
        否则放行
-  2. 若未登录（无 token）
-       → 跳 '#/login'
-  3. 若目标页要求 admin 且当前用户非 admin（PRD §4.1）
-       → 跳 '#/interviews' + toast「无权限访问该页面」
+  2. 若未登录（该端无 token）
+       → location.replace(该端登录页)，返回 false
+  3. 若 route.adminOnly 且当前用户非 admin（PRD §4.1）
+       → toast「无权限访问该页面」+ 跳 HR 默认页，返回 false
   4. 放行
 ```
 
-> token 过期由 `api.js` 在收到 401 时统一处理（§4.1），守卫只做「有没有 token」的快速判断。
+**MVP-2 的扩展**（完整规则表与纯函数设计见 [module-15 §3.4](./2026-09-20-module-15-candidate-frontend-plan.md)）
+
+| 新增规则 | 理由 |
+|---|---|
+| 门的判定从「全局一个 token」改为「**该端**的 token」 | 登录态按端分 key 后，`isLoggedIn()` 必须带端 |
+| 新增「HR 端路由 + `role === candidate` → 跳候选人默认页」 | **跨端串号**：候选人 token 进 HR 页会满屏 403 |
+| 新增「候选人端路由 + `role ∈ {admin, hr}` → 跳 HR 默认页」 | 同上，反向 |
+| 未知路径按 hash 前缀选择兜底页 | 否则候选人输错地址会被弹到 HR 登录页 |
+| **决策抽成纯函数 `decideGuard(route, ctx)`** | 现状的守卫直接改 `location`，无法单测。抽出来后 11 条规则可用表格驱动覆盖 |
+
+> token 过期仍由 `api.js` 在收到 401 时统一处理（§4.1）；守卫只做「有没有 token + 角色对不对」的快速判断——**它拦不住手工改 hash 的人，真正的强制在后端**（[module-16](./2026-09-20-module-16-permission-guard-plan.md)）。
 
 ### 3.4 布局（PRD §2「仅 PC 端」）
 
@@ -187,15 +272,21 @@ router.beforeEach：
 
 ### 4.2 `auth.js` —— 登录态
 
-| 导出 | 签名 | 说明 |
+| 导出 | 签名（**MVP-2 起加 `side`**） | 说明 |
 |---|---|---|
-| `saveToken` | `(token: string, user: object) => void` | 写入存储 |
-| `getToken` | `() => string \| null` | — |
-| `getUser` | `() => object \| null` | 缓存的用户信息（`id` / `username` / `role`） |
-| `isLoggedIn` | `() => boolean` | 有 token 即视为已登录（过期由 401 兜底） |
-| `isAdmin` | `() => boolean` | `getUser()?.role === 'admin'`（PRD §4.1） |
-| `logout` | `() => void` | 清除存储并跳登录页 |
-| `refreshUser` | `() => Promise<void>` | 调 `GET /api/auth/me` 刷新用户信息（页面加载时调用，保证角色是最新的） |
+| `saveToken` | `(token: string, user: object, side) => void` | 写入**该端**的存储 |
+| `getToken` | `(side) => string \| null` | — |
+| `getUser` | `(side) => object \| null` | 缓存的用户信息（`id` / `username` / `role`） |
+| `isLoggedIn` | `(side) => boolean` | 有 token 即视为已登录（过期由 401 兜底） |
+| `isAdmin` | `(side = 'hr') => boolean` | `getUser(side)?.role === 'admin'`（PRD §4.1） |
+| `isCandidate` | `(side = 'candidate') => boolean` | **MVP-2 新增** |
+| `logout` | `(side) => void` | 清除**该端**存储并跳**该端**登录页 |
+| `refreshUser` | `(side) => Promise<void>` | 调 `GET /api/auth/me` 刷新用户信息（启动时调用，保证角色是最新的） |
+| `register` | `(username, password) => Promise<object>` | **MVP-2 新增**：调 `POST /auth/register`；成功后**由调用页自动再调 login**（注册不返回 token，见 [module-09 §5.1](./2026-09-20-module-09-auth-plan.md)） |
+
+> **（MVP-2）`side` 参数是本表最重要的变化**：现状所有导出都不带端，`session.js` 用固定的 `hr.token` / `hr.user`。同一 origin 下两端会互相顶号，PRD §9 要求的「单浏览器同时登录两端」根本走不通。存储键改为按端拼接（`` `${side}.token` ``）后，**HR 端的键名保持不变**（仍是 `hr.*`），既有登录态不丢失。
+>
+> **`side` 由调用方显式传入**，`auth.js` / `session.js` **不**在内部读「当前端」——保持无状态，便于测试与排查。活动端由 `side.js` 维护，`api.js` 负责取用（[module-15 §3.2、§3.3](./2026-09-20-module-15-candidate-frontend-plan.md)）。
 
 **存储方案与权衡**
 
@@ -206,6 +297,8 @@ router.beforeEach：
 | `httpOnly` Cookie | 安全性最好（JS 读不到，天然免疫 XSS 窃取），但需后端改为 Cookie 鉴权并处理 CSRF |
 
 **已声明的风险**：`localStorage` 中的 token 可被 XSS 读取。MVP 为内网 HR 系统、且界面**无用户生成的 HTML 内容注入点**（题干、回答均以文本节点渲染，不用 `innerHTML`），风险可接受。如未来面向公网，应迁移到 `httpOnly` Cookie + CSRF 防护。
+
+> **（MVP-2）存储键的组织方式**：`localStorage` 是**按 origin**共享的，而 HR 端与候选人端同源（PRD §2 单机部署）。因此两端的 token 必须落在不同的键上，否则后登录的一端会覆盖另一端。键名由 `session.js` 按端拼出（`` `${side}.token` ``），且**只在 `session.js` 一处定义**——这既满足 PRD §9，也保持「改一处即可」的既有约定。
 
 ### 4.3 `sse.js` —— SSE 客户端（**关键设计**）
 
@@ -326,6 +419,21 @@ router.beforeEach：
 | 防抖 | 失焦保存即可，**不做输入防抖**（避免高频请求） |
 | 非 `ongoing` 状态 | 文本框**只读**并提示「需先回退到进行中才能修改回答」 |
 | 空回答 | 允许保存空串（表示候选人**未作答**，评估将按 0 分处理） |
+| **作答来源标记（MVP-2）** | 每题显示来源标签：`answer_source === 'candidate'` → 「候选人自答」；`hr` → 「HR 录入」。**注意用 `answer_source` 而非 `source`** —— 后者是题目来源标签（[module-05 §4.2](./2026-09-15-module-05-interview-plan.md) 的命名冲突说明） |
+| **已交卷标记（MVP-2）** | 该候选人已交卷（`submitted_at` 非空）时，在页面顶部显示「候选人已交卷」横幅；**文本框仍可编辑**（HR 侧不受锁影响，PRD §4.4） |
+| **覆盖提示（MVP-2）** | 修改一条来源为「候选人自答」的作答时，保存前弹一次轻提示「你将覆盖候选人的作答」，避免误改 |
+
+**作答邀请区（MVP-2 新增区块，PRD §4.4）**
+
+| 项 | 设计 |
+|---|---|
+| 位置 | 页面右上操作区旁；**仅在 `ongoing` 状态显示生成按钮**（与后端一致，[module-12 §5.2](./2026-09-20-module-12-interview-invitation-plan.md)） |
+| 生成 | 调 `POST /api/interviews/{id}/invitations` → 弹窗展示邀请码 + **一键复制**按钮 |
+| 列表 | 调 `GET /api/interviews/{id}/invitations`；每行显示码、状态标签（`pending` / `accepted` / `revoked` / `expired`）、`expires_at`、已接受的候选人用户名 |
+| 撤销 | `DELETE /api/interviews/{id}/invitations/{inv_id}`，`confirmModal` 确认；对 `accepted` 的邀请给出更强的确认文案（**撤销会立即切断该候选人的访问**） |
+| 邀请码展示 | 明文展示 + 复制（PRD §1.3 要求在系统内展示与复制，不发送邮件）。长码用等宽字体 + `truncate` 处理 |
+| 状态标签 | `expired` 为**后端派生态**，前端只需按返回值渲染，**不得**自行用 `expires_at` 与本地时间比较（本地时钟可能不准） |
+| **不做** | 不发邮件、不生成短链、不做二维码 |
 
 > **不做未保存离开拦截**：MVP 采用显式保存按钮 + 失焦自动保存，已能覆盖主要场景；`beforeunload` 拦截会在路由切换时误触发，收益不抵复杂度。
 
@@ -387,11 +495,14 @@ router.beforeEach：
 
 | 项 | 设计 |
 |---|---|
-| 列表 | `GET /api/questions`；列：题干摘要、岗位、分类、维度、难度、**来源**、标签、操作 |
-| **筛选栏** | 岗位下拉、分类输入、**维度输入**、来源下拉（全部/手工/AI）、关键字输入；任一变化即重新请求（**AND 关系**）——对应 PRD §4.3「按岗位 / 分类 / 维度筛选」 |
-| 创建 / 编辑 | 弹窗表单：岗位（下拉）、分类、维度、题干（多行）、难度（下拉）、标签（动态列表） |
+| 列表 | `GET /api/questions`；列：题干摘要、岗位、分类、维度、难度、**题型**（MVP-2）、**来源**、标签、操作 |
+| **筛选栏** | 岗位下拉、分类输入、**维度输入**、难度下拉、**题型下拉**（MVP-2）、来源下拉（全部/手工/AI）、关键字输入；任一变化即重新请求（**AND 关系**）——对应 PRD §4.3「按岗位 / 分类 / 维度 / 难度 / 题型筛选」 |
+| 创建 / 编辑 | 弹窗表单：岗位（下拉）、分类、维度、题干（多行）、难度（下拉）、标签（动态列表）；**MVP-2 另加题型（单选/简答）与下列联动字段** |
 | **维度联动** | 选择岗位后，**维度字段改为下拉**，选项为该岗位的 `evaluation_dimensions`（**避免提交必然失败的维度**，对应 question §3.3 的校验） |
-| 来源标识 | `bank` → 「手工」、`ai` → 「AI」（不同颜色标签）——PRD §5.2 的 `source` 字段 |
+| **题型联动（MVP-2）** | 题型选「单选」→ 显示**选项列表**（动态增删，2–10 项）与**参考答案下拉**（选项之一，必填）、**解析**（多行）；选「简答」→ 隐藏选项列表，参考答案与解析为可选的自由文本 |
+| **选项与答案的一致性（MVP-2）** | 参考答案的候选项**直接来自当前已填写的选项**——从 UI 上就杜绝「答案不在选项内」这一必然失败的提交（后端仍会校验，见 [module-10 §4.3](./2026-09-20-module-10-question-plan.md)） |
+| **AI 补参考答案（MVP-2）** | 编辑弹窗内提供「AI 生成参考答案」按钮 → `POST /api/questions/{id}/reference-answer`（**需先保存题目**）。返回 409「AI 生成的答案不在选项中」时，提示 HR 手工确认后重试，**不自动改写** |
+| 来源标识 | `bank` → 「手工」、`ai` → 「AI」（不同颜色标签）——PRD §5.2 的 `source` 字段。**注意**：这是**题目来源**，与作答来源（`answer_source`）无关 |
 | 删除 | 二次确认；409 时提示「该题目已被面试引用，无法删除」 |
 
 ### 5.7 用户管理 `users.js`（admin，PRD §4.1、§8）
@@ -511,10 +622,32 @@ router.beforeEach：
 | 26 | 手工把 localStorage 的 token 改成非法值后请求 | 收到 401 → **自动清 token 并跳登录页** | §7 |
 | 27 | 关闭后端后操作 | 提示「网络连接失败，请检查后端服务」 | §7 |
 | 28 | 视口缩到 1280px 以下 | 布局不塌陷（**不要求响应式**，但不能错位到不可用） | §2 |
+| **29**（MVP-2） | 题库：建一道**单选题**（3 个选项、参考答案选第 2 项） | 列表「题型」列显示「单选」；按题型筛选可命中 | §4.3 |
+| **30**（MVP-2） | 题库：题型选单选但**不填选项** / 参考答案不在选项中 | 字段级红字提示，无法提交（与后端校验一致） | §4.3 |
+| **31**（MVP-2） | 题库：点「AI 生成参考答案」（Mock） | 两个字段被填充；选单选的题目答案落在选项内 | §4.3 |
+| **32**（MVP-2） | 面试详情：`ongoing` 下生成邀请码 | 弹窗显示明文码，可**一键复制** | §4.4 |
+| **33**（MVP-2） | 邀请列表 | 显示状态标签、有效期、已接受者的用户名 | §4.4 |
+| **34**（MVP-2） | 撤销一条 `pending` 邀请 | 状态变 `revoked`；撤销 `accepted` 的邀请被拒并给出更强提示 | §4.4 |
+| **35**（MVP-2） | 手工把某条邀请的 `expires_at` 改成过去（改库）后刷新列表 | 状态显示 `expired`（**后端派生**，前端未自行比较时间） | §4.4 |
+| **36**（MVP-2） | 候选人（另开标签页）交卷后回到 HR 详情页 | 顶部显示「候选人已交卷」横幅，**文本框仍可编辑** | §4.4 |
+| **37**（MVP-2） | HR 修改一条「候选人自答」的作答 | 保存前提示将覆盖候选人的作答；保存后来源标签仍为「候选人自答」 | §4.4 |
+| **38**（MVP-2） | 同一浏览器：标签 A 登录 HR，标签 B 登录候选人 | **两端都保持登录**；退出 A 不影响 B | §9 |
+| **39**（MVP-2） | 候选人标签页手工改 hash 为 `#/positions` | 被拦回候选人默认页（跨端串号） | §4.6 |
+
+> **（MVP-2）第 26 条需按端复测**：该条现在应分别验证「HR 端 token 非法」与「候选人端 token 非法」两种情况，各自跳**本端**登录页。候选人端的完整走查清单见 [module-15 §6.3、§6.4](./2026-09-20-module-15-candidate-frontend-plan.md)。
 
 ---
 
 ## 9. 任务分解（步骤，无代码）
+
+> **（MVP-2）Task 7.x 为 MVP-1 已完成的任务清单，保持不变。** MVP-2 的增量分两部分：
+>
+> | 部分 | 内容 | 出处 |
+> |---|---|---|
+> | **候选人端 + 两端共用基础设施** | 11 个页面、候选人外壳、`side.js`、会话按端分离、守卫纯函数化、按端 401 —— 共 9 个 Task | [module-15 §7](./2026-09-20-module-15-candidate-frontend-plan.md) |
+> | **HR 端页面增量** | 题库表单加题型/选项/参考答案/解析、面试详情页加作答邀请区与作答来源展示 | **本模块 §5.3、§5.6 的增量描述**；任务并入下方的 Task 7.5（题库页）与 Task 7.8（面试详情页） |
+>
+> HR 端的增量**不新增 Task 编号**：它是在既有页面上的字段扩展，与 MVP-1 的任务同属一个交付单元。
 
 > 每步 2–5 分钟。**提交信息由你指定**。
 
@@ -636,6 +769,14 @@ router.beforeEach：
 - [ ] 界面在 **1280px 及以上**视口下布局正常；**无移动端适配代码**（PRD §2）
 - [ ] 所有后端数据用 `textContent` 渲染，**无 `innerHTML` 注入**（XSS 防护）
 - [ ] `npm test` 全部通过（SSE 解析 + 雷达图几何）
+- [ ] **（MVP-2）** 题库页支持**题型筛选**，创建/编辑表单含题型、选项、参考答案、解析，且**参考答案只能从已填选项中选择**
+- [ ] **（MVP-2）** 面试详情页含**作答邀请区**（生成 / 列表 / 撤销 / 复制），状态标签含 `expired`（后端派生）
+- [ ] **（MVP-2）** 面试详情页展示作答来源（`answer_source`）与「候选人已交卷」横幅；HR 覆盖候选人作答仍可行
+- [ ] **（MVP-2）** 同一浏览器可**同时登录 HR 与候选人**且互不顶号；退出任一端不影响另一端
+- [ ] **（MVP-2）** 跨端串号被拦：候选人 token 进 HR 页面 / HR token 进候选人页面，均重定向到本端默认页
+- [ ] **（MVP-2）** HR 端页面**不出现**候选人侧入口；候选人端页面**不出现** HR 侧入口
+- [ ] **（MVP-2）** 候选人端不渲染雷达图、逐题分与维度分
+- [ ] **（MVP-2）** 上述 MVP-2 项的候选人端部分，完整验收见 [module-15 §8](./2026-09-20-module-15-candidate-frontend-plan.md)
 
 ---
 
@@ -644,7 +785,7 @@ router.beforeEach：
 | 风险 / 权衡 | 决策 | 理由 |
 |---|---|---|
 | SSE 客户端选型 | **`fetch` + `ReadableStream`**，不用 `EventSource` | `EventSource` 无法设置 `Authorization` 头（PRD §8）；JWT 放 query string 会泄露到日志与历史。**该约束来自 evaluation §4.3** |
-| token 存储位置 | `localStorage` | 实现最简单、刷新与跨标签保持登录；XSS 风险经「界面无 HTML 注入点 + 全部用 `textContent`」缓解；公网场景应迁 `httpOnly` Cookie |
+| token 存储位置 | `localStorage` | 实现最简单、刷新与跨标签保持登录；XSS 风险经「界面无 HTML 注入点 + 全部用 `textContent`」缓解；公网场景应迁 `httpOnly` Cookie。**（MVP-2）**：键名**按端分命名空间**（`hr.token` / `candidate.token`），以支持单浏览器同时登录两端 |
 | 断线是否自动重连 | **不自动**，由用户点「重新连接」 | 避免后端长时间不可用时的重试风暴；评估任务在服务端继续（PRD §7），用户重连即重放 |
 | 是否引入 DOM 测试框架 | **不引入**，改为手工联调清单 | 页面以「调 API + 重渲染」为主，DOM 测试投入产出比低 |
 | 是否引入 Vitest | **引入**，仅测 SSE 解析与雷达图几何 | 两者是无界面反馈的纯逻辑，出错表现隐蔽，定位成本高。**可裁剪** |
@@ -657,3 +798,7 @@ router.beforeEach：
 | 前端是否做权限判定 | **只隐藏入口，不做权威判定** | 权限由后端强制（PRD §4.1）；前端控制仅为体验优化 |
 | 移动端 | **不写媒体查询** | PRD §2 明确仅 PC 端 |
 | **PRD §3.1 未列出用户管理页** | **新增 `pages/users.js`** | PRD §4.1 与 §8 定义了 `/users` 端点。**若前端没有对应页面，admin 将无任何途径创建 HR 账号**（初始 admin 只能由脚本 seed），该功能实际不可用。属补齐 |
+| **（MVP-2）两端共用一个工程但登录态互相顶号** | `session.js` 按端分 key（键名 `` `${side}.token` ``） | 现状是固定的 `hr.token` / `hr.user`。不改则 PRD §9 的演示路径（同一浏览器跑通 HR 发邀请 → 候选人答题）走不通。**HR 端键名保持不变**，既有登录态不丢失 |
+| **（MVP-2）改动 `session.js` / `api.js` / `router.js` 会牵动 HR 端** | 改动面限制到最小，并逐页回归 | 这三个是两端共用路径。具体约束：`api.js` 只改「token 从哪来」与「401 跳哪去」；`shell.js` **不改**（候选人外壳另开文件）；新增守卫决策为**纯函数**以便表格驱动测试（module-15） |
+| **（MVP-2）`source` 一名的两处含义** | 作答来源命名为 `answer_source` | 响应对象中已有 `source`（题目来源快照）。同名不同义是排查成本最高的 bug 类型（[module-05 §4.2](./2026-09-15-module-05-interview-plan.md)） |
+| **（MVP-2）本文档 §2 的原文与实现不符** | 就地按 as-built 修正并保留对照表（§2.3） | `sidebar.js` / `table.js` / `main.css` 实际不存在。文档若继续指向不存在的文件，后来者会照着找不到的东西去改 |

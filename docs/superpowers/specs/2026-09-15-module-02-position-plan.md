@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§4.2（岗位管理）、§5.2（`position` 实体）、§8（position API）
 **前置依赖**：core（[module-00](./2026-09-15-module-00-core-plan.md)）、auth（[module-01](./2026-09-15-module-01-auth-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：`position` 的**字段与业务规则均未变化**，但权限语义收紧——全部端点必须显式校验角色（admin/hr），否则候选人 token 可越权调用。本文档的 Global Constraints、§4.1（权限列）、§5.2、§7.1、§10 已同步修正；守卫的逐路由落地见 [module-16](./2026-09-20-module-16-permission-guard-plan.md)。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -16,9 +18,10 @@
 - 后端分层：**router → service → repository → MySQL，严格单向依赖**（§2、§3.2）
 - 每个模块独立 Python package（§2、§3.3）
 - 统一响应格式：**`{code, message, detail}`**（§7）
-- 统一前缀 `/api`，**除登录外均需 JWT**（§8）
-- **数据隔离：普通 HR 只能访问自己创建的数据；admin 可访问全部**（§4.1）
+- 统一前缀 `/api`，**除登录与候选人自助注册外均需 JWT**（§8；MVP-2 起多一个公开端点）
+- **数据隔离（三端，MVP-2 起）**：admin 可访问全部；普通 HR 只能访问自己创建的 position / question / interview；**candidate 不拥有任何 HR 数据**（§4.1、§9）
 - 仅 PC 端（§2）
+- **（MVP-2）HR 侧端点必须显式校验角色（admin/hr）**：仅「已登录」不再足够——候选人 token 也能满足「已登录」（§4.1、§9）
 
 ---
 
@@ -137,11 +140,15 @@ PRD §4.2 只规定「评估维度列表」，未定义边界。本设计补齐�
 
 | 方法 | 路径 | 说明 | 权限 | 成功码 |
 |---|---|---|---|---|
-| POST | `/api/positions` | 创建岗位 | 登录 | 201 |
-| GET | `/api/positions` | 岗位列表（按数据隔离过滤） | 登录 | 200 |
-| GET | `/api/positions/{id}` | 岗位详情 | 登录 + 可见 | 200 |
-| PUT | `/api/positions/{id}` | 更新岗位 | 登录 + 可见 | 200 |
-| DELETE | `/api/positions/{id}` | 删除岗位 | 登录 + 可见 | **204** |
+| POST | `/api/positions` | 创建岗位 | **admin, hr** | 201 |
+| GET | `/api/positions` | 岗位列表（按数据隔离过滤） | **admin, hr** | 200 |
+| GET | `/api/positions/{id}` | 岗位详情 | **admin, hr** + 可见 | 200 |
+| PUT | `/api/positions/{id}` | 更新岗位 | **admin, hr** + 可见 | 200 |
+| DELETE | `/api/positions/{id}` | 删除岗位 | **admin, hr** + 可见 | **204** |
+
+> **「权限」列的变动（MVP-2）**：原文写作「登录」「登录 + 可见」。引入 `candidate` 角色后，**「已登录」不再是充分的授权条件** —— 候选人 token 同样满足它。自 MVP-2 起，本模块全部端点显式校验角色（`require_roles("admin","hr")`），再由 service 做可见性判定（§5.2）。守卫补全属 [module-16](./2026-09-20-module-16-permission-guard-plan.md)，**必须与 module-09 同批发布**。
+>
+> **候选人的岗位数据从哪来**：候选人无权访问本模块任何端点。候选人端的岗位筛选项取自其**已参与面试**的岗位（[module-15 §4.3](./2026-09-20-module-15-candidate-frontend-plan.md)），不通过本模块获取。
 
 > **删除成功返回 204 No Content**（无响应体）。这是本项目对 204 的统一约定，question 模块的删除同样适用。
 
@@ -219,6 +226,10 @@ PRD §4.2 只规定「评估维度列表」，未定义边界。本设计补齐�
 4. 返回
 ```
 
+> **（MVP-2）本模式回答的是「这条记录是不是他的」，不回答「他是不是这类用户」**：角色判定由 router 上的守卫（`require_roles("admin","hr")`）完成，两者**不可互相替代**。
+>
+> 另外，`scope_owner_id` 自 MVP-2 起对**非 admin/hr 角色直接抛 `ForbiddenError`**（纵深防御，[module-16 §4](./2026-09-20-module-16-permission-guard-plan.md)）。因此候选人即使绕过守卫走到 service，也会在这里被拒——`position` 模块本身**不需要**为候选人做任何分支。
+
 ### 5.3 删除岗位 —— 满足 PRD §4.2 的「删除前校验是否被面试引用」
 
 PRD §4.2 要求删除岗位前校验是否被引用。本设计用**数据库外键 `ON DELETE RESTRICT`** 实现该约束：
@@ -285,6 +296,10 @@ PRD §4.2 要求删除岗位前校验是否被引用。本设计用**数据库�
 | `test_get_nonexistent_position` | 404 `NOT_FOUND` |
 | `test_update_other_users_position_forbidden` | 403 |
 | `test_delete_other_users_position_forbidden` | 403 |
+| **`test_candidate_cannot_access_positions`**（MVP-2） | 候选人 token 对五个端点 → **一律 403** |
+| **`test_scope_owner_id_rejects_candidate`**（MVP-2） | `scope_owner_id(candidate_user)` → 抛 `ForbiddenError`（module-16） |
+
+> MVP-2 的越权矩阵以**表驱动**形式集中实现于 `backend/tests/test_permissions.py`（[module-16 §7.1](./2026-09-20-module-16-permission-guard-plan.md)），本模块无需重复编写逐端点的手工用例，但上表两行是必须存在的覆盖点。
 
 ### 7.2 维度校验（§3.3）
 
@@ -399,3 +414,5 @@ PRD §4.2 要求删除岗位前校验是否被引用。本设计用**数据库�
 | 岗位维度变更是否重算历史评估 | **不重算** | 保留评估结果的时间点属性 |
 | 删除是否软删除 | **不软删除** | MVP YAGNI；被引用时本来就不允许删 |
 | 列表是否分页 | **不分页**（支持 keyword 过滤） | 内部系统数据量小 |
+| **（MVP-2）候选人是否需要「可刷题岗位」列表** | **不由本模块提供** | PRD §4.7 的刷题岗位筛选改由候选人已参与面试的岗位推导（[module-15 §4.3](./2026-09-20-module-15-candidate-frontend-plan.md)）。若未来需要独立的 `GET /candidate/positions`，属**新增端点**，须先改 PRD 再实现 |
+| **（MVP-2）权限列由「登录」改为「admin, hr」** | 显式角色守卫 | 「已登录」在引入 candidate 后不再充分；补全见 module-16，须与 module-09 同批发布 |

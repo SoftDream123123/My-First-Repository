@@ -9,7 +9,7 @@
 **对应 PRD 章节**：§5.3（三条核心流程）、§9（非功能需求）、§10（测试策略）、§11（里程碑）
 **前置依赖**：全部模块（[00](./2026-09-15-module-00-core-plan.md) ～ [07](./2026-09-15-module-07-frontend-plan.md)）
 
-> **MVP-2 增量（2026-09-20）**：本文档是**需求追溯与交接清单的唯一落点**，因此 MVP-2 的新需求、新端点、新 AI 方法、新待确认项**必须登记在此**。已增量修正的章节：§6.1、§6.3、§6.5、§6.6、§7.1、§7.2、§7.3、§8。
+> **MVP-2 增量（2026-09-20）**：本文档是**需求追溯与交接清单的唯一落点**，因此 MVP-2 的新需求、新端点、新 AI 方法、新待确认项**必须登记在此**。已增量修正的章节：§2、§3.7、§4.5、§5.5、§6.1、§6.3、§6.4、§6.5、§6.6、§7.1、§7.2、§7.3、§8、§9.6、§9.7。
 > MVP-2 新增模块文档：[09 auth](./2026-09-20-module-09-auth-plan.md)、[10 question](./2026-09-20-module-10-question-plan.md)、[11 ai](./2026-09-20-module-11-ai-plan.md)、[12 interview](./2026-09-20-module-12-interview-invitation-plan.md)、[13 practice](./2026-09-20-module-13-practice-plan.md)、[14 evaluation](./2026-09-20-module-14-evaluation-feedback-plan.md)、[15 候选人前端](./2026-09-20-module-15-candidate-frontend-plan.md)、[16 权限守卫](./2026-09-20-module-16-permission-guard-plan.md)。
 
 ---
@@ -21,8 +21,9 @@
 - AI 通过抽象接口接入，**真实与 Mock 可配置切换**（§6）
 - 评分统一 **0–10 分制**（§4.5）
 - **出题同步、评估流式（SSE）**（§5.3）
-- 统一前缀 `/api`，除登录外均需 JWT（§8）
-- **数据隔离：普通 HR 仅见自己创建的数据，admin 见全部**（§4.1）
+- 统一前缀 `/api`，除登录与**候选人自助注册**外均需 JWT（§8）
+- **数据隔离（三端，MVP-2 起）**：普通 HR 仅见自己创建的数据；admin 见全部；**candidate 仅见自己的练习数据与自己已接受的邀请所对应面试**（§4.1、§4.6）
+- **（MVP-2）HR 侧端点必须显式校验角色（admin/hr）**；候选人侧端点校验 candidate（§4.1、§9）
 - **仅 PC 端**（§2）
 
 ---
@@ -51,7 +52,8 @@
 | **容器化（Docker）** | 不在 PRD 范围 |
 | **生产部署与运维** | 不在 PRD 范围 |
 | **性能压测** | PRD §9 未提出性能指标 |
-| **V1.1 功能** | PRD §11 明确分期（在线答题、PDF 导出、报告分享） |
+| **V1.1 功能** | PRD §11 明确分期。⚠️ **MVP-2 修正**：**在线答题已移入 MVP-2 范围内**（§4.8）；V1.1 只余 PDF 导出、报告分享、语音/视频面试、简历解析、多候选人横向对比 |
+| **（MVP-2）修改已有模块的实现** | 本模块只做验证与收尾；需要改代码时回到对应模块文档（module-09～16），不在本模块就地改 |
 
 ---
 
@@ -418,9 +420,10 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **（MVP-2）** `POST /auth/register` | auth-候选人 §4.1 | 候选人自助注册；**公开端点**，受 `CANDIDATE_SELF_REGISTER` 开关控制 |
 | **（MVP-2）** `POST /questions/{id}/reference-answer` | question-题型 §4.1 | 调 AI 补参考答案与解析 |
 | **（MVP-2）** `POST/GET /interviews/{id}/invitations`、`DELETE /interviews/{id}/invitations/{inv_id}` | interview-邀请 §4.1 | 作答邀请的生成 / 列表 / 撤销 |
+| **（MVP-2）** `GET /candidate/positions` | question-题型 §4.1、§5.6 | 刷题岗位筛选项（「有题目的岗位」，与取题口径一致）。注册在 `question` 包 |
 | **（MVP-2）** `POST /candidate/invitations/{code}/accept` | interview-邀请 §4.1 | 凭邀请码激活并绑定面试 |
 | **（MVP-2）** `GET /candidate/interviews`、`/{id}`、`POST /{id}/answers`、`POST /{id}/submit`、`GET /{id}/feedback` | interview-邀请 §4.1、evaluation-反馈 §4.1 | 候选人在线答题与脱敏反馈 |
-| **（MVP-2）** `GET /practice/questions`、`POST/GET /practice/sessions`、`POST /sessions/{id}/items`、`POST /sessions/{id}/finish`、`GET /practice/wrong-book`、`GET /practice/stats` | practice §4.1 | 刷题练习闭环 |
+| **（MVP-2）** `GET /practice/questions`、`GET /practice/sessions`、`POST /practice/sessions`、`POST /sessions/{id}/items`、`POST /practice/items/{item_id}/rescore`、`POST /sessions/{id}/finish`、`GET /practice/wrong-book`、`GET /practice/stats` | practice §4.1 | 刷题练习闭环（共 **9** 个端点） |
 | **（MVP-2）守卫归属** | — | HR 侧端点全部挂 `require_roles("admin","hr")`，候选人侧挂 `require_roles("candidate")`；见 [module-16 §3](./2026-09-20-module-16-permission-guard-plan.md) |
 
 ### 6.6 非功能与分期（PRD §9、§10、§11）
@@ -457,6 +460,14 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **7** | **「凭码注册或激活」拆成两个动作** | auth-候选人 §5.1、§5.2 | §4.1「候选人凭码注册或激活账号，并绑定该面试」 | **注册**走公开的 `/auth/register`（仅刷题）；**凭码激活绑定**走 `/candidate/invitations/{code}/accept` | 邀请数据在 `interview_invitation`（属 interview 包）。若让 `/auth/register` 接收邀请码，`auth` 就必须读 interview 的表，形成 `auth → interview` 反向依赖，破坏 PRD §3.3 的依赖单向 |
 | **8** | **刷题取题不按 `created_by` 过滤** | question-题型 §5.7 | §4.1「普通 HR 只能访问自己创建的数据」+ §4.3「题库同时服务候选人刷题」 | 刷题取题取**全库**题目；候选人可见性改由 `PracticeQuestionOut`（剥离参考答案/解析/来源/建题人）保证 | 候选人**不是**题目创建者，按 `created_by` 过滤会让刷题无题可取——两条 PRD 要求在候选人场景下直接冲突，必须明确取舍。泄露面仅题干与维度 |
 | **9** | **AI 新增方法的参数形态** | ai-新增 §3.4 | §6 写作 `generate_reference_answer(question)` 等（ORM 对象） | 一律改为原始值（str / list[str] / float） | 同 MVP-1 的修正 #1 类处理，见 ai §3.3；保住 `ai` 依赖为空 |
+| **10** | **作答来源字段命名为 `answer_source`** | interview §4.2 | §5.2 的字段名为 `source` | 在**响应对象**中改名为 `answer_source`（**DB 列名仍为 `answer.source`**） | 响应对象里已有 `source`（题目来源快照）。同名不同义是排查成本最高的 bug 类型 |
+| **11** | **`candidate_feedback` 为独立表** | evaluation-反馈 §3.1 | §5.2 未列出该实体 | 新增独立表，不改动 `report` | 让候选人可见性边界落在**表**这一层：HR 报告接口结构上读不到候选人字段，直接满足 §4.9「HR 端报告视图保持不变」 |
+| **12** | **候选人反馈不存储总分** | evaluation-反馈 §5.1 | §4.9 只说「按档位决定是否下发总分」 | 总分从 `report.overall_score` 读取，按档位决定是否下发；反馈表**不存**分数 | 存储层与可见性层解耦后，**改变档位配置不需要重新生成反馈** |
+| **13** | **`practice_item` 补充 `seq` / `dimension_snapshot` / `question_type`** | practice §3.2 | §5.2 的 `practice_item` 字段列表未含这三项 | 三项均新增 | `seq` 保证题序稳定；`dimension_snapshot` 让「按维度正确率」不随题库改名漂移；`question_type` 让判分分支不随题库改题型崩溃 |
+| **14** | **`practice_session` 补充 `question_type`** | practice §3.1 | §5.2 未列该字段 | 新增 | §4.7 要求「按题型筛选取题」，筛选条件必须在会话上留痕 |
+| **15** | **`expired` 为派生态而非存储值** | interview-邀请 §3.3 | §5.1 把 `expired` 列为邀请状态机的一个状态 | `status` 列只存 `pending` / `accepted` / `revoked`；`expired` 由读取时按 `expires_at` 派生，**不回写** | 单机约束下不引入调度器；回写会让读操作产生隐式副作用 |
+| **16** | **交卷时给未作答的题补空串作答行** | interview-邀请 §5.5 | §5.2 把 `submitted_at` 放在 `answer` 行上，但「交卷」是面试级事实 | 交卷时对未作答的题补 `content=''` 的作答行，并给全部行写 `submitted_at` | 不补行则未作答的题无处记录交卷；空串在既有约定中正是「未作答，按 0 分处理」 |
+| **17** | **module-07 §2 的文件清单按 as-built 校正** | frontend §2.3 | 原文列出 `components/sidebar.js`、`components/table.js`、`styles/main.css` | 改为 `components/shell.js`、`components/form.js`，样式拆为 `tokens/base/components/pages` 四个文件；另补 `session.js`、`dom.js` | 原文指向的文件**在实现中不存在**。文档若继续指向不存在的东西，后来者会照着找不到的文件去改 |
 
 ### 7.2 对 PRD 的补充（PRD 未定义，为使其可落地而补齐）
 
@@ -484,6 +495,17 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **20** | **候选人反馈的 `level` 未知取值退化为 `summary`** | ai-新增 §4.3 | 「给得更少」是安全方向；同时记 warning 让配置错误可见 |
 | **21** | **`test_architecture.py` 需登记 `practice`** | module-16 §7.3、practice §2 | 该文件用**硬编码模块名列表**（`ALL_MODULES` / `LAYERED_MODULES` / `FORBIDDEN_DEPENDENCIES`）驱动分层约束测试。新增 `practice` 包若不登记，分层与依赖方向约束**不会覆盖它**——约束形同虚设 |
 | **22** | **README 部署说明：生产应关闭 `CANDIDATE_SELF_REGISTER`** | module-16 §7.4 | 该开关默认开启是为了可演示；生产只应允许凭邀请码建号 |
+| **23** | **`POST /questions/{id}/reference-answer`** | question-题型 §4.1 | PRD §4.3 说「参考答案与解析可调 AI 生成后由 HR 确认」，但 §8 未给端点。无端点则该能力无法触发 |
+| **24** | **`POST /practice/items/{item_id}/rescore`** | practice §5.4 | PRD §7 要求判分失败时「可后续重判」，但 §8 未给入口。属新增端点；practice 的完整端点清单见 [module-13 §4.1](./2026-09-20-module-13-practice-plan.md) |
+| **25** | **`auth.service.ensure_owner_match(user, owner_id, label)`** | practice §4.5 | 候选人的资源归属校验**不能**复用 `ensure_resource_visible`——后者对 candidate 角色会直接抛 403（module-16 §4 的纵深防御）。没有新函数则候选人连自己的练习都读不到 |
+| **26** | **前端 `src/side.js`（`resolveSide` / `getActiveSide` / `setActiveSide`）** | frontend-候选人 §3.2 | 登录态按端分 key 后，「当前是哪一端」必须有一处权威表达。`api.js` 在取 token 前需要它，且该值必须在任何请求之前设置好 |
+| **27** | **前端 `decideGuard(route, ctx)` 抽为纯函数** | frontend-候选人 §3.4 | 现状 `guard()` 直接改 `location`，无法单测。MVP-2 的门禁规则增至 11 条，表格驱动的纯函数测试是唯一可行的覆盖方式 |
+| **28** | **`practice_session` 题量上限与限流配置项** | practice §3.3 | PRD 只定义能力，未定义上限。`PRACTICE_SESSION_SIZE_MAX=20` 与 `PRACTICE_RATE_LIMIT_PER_MINUTE=60` 均属补齐 |
+| **29** | **候选人反馈档位的两层校验** | evaluation-反馈 §3.3、ai-新增 §4.3 | 启动期对非法档位 **fail fast**（部署配置错误应立刻发现）；provider 层对未知 `level` 退化为 `summary`（纵深防御，不因调用方失误泄露分数） |
+| **30** | **`practice_item.is_correct` 为三态（TRUE / FALSE / NULL）** | practice §3.2 | `NULL` 是「未判分」这一**独立事实**，与「判错」在语义上完全不同——错题本与正确率都必须区别对待 |
+| **31** | **`GET /candidate/positions`** | question-题型 §4.1、§5.6 | PRD §4.7 要求「按岗位筛选取题」，但候选人无权访问 HR 侧的 `GET /positions`。无此端点则候选人端的岗位筛选无从填充。**注册在 `question` 包**——`position` 包禁止依赖 `question`（架构测试约束） |
+| **32** | **`GET /practice/sessions`** | practice §4.1、§5.9 | PRD §4.7 未列出「我的练习会话」。无此端点则候选人离开未完成的练习后**只能靠 URL 返回**，也无法回看历史 |
+| **33** | **`PRACTICE_SESSION_LIST_MAX=100`** | practice §3.3 | 会话列表 `limit` 的硬上限，属字段边界补齐（同 #15） |
 
 ### 7.3 **需要你拍板的待确认项**
 
@@ -498,6 +520,9 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **7** | **刷题取题是否放宽 `created_by` 隔离** | question-题型 §5.7 | **放宽，取全库（当前设计）** / 引入「题目发布状态」后按发布范围过滤（新增字段与状态机，属范围扩大） |
 | **8** | **刷题判分阈值是否沿用前端及格线** | ai-新增 §3.3 | **沿用 6.5（当前设计，全项目唯一阈值）** / 为刷题单独定义阈值（会出现同一分数两种结论） |
 | **9** | **单浏览器同时登录两端的方案** | frontend-候选人 §4 | **会话按端分 key（`hr.*` / `candidate.*`，当前设计）** / 不改代码、演示时用两个浏览器（无需改动，但演示步骤更繁琐） |
+| ~~10~~ | ~~候选人刷题的「岗位」筛选项从哪来~~ | — | ✅ **已决：补进 PRD** —— 新增 `GET /candidate/positions`（「有题目的岗位」，注册在 `question` 包）。理由：按「已参与面试的岗位」会漏掉候选人从未面过的岗位 |
+| ~~11~~ | ~~没有「列出我的练习会话」端点~~ | — | ✅ **已决：补进 PRD** —— 新增 `GET /practice/sessions`（含 `status` 筛选）。理由：不补则候选人离开未完成练习后只能靠 URL 返回 |
+| **12** | **候选人是否需要 HR 端能看到「邀请由谁接受」** | frontend §5.3 | **列表展示已接受者的用户名（当前设计）** / 只显示状态不显示用户名（更少信息暴露，但 HR 无法核对是哪个候选人接受的） |
 
 ---
 
@@ -563,8 +588,8 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 ### Task 8.8：需求追溯核对
 
 - [ ] 逐行核对 §6 的追溯矩阵，确认**无 PRD 要求被遗漏**（含 MVP-2 的 8 行）
-- [ ] 核对 §7.1 的 9 项修正、§7.2 的 22 项补充
-- [ ] 把 §7.3 的 9 个待确认项提交给项目负责人决策
+- [ ] 核对 §7.1 的 17 项修正、§7.2 的 33 项补充
+- [ ] 把 §7.3 的 12 个待确认项提交给项目负责人决策（其中 2 项已决，见表中划除行）
 - [ ] 确认 MVP-2 的 8 份模块文档（09～16）全部存在且互相链接有效
 - [ ] 提交
 
@@ -630,9 +655,9 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 
 ### 9.7 交接
 
-- [ ] §7.1 的 9 项修正已向负责人说明
-- [ ] §7.2 的 22 项补充已向负责人说明
-- [ ] §7.3 的 9 个待确认项**已获决策**
+- [ ] §7.1 的 17 项修正已向负责人说明
+- [ ] §7.2 的 33 项补充已向负责人说明
+- [ ] §7.3 的 12 个待确认项**已获决策**
 
 ---
 
@@ -644,7 +669,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | README 的详细程度 | **写到「新人可独立启动」** | 交付物的可启动性决定其价值；一步缺失会导致整条链路不可用 |
 | `--workers 1` 限制是否在文档中弱化 | **显著标注，不弱化** | 多 worker 下 SSE 会失效（evaluation §5.6）；隐瞒限制会导致部署后才发现问题 |
 | 前端是否补 DOM 自动化测试 | **不补**，用 §4.3 的手工清单 | 投入产出比低；关键纯逻辑已由 Vitest 覆盖 |
-| 验收是否阻塞在待确认项 | **不阻塞** | §7.3 的 9 项均有默认方案，可先按默认推进，决策后再调整；仅第 1 项（JWT 刷新）若选 C 会触发范围扩大，需优先确认 |
+| 验收是否阻塞在待确认项 | **不阻塞** | §7.3 的 12 项均有默认方案，可先按默认推进，决策后再调整；仅第 1 项（JWT 刷新）若选 C 会触发范围扩大，需优先确认 |
 | 性能压测 | **不做** | PRD §9 未提出任何性能指标 |
 | **（MVP-2）MVP-1 的追溯矩阵与验收清单是否失效** | 就地增量修正，而非另起一份 | 需求追溯与交接清单**必须只有一处**。若 MVP-2 另建一份，两份清单会各自漂移，且「V1.1：在线答题」这类已过时的行会继续误导读者 |
 | **（MVP-2）`practice` 未登记进架构测试** | 必须在 module-13 落地时同步登记 | `test_architecture.py` 用硬编码模块名列表驱动分层约束；不登记则该包的依赖方向**不受任何测试保护**，约束名存实亡 |

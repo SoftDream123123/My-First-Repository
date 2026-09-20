@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§4.5（评估与报告）、§5.2（三个实体）、§5.3 ③（流式评估）、§7（AI 失败与 SSE 断连）、§8（evaluation API）
 **前置依赖**：core（[00](./2026-09-15-module-00-core-plan.md)）、auth（[01](./2026-09-15-module-01-auth-plan.md)）、ai（[04](./2026-09-15-module-04-ai-plan.md)）、interview（[05](./2026-09-15-module-05-interview-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：新增**面向候选人的脱敏反馈**（`candidate_feedback` 表 + `GET /api/candidate/interviews/{id}/feedback`），并在评估落库的**同一事务**内删除旧的候选人反馈缓存以使其失效。**HR 侧报告视图与三张评估表完全不变**。本文档的 Global Constraints、§1.1、§4.1、§5.2、§7.1、§10 已同步修正；**增量部分的完整契约以 [module-14 候选人脱敏反馈](./2026-09-20-module-14-evaluation-feedback-plan.md) 为准**。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -20,8 +22,10 @@
 - 统一响应格式：**`{code, message, detail}`**（§7）
 - **AI 调用失败**：重试 1 次 → 仍失败则**评估任务标记失败、状态回退 `completed`，可重新触发**；不阻塞其他功能（§7）
 - **SSE 断连**：**评估任务后台继续，前端重连后可继续拉取进度或查询最终结果**（§7）
-- **数据隔离：普通 HR 只能访问自己创建的数据；admin 可访问全部**（§4.1）
+- **数据隔离（三端，MVP-2 起）**：admin 可访问全部；普通 HR 只能访问自己创建的面试的报告；**candidate 不拥有评估数据，只能读自己被邀请且已接受的面试的脱敏反馈**（§4.1、§4.6、§4.9）
 - 仅 PC 端（§2）
+- **（MVP-2）HR 侧端点必须显式校验角色（admin/hr）**；候选人侧端点校验 candidate，且 **admin 在候选人侧不通行**（§4.1、§9）
+- **（MVP-2）候选人可见性为强制项**：反馈默认只下发综合结论/优点/待改进；**逐题分、维度分、雷达图在任何档位下都不下发**（§1.3、§4.9、§9）
 
 ---
 
@@ -35,6 +39,7 @@
 | 评估编排 | 逐题评分 → 多维评分 → 汇总报告，三阶段顺序执行与结果落库 | §5.3 ③ |
 | 流式推送 | 以 SSE 实时推送三阶段进度，支持断线重连与重放 | §4.5、§5.3 ③、§7 |
 | 报告查询 | 提供结构化的完整报告（逐题 + 维度 + 汇总），供前端渲染雷达图 | §4.5、§8 |
+| **候选人反馈视图（MVP-2）** | `candidate_feedback` 表；按档位下发**脱敏**反馈；重评时使缓存失效 | §4.5、§4.9 |
 
 ### 1.2 边界（明确不做）
 
@@ -75,8 +80,19 @@ interview ✗→ evaluation
 | `backend/app/evaluation/service.py` | **同步**评估编排：三阶段执行 + 落库（**不含任何 SSE 逻辑**） |
 | `backend/app/evaluation/stream.py` | 运行注册表、事件队列、SSE 事件生成与响应、重连重放、孤儿自愈 |
 | `backend/app/evaluation/router.py` | `/api/interviews/{id}/evaluate`、`/evaluation/stream`、`/report` |
+| `backend/app/evaluation/candidate_router.py` | **MVP-2 新增**：`/api/candidate/interviews/{id}/feedback`（守卫为 `candidate`，与 HR 端点分开文件） |
 
-**测试文件**：`backend/tests/test_evaluation.py`、`backend/tests/test_evaluation_stream.py`
+**测试文件**：`backend/tests/test_evaluation.py`、`backend/tests/test_evaluation_stream.py`；**MVP-2 新增** `backend/tests/test_candidate_feedback.py`
+
+**本模块需修改的上游文件（MVP-2）**
+
+| 文件 | 修改内容 |
+|---|---|
+| `backend/app/main.py` | 另注册 `candidate_router`（前缀 `/api`） |
+| `backend/alembic/versions/` | 新增 `candidate_feedback` 建表迁移 |
+| `backend/script.sql` | 同步建表语句 |
+| `backend/app/core/config.py` | 新增 `candidate_feedback_level`（默认 `summary`，**白名单校验 + 启动期 fail fast**） |
+| `backend/.env.example` | 补 `CANDIDATE_FEEDBACK_LEVEL=summary` |
 
 > **`service.py` 与 `stream.py` 的切分是本模块最关键的设计**：评估的**业务编排**（调 AI、写库、迁移状态）全部在 `service.py` 中，以**同步、回调式**的方式实现——它可以在**完全不涉及 SSE、不涉及异步**的情况下被单测。`stream.py` 只负责「把回调变成队列推送」「管理运行注册表」「生成 SSE 文本」，是一层薄薄的传输适配。
 >
@@ -148,9 +164,16 @@ interview ✗→ evaluation
 
 | 方法 | 路径 | 说明 | 权限 | 成功码 |
 |---|---|---|---|---|
-| POST | `/api/interviews/{id}/evaluate` | 触发评估，返回 SSE 流地址 | 登录 + 可见 | **202** |
-| GET | `/api/interviews/{id}/evaluation/stream` | SSE 事件流（PRD §5.3 ③） | 登录 + 可见 | 200 |
-| GET | `/api/interviews/{id}/report` | 获取完整报告 | 登录 + 可见 | 200 |
+| POST | `/api/interviews/{id}/evaluate` | 触发评估，返回 SSE 流地址 | **admin, hr** + 可见 | **202** |
+| GET | `/api/interviews/{id}/evaluation/stream` | SSE 事件流（PRD §5.3 ③） | **admin, hr** + 可见 | 200 |
+| GET | `/api/interviews/{id}/report` | 获取完整报告 | **admin, hr** + 可见 | 200 |
+| GET | `/api/candidate/interviews/{id}/feedback` | **MVP-2 新增**：候选人查看脱敏反馈 | **candidate** | 200 |
+
+> **（MVP-2）「权限」列的变动**：原文写作「登录 + 可见」。引入 `candidate` 角色后「已登录」不再充分——候选人 token 同样满足它。自 MVP-2 起 HR 侧三个端点显式校验角色（`require_roles("admin","hr")`），守卫补全见 [module-16](./2026-09-20-module-16-permission-guard-plan.md)，**须与 module-09 同批发布**。
+>
+> **（MVP-2）第 4 个端点由独立文件提供**：`evaluation/candidate_router.py`（守卫为 `candidate`，与 HR 端点分开文件）。它的响应结构是**白名单** `CandidateFeedbackOut`（结构上不含逐题分、维度分与雷达图数据），完整契约见 [module-14 §4.2](./2026-09-20-module-14-evaluation-feedback-plan.md)。
+>
+> **HR 侧三个端点的响应结构与行为完全不变**（PRD §4.9）——`candidate_feedback` 是独立表，HR 报告接口**结构上读不到**候选人字段。
 
 > **`POST /evaluate` 返回 202 Accepted**（而非 200）：语义是「已接受并开始后台处理」，与同步完成的 200 区分开。
 
@@ -245,6 +268,8 @@ question（0..N 条，按 seq 升序）→ dimension（0..M 条，按维度顺�
 | `get_report(db, interview_id: int) -> Report \| None` | Report | — |
 | `delete_all_for_interview(db, interview_id: int) -> None` | — | 清空三张表中该面试的全部数据（供失败清理，见 §5.4） |
 
+> **（MVP-2）新增的表与方法不列在本节**：`candidate_feedback` 表与 `get_candidate_feedback` / `upsert_candidate_feedback` / `delete_candidate_feedback` 三个 repository 方法见 [module-14 §4.4](./2026-09-20-module-14-evaluation-feedback-plan.md)。上表 7 个方法的**签名与语义均不变**。
+
 ---
 
 ## 5. 业务流程设计
@@ -293,9 +318,14 @@ question（0..N 条，按 seq 升序）→ dimension（0..M 条，按维度顺�
   repository.replace_question_scores(db, interview_id, question_results)
   repository.replace_dimension_scores(db, interview_id, dimension_results)
   repository.upsert_report(db, interview_id, report)
+  repository.delete_candidate_feedback(db, interview_id)      ← MVP-2 新增（缓存失效）
   interview.service.transition_to_evaluated(db, interview_id)
   commit
 ```
+
+> **（MVP-2）为何在这条事务里加一行删除**：候选人的反馈由报告派生（[module-14 §5.2](./2026-09-20-module-14-evaluation-feedback-plan.md) 采用懒生成 + 落库缓存）。重新评估会整体替换报告，**若不删缓存，候选人会看到上一轮的反馈**。放在同一事务里是必须的——开第二个事务会留下「报告已换、反馈还是旧的」的窗口；同生共死则要么都生效、要么都回滚。
+>
+> 该操作是**本地 DB 删除、不调 AI**，因此不违反 PRD §7「AI 失败不阻塞其他功能」。评估失败时**不删除**（报告未变，缓存仍然有效）。
 
 **异常传播**：任一阶段抛出的 `AIProviderError` 或其它异常向外传播，由 `stream.py` 的运行器捕获并执行 §5.4 的失败处理。
 
@@ -433,6 +463,8 @@ catch 任何异常 as e:
 5. 组装 ReportDetail 返回
 ```
 
+> **（MVP-2）候选人反馈的读取是一条独立路径，不在本节**：它**不读** `question_score` / `dimension_score`，可见性判据也不同（经 `interview.service.get_interview_for_candidate` 而非 `created_by`）。完整流程见 [module-14 §5.1](./2026-09-20-module-14-evaluation-feedback-plan.md)。本节 5 步**一行不改**——这是 PRD §4.9「HR 端报告视图保持不变」在读取路径上的落实。
+
 ---
 
 ## 6. 错误处理（对应 PRD §7）
@@ -526,12 +558,19 @@ catch 任何异常 as e:
 | `test_report_other_users_interview_forbidden` | 403 |
 | `test_report_nonexistent_interview` | 404 |
 | `test_report_uses_snapshot_content` | **修改题库题目后，报告中的 `content` 仍是出题时的快照** |
+| **`test_report_rejects_candidate`**（MVP-2） | 候选人 token 对三个 HR 端点 → **一律 403** |
+| **`test_report_rejects_anonymous`**（MVP-2） | 无 token → 401 |
+| **`test_report_unchanged_by_candidate_feedback`**（MVP-2） | `candidate_feedback` 表有数据时，`GET /report` 的响应字段与 MVP-1 **完全一致**，**不出现任何候选人字段** |
+
+> MVP-2 的越权矩阵以**表驱动**形式集中实现于 `backend/tests/test_permissions.py`（[module-16 §7.1](./2026-09-20-module-16-permission-guard-plan.md)）。候选人反馈的脱敏、缓存、失效等测试**不在本模块重复编写**，见 [module-14 §7](./2026-09-20-module-14-evaluation-feedback-plan.md)——但上表第三条（HR 报告零污染）必须留在本模块，它是「HR 视图不变」这条 PRD 要求的直接断言。
 
 ---
 
 ## 8. 任务分解（TDD 步骤，无代码）
 
 > 每步 2–5 分钟。**提交信息由你指定**。
+
+> **（MVP-2）Task 6.x 为 MVP-1 已完成的任务清单，保持不变。** MVP-2 的增量任务（`candidate_feedback` 建表、白名单 schema、懒生成与缓存、落库事务内删除缓存、配置项等共 8 个 Task）见 [module-14 §8](./2026-09-20-module-14-evaluation-feedback-plan.md)。**唯一需要改动既有代码的是 Task 14.6**：在 §5.2 阶段 4 的落库清单中插入 `delete_candidate_feedback`。
 
 ### Task 6.1：三张模型与迁移
 
@@ -628,6 +667,11 @@ catch 任何异常 as e:
 - [ ] `evaluating` 状态的面试在进程重启后可自愈（`POST /evaluate` 与 `GET /stream` 均不卡死）
 - [ ] 报告中的 `content` / `dimension` 取自**出题快照**，修改题库后不变
 - [ ] 全部 evaluation 测试通过
+- [ ] **（MVP-2）** `candidate_feedback` 表建成；**`question_score` / `dimension_score` / `report` 三张表结构未改动**
+- [ ] **（MVP-2）** `GET /interviews/{id}/report` 响应字段与 MVP-1 完全一致，且**不含任何候选人反馈字段**
+- [ ] **（MVP-2）** 重新评估后候选人反馈缓存被删除（同一事务内）
+- [ ] **（MVP-2）** 三个 HR 端点对候选人 token 一律 403
+- [ ] **（MVP-2）** 候选人侧验收见 [module-14 §9](./2026-09-20-module-14-evaluation-feedback-plan.md)
 
 ---
 
@@ -645,3 +689,7 @@ catch 任何异常 as e:
 | `score` 用 DECIMAL 还是 FLOAT | **`DECIMAL(3,1)`** | 定点类型避免浮点误差影响平均值计算 |
 | 维度分数量少于岗位维度数 | 按实际写入，不补齐不报错 | 真实 Provider 的容错行为（ai §5.3）；强行补齐会伪造数据 |
 | 评估期间面试数据是否可改 | **不可**（interview §5.4.3 全锁） | 避免评估读到一半数据被修改导致报告不自洽 |
+| **（MVP-2）候选人反馈与报告是否共用一张表** | **不共用**，新增 `candidate_feedback` | 两者受众与可见性规则不同。分开后 HR 报告接口**结构上读不到**候选人字段，直接满足 PRD §4.9「HR 端报告视图保持不变」 |
+| **（MVP-2）候选人反馈何时生成** | **懒生成 + 落库缓存**（module-14 §5.2） | 塞进评估事务会：拖累评估成功率、违反 PRD §7「AI 失败不阻塞其他功能」、无人看时白花一次 AI 调用 |
+| **（MVP-2）重评后旧反馈怎么办** | 在本次落库的**同一事务**内删除（§5.2 阶段 4） | 不删则候选人看到上一轮的反馈；同事务保证与报告替换同生共死 |
+| **（MVP-2）HR 是否能看到候选人反馈的措辞** | **不提供**（不在端点范围内） | PRD 未要求。若将来需要，应作为 HR 端点单独评审，而不是复用候选人端点 |

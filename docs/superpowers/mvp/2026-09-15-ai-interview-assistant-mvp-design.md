@@ -183,7 +183,9 @@ repository → 数据访问：CRUD，对接 MySQL
 ### 4.7 刷题练习（practice）
 
 - 取题：按岗位 / 分类 / 维度 / 难度 / 题型筛选取题，题型含单选与简答
+- **岗位筛选的可选值**：由「**有题目的岗位**」列表提供（`GET /candidate/positions`）。候选人无权访问 HR 侧的岗位接口，且刷题取题本身取全库题目，因此筛选项必须与之口径一致——否则 UI 表达不出接口支持的筛选范围。该接口只下发岗位 `id` / 名称 / 题量，**不下发 JD**
 - 练习会话：开始一次练习（记录筛选条件）→ 逐题作答 → 结束；记录总题数、已答题数、正确数
+- **我的练习会话列表**（`GET /practice/sessions`）：候选人可查看自己的会话（含**进行中**的），以便继续未完成的练习或回看历史
 - 即时判分：
   - 单选题：本地规则判分（不消耗 AI）
   - 简答题：调 `ai.grade_practice_answer` 判分并返回解析
@@ -376,6 +378,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | GET | `/questions/{id}` | 题目详情 | admin, hr |
 | PUT | `/questions/{id}` | 更新题目（含题型、参考答案、解析） | admin, hr |
 | DELETE | `/questions/{id}` | 删除题目 | admin, hr |
+| POST | `/questions/{id}/reference-answer` | 调 AI 生成参考答案与解析并落库（补齐 §4.3「可由 AI 生成后由 HR 确认」） | admin, hr |
 
 ### interview
 | 方法 | 路径 | 说明 | 权限 |
@@ -383,9 +386,10 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | POST | `/interviews` | 创建面试（含同步出题） | admin, hr |
 | GET | `/interviews` | 面试列表（按用户隔离） | admin, hr |
 | GET | `/interviews/{id}` | 面试详情（含题目+回答） | admin, hr |
-| PATCH | `/interviews/{id}` | 更新候选人信息/状态 | admin, hr |
+| PATCH | `/interviews/{id}` | 更新候选人信息（**不含状态**，状态走动词端点） | admin, hr |
 | POST | `/interviews/{id}/answers` | 保存/更新某题回答（含覆盖候选人作答） | admin, hr |
 | POST | `/interviews/{id}/complete` | 标记完成 | admin, hr |
+| POST | `/interviews/{id}/rollback` | 回退到进行中（补齐 §5.1 的 `completed → ongoing` 迁移） | admin, hr |
 | POST | `/interviews/{id}/evaluate` | 触发评估，返回 SSE 地址 | admin, hr |
 | GET | `/interviews/{id}/evaluation/stream` | SSE 流式评估 | admin, hr |
 | POST | `/interviews/{id}/invitations` | 生成作答邀请码 | admin, hr |
@@ -400,6 +404,7 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 ### candidate（候选人侧）
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/candidate/positions` | 刷题岗位筛选项（**有题目的岗位**：id / 名称 / 题量；不含 JD） |
 | POST | `/candidate/invitations/{code}/accept` | 凭邀请码激活并绑定面试 |
 | GET | `/candidate/interviews` | 我参与的面试列表 |
 | GET | `/candidate/interviews/{id}` | 面试详情（仅题目与我自己的作答） |
@@ -411,9 +416,11 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/practice/questions` | 刷题取题（按岗位/分类/难度/题型筛选） |
+| GET | `/practice/sessions` | 我的练习会话列表（含进行中，用于继续未完成的练习） |
 | POST | `/practice/sessions` | 开始一次练习 |
 | GET | `/practice/sessions/{id}` | 练习详情与进度 |
 | POST | `/practice/sessions/{id}/items` | 提交某题作答 → 即时判分 + 解析 |
+| POST | `/practice/items/{item_id}/rescore` | 对**未判分**的题重新判分（补齐 §7「可后续重判」） |
 | POST | `/practice/sessions/{id}/finish` | 结束练习，出小结 |
 | GET | `/practice/wrong-book` | 错题本（由 practice_item 派生） |
 | GET | `/practice/stats` | 我的练习统计（题量/正确率/按维度） |

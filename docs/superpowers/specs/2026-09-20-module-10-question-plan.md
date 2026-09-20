@@ -45,7 +45,7 @@
 | 不做 | 理由 |
 |---|---|
 | **编程题 / 代码沙箱** | PRD §1.3 明确不做；题型只有两个取值，新增取值需先扩 PRD |
-| **候选人侧取题端点** | 取题 HTTP 端点属 `practice` 模块（module-13）。本模块只提供**被调用**的供给契约，不注册候选人可见的路由 |
+| **候选人侧取题端点** | 取题 HTTP 端点属 `practice` 模块（module-13），本模块只提供**被调用**的供给契约。**唯一例外**：`GET /api/candidate/positions`（候选人的岗位筛选项）注册在本模块——它的查询以 `question` 表为驱动，放 `position` 包会违反依赖方向（见 §2 的说明） |
 | **多选、判断、填空等题型** | PRD §4.3 只列单选与简答。YAGNI：多选会改变判分规则与选项 schema |
 | **题干富文本 / 图片** | PRD 未要求，且富文本会引入 XSS 面（前端已声明「无 HTML 注入点」） |
 | **题库发布 / 上架状态** | 见 §5.5 的隔离放宽说明与风险表 |
@@ -75,6 +75,7 @@ question ✗→ interview / evaluation / practice（不变）
 | `backend/app/question/repository.py` | **改**：筛选条件扩展、`list_practice_candidates` |
 | `backend/app/question/service.py` | **改**：创建/更新校验、`generate_reference_answer`、`list_practice_questions` |
 | `backend/app/question/router.py` | **改**：新增 `POST /{id}/reference-answer`、列表增筛选参数 |
+| `backend/app/question/candidate_router.py` | **新增**：`GET /api/candidate/positions`（守卫为 `candidate`，与 HR 端点分开文件） |
 
 **测试文件**：`backend/tests/test_question_candidate_plan.py`（新增，覆盖本文档全部测试点）
 
@@ -82,8 +83,11 @@ question ✗→ interview / evaluation / practice（不变）
 
 | 文件 | 修改内容 |
 |---|---|
+| `backend/app/main.py` | 另注册 `question/candidate_router`（前缀 `/api`） |
 | `backend/alembic/versions/` | 新增迁移：加四列（**注意 JSON 列的分步写法，见 §3.3**） |
 | `backend/script.sql` | 同步 `question` 表四列定义 |
+
+> **⚠️ `GET /api/candidate/positions` 为何落在 question 包，而非 position 包**：它的数据是「**有题目的岗位**」——查询以 `question` 表按 `position_id` 分组为驱动，再联 `position` 取名称。若放在 `position` 包，`position` 就必须读 `question` 表，而架构测试明确禁止该方向（`FORBIDDEN_DEPENDENCIES` 中 `position` 禁止依赖 `question`，见 [module-16 §7.3](./2026-09-20-module-16-permission-guard-plan.md)）。`question → position` 是允许的，因此这条查询只能由 question 包提供。**position 模块本次零改动。**
 
 ---
 
@@ -144,8 +148,11 @@ question ✗→ interview / evaluation / practice（不变）
 | PUT | `/api/questions/{id}` | 更新（扩展字段） | admin, hr | 200 |
 | DELETE | `/api/questions/{id}` | 删除 | admin, hr | 204 |
 | POST | `/api/questions/{id}/reference-answer` | **新增**：调 AI 生成参考答案与解析并落库 | admin, hr | 200 |
+| GET | `/api/candidate/positions` | **新增**：刷题岗位筛选项（有题目的岗位） | **candidate** | 200 |
 
-> 本模块**不注册任何候选人可见的路由**。候选人取题走 `practice` 模块（module-13），它复用本模块的 `list_practice_questions`。
+> **本模块注册一个候选人可见的路由**（`GET /api/candidate/positions`），它在 `question/candidate_router.py` 中，守卫为 `require_roles("candidate")`。理由见 §2 的说明：该查询以 `question` 表为驱动，放 `position` 包会违反依赖方向。
+>
+> 候选人**取题**仍走 `practice` 模块，复用本模块的 `list_practice_questions`（§5.5）。
 
 ### 4.2 请求 / 响应结构
 
@@ -198,6 +205,34 @@ question ✗→ interview / evaluation / practice（不变）
 | 请求 | — | — | 无请求体（题目信息从路径与库中读取） |
 | 响应 | `QuestionOut` | — | 已写回 `reference_answer` 与 `explanation` 的题目 |
 
+**`PracticePositionOut`（新增，候选人视图）**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | int | 岗位 id |
+| `name` | str | 岗位名称 |
+| `question_count` | int | 该岗位**可刷题目数**（用于前端展示与解释空结果） |
+| ~~`jd`~~ | — | **不下发**。岗位 JD 属 HR 侧内容；候选人端只需一个筛选标识 |
+| ~~`created_by` / `created_at`~~ | — | **不下发** |
+
+**GET `/api/candidate/positions`**
+
+| 方向 | 字段 | 类型 | 说明 |
+|---|---|---|---|
+| 请求 | — | — | 无查询参数（不做分页：有题目的岗位数量有限） |
+| 响应 | `PracticePositionOut[]` | — | 按岗位 `id` 升序，保证可复现 |
+
+**口径（必须与刷题取题一致）**
+
+| 项 | 规则 |
+|---|---|
+| 收录范围 | **至少存在一道题的岗位**（`question` 表按 `position_id` 分组，`HAVING count(*) > 0`） |
+| **不按 `created_by` 过滤** | 与 `list_practice_questions` 的放宽保持一致（§5.5）。若此处按 owner 过滤，候选人看到的岗位列表会与他实际能取到的题目对不上 |
+| 题量口径 | 与取题的候选集口径**相同**（不额外过滤 `question_type` 等），即「该岗位有多少道题可刷」 |
+| 岗位已被删除 | 题目的 `position_id` 外键为 `RESTRICT`，因此不存在「题目指向已删岗位」的情形 |
+
+> **为何这个接口有必要**：候选人无权访问 `GET /positions`（HR 侧）。若不提供它，前端只能从「已参与面试的岗位」拼凑筛选项——那会**漏掉候选人没有面过的岗位**，而他恰恰最需要练这些。口径与取题一致，才能让「筛选项」与「取得到的题」自洽。
+
 ### 4.3 字段校验规则（扩展 module-03 §3.3）
 
 | 字段 | 规则 | 失败 |
@@ -218,8 +253,11 @@ question ✗→ interview / evaluation / practice（不变）
 | `list_questions(db, user, filters) -> list[Question]` | 列表 | 增补 `question_type` 筛选 |
 | `generate_reference_answer(db, user, question_id) -> Question` | Question | 可见性校验 → 调 AI → 写回两个字段 |
 | `list_practice_questions(db, filters: PracticeFilters, limit: int) -> list[Question]` | 列表 | **供 practice 取题**（§5.5） |
+| `list_practice_positions(db) -> list[PracticePositionOut]` | 列表 | **供候选人端的岗位筛选**（§5.6）；无需 `user` 参数——该查询不做任何隔离过滤（全库口径） |
 
 沿用（不改）：`get_question`、`delete_question`、`list_candidates_for_position`、`bulk_create_from_ai`。
+
+> **`list_practice_positions` 为何不接 `user`**：它的口径是「全库有题目的岗位」，与 `list_practice_questions` 一致（§5.5）。签名里没有 `user` 正是**在类型层面表达「这里不做角色相关的过滤」**——比收下 `user` 却在函数体里忽略它更不容易被误解。
 
 ### 4.5 repository 层方法签名
 
@@ -227,6 +265,7 @@ question ✗→ interview / evaluation / practice（不变）
 |---|---|---|
 | `list_filtered(db, owner_id, filters)` | 列表 | `filters` 增加 `question_type` |
 | `list_practice_candidates(db, filters: PracticeFilters, limit: int) -> list[Question]` | 列表 | **新增**，按 `id` 升序；**不接 `owner_id`**（理由见 §5.5） |
+| `list_positions_with_questions(db) -> list[dict]` | 派生行 | **新增**：`question` 按 `position_id` 分组计数，联 `position` 取名称，按岗位 `id` 升序；返回 `{position_id, name, question_count}` |
 | `get_by_id` / `create` / `update` / `delete` / `list_by_position` / `bulk_insert` | — | 不变 |
 
 **`PracticeFilters` 字段**：`position_id: int | None`、`category: str | None`、`dimension: str | None`、`difficulty: str | None`、`question_type: str | None`。
@@ -309,6 +348,25 @@ question ✗→ interview / evaluation / practice（不变）
 
 > 这是本次设计里**唯一一处对数据隔离的放宽**，必须显式记录在案，不能让它以「忘了过滤」的形式存在。
 
+### 5.6 刷题岗位筛选项（对候选人端的供给契约）
+
+```
+list_practice_positions(db) -> list[PracticePositionOut]
+  → question 按 position_id 分组计数，HAVING count(*) > 0
+  → 联 position 取 name
+  → 按岗位 id 升序（可复现）
+```
+
+| 要点 | 说明 |
+|---|---|
+| **口径必须与取题一致** | 取题取全库题目（§5.5），因此岗位列表也必须取全库（不按 `created_by` 过滤）。若此处按 owner 过滤，候选人会看到「岗位列表里有 A，但选 A 却取到题」或反之——**两个口径不一致，UI 与 API 必然互相打架** |
+| **只下发 id / 名称 / 题量** | 岗位 JD 属 HR 侧内容，候选人端只需一个筛选标识（§4.2） |
+| 不做分页 | 有题目的岗位数量有限；候选人端是一个下拉框 |
+| 方法签名**不接 `user`** | 该查询不做任何角色相关过滤。签名里没有 `user`，比「收下 `user` 却在函数体里忽略它」更不容易被误解（§4.4） |
+| 与 `position` 模块的关系 | **零改动**。本查询只联表读 `position.name`，不调用 `position.service` 的任何可见性逻辑——因为候选人的可见性判据不是 `created_by` |
+
+**职责边界**：候选人**取题**（选多少、怎么练、判分）全部在 `practice` 模块（module-13）。本模块只提供「有哪些岗位可练」与「按条件返回候选题目集」两个供给。
+
 ---
 
 ## 6. 错误处理（对应 PRD §7）
@@ -325,6 +383,8 @@ question ✗→ interview / evaluation / practice（不变）
 | AI 返回的答案不在选项中 | `BUSINESS_ERROR` | 409 | AI 生成的答案不在选项中，请手工确认 |
 | AI 调用失败 | `AI_PROVIDER_ERROR` | 502 | AI 服务调用失败，请稍后重试 |
 | 题目不存在 / 不可见 | `NOT_FOUND` / `FORBIDDEN` | 404 / 403 | 题目不存在 / 无权限访问该题目（既有行为） |
+| **（新增）hr / admin 调用 `/api/candidate/positions`** | `FORBIDDEN` | 403 | 无权限执行此操作 |
+| **（新增）候选人调用本模块的 HR 端点** | `FORBIDDEN` | 403 | 无权限执行此操作 |
 
 ---
 
@@ -388,6 +448,21 @@ question ✗→ interview / evaluation / practice（不变）
 
 ---
 
+### 7.6 刷题岗位筛选项（§5.6）
+
+| 测试 | 断言 |
+|---|---|
+| `test_list_practice_positions_only_with_questions` | 建两个岗位，只在其中一个下建题 → 只返回有题的那个 |
+| `test_list_practice_positions_counts_questions` | 某岗位 3 道题 → `question_count == 3` |
+| `test_list_practice_positions_ignores_owner` | **hr_a 与 hr_b 各在一个岗位下建题** → 两个岗位都返回（与 §5.5 的放宽一致） |
+| `test_list_practice_positions_order_by_id` | 返回顺序与岗位 `id` 升序一致 |
+| `test_practice_position_out_has_no_jd` | 序列化结果**不含** `jd` 键 |
+| `test_practice_position_out_has_no_creator_fields` | **不含** `created_by` / `created_at` |
+| `test_list_practice_positions_requires_candidate` | hr / admin → 403；无 token → 401 |
+| `test_position_with_all_questions_deleted_not_listed` | 某岗位的题全被删除 → 该岗位不再出现 |
+
+---
+
 ## 8. 任务分解（TDD 步骤，无代码）
 
 > 每步 2–5 分钟。**提交信息由你指定**。
@@ -431,6 +506,15 @@ question ✗→ interview / evaluation / practice（不变）
 - [ ] 运行确认通过
 - [ ] 提交
 
+### Task 10.7：刷题岗位筛选项
+
+- [ ] 新建 `question/candidate_router.py`，在 `main.py` 注册（守卫 `require_roles("candidate")`）
+- [ ] 实现 `repository.list_positions_with_questions` 与 `service.list_practice_positions`
+- [ ] 定义 `PracticePositionOut`
+- [ ] 写 §7.6 全部失败测试（**含「跨 HR 的岗位都返回」与「不下发 JD」**）
+- [ ] 运行确认通过
+- [ ] 提交
+
 ### Task 10.6：全量回归
 
 - [ ] 运行 `pytest tests/ -q`，`test_question.py` 既有 44 条与全部其他用例通过
@@ -451,6 +535,8 @@ question ✗→ interview / evaluation / practice（不变）
 - [ ] 刷题取题**不按 `created_by` 过滤**（跨 HR 题目均可取），且记录在案（§5.5）
 - [ ] 对 `ai` 的调用**只传原始值**
 - [ ] 既有 `test_question.py` 44 条零回归
+- [ ] **（新增）** `GET /api/candidate/positions` 只返回**有题目的岗位**，口径与取题一致（不按 `created_by` 过滤）
+- [ ] **（新增）** 该端点不下发岗位 JD、`created_by`、`created_at`；hr / admin 调用一律 403
 
 ---
 

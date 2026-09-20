@@ -9,6 +9,8 @@
 **对应 PRD 章节**：§4.4（面试管理）、§5.1（状态机）、§5.2（三个实体）、§5.3 ①②（创建+出题、手动录入）、§8（interview API）
 **前置依赖**：core（[00](./2026-09-15-module-00-core-plan.md)）、auth（[01](./2026-09-15-module-01-auth-plan.md)）、position（[02](./2026-09-15-module-02-position-plan.md)）、question（[03](./2026-09-15-module-03-question-plan.md)）、ai（[04](./2026-09-15-module-04-ai-plan.md)）
 
+> **MVP-2 增量（2026-09-20）**：新增**作答邀请**实体与三个 HR 端点、**候选人在线作答**通道与交卷锁定；`answer` 表新增 `source` / `answered_by` / `submitted_at` 三列。**面试状态机五态不变**（候选人作答只是输入通道）。本文档的 Global Constraints、§1.1、§1.2、§3.3、§4.1、§4.2、§5.3、§5.4.3、§7.1、§10 已同步修正；**增量部分的完整契约以 [module-12 作答邀请与在线答题](./2026-09-20-module-12-interview-invitation-plan.md) 为准**。
+
 ---
 
 ## Global Constraints（全局约束，摘自 PRD）
@@ -17,9 +19,10 @@
 - 每个模块独立 Python package（§2、§3.3）
 - **出题同步、评估流式（SSE）**（§1.3、§5.3）
 - 统一响应格式：**`{code, message, detail}`**（§7）
-- 统一前缀 `/api`，**除登录外均需 JWT**（§8）
-- **数据隔离：普通 HR 只能访问自己创建的数据；admin 可访问全部**（§4.1、§4.4）
+- 统一前缀 `/api`，**除登录与候选人自助注册外均需 JWT**（§8；MVP-2 起多一个公开端点）
+- **数据隔离（三端，MVP-2 起）**：admin 可访问全部；普通 HR 只能访问自己创建的 position / question / interview；**candidate 只能访问自己被邀请且已接受的面试**（§4.1、§4.4、§4.6）
 - **AI 调用失败**：重试 1 次 → 仍失败则标记失败、可重新触发；**不阻塞其他功能**（§7）
+- **（MVP-2）HR 侧端点必须显式校验角色（admin/hr）**；候选人侧端点校验 candidate，且 **admin 在候选人侧不通行**（§4.1、§9）
 - 仅 PC 端（§2）
 
 ---
@@ -34,6 +37,9 @@
 | 出题组装 | 题库抽 N 题 + AI 补 M 题，合并、编号、**写内容快照** | §5.3 ① |
 | 回答记录 | 逐题录入候选人回答，**可随时编辑** | §5.3 ② |
 | **状态机** | 面试生命周期状态的**唯一权威**，校验并执行状态迁移 | §5.1 |
+| **作答邀请（MVP-2）** | `interview_invitation` 表；生成 / 列表 / 撤销邀请码；凭码激活绑定 | §4.4、§4.8 |
+| **候选人在线作答（MVP-2）** | 候选人逐题作答与交卷锁定；HR 仍可覆盖 | §4.4、§4.8 |
+| **候选人可见性供给契约（MVP-2）** | `get_interview_for_candidate`：候选人能否访问某面试的**唯一判据** | §4.1、§4.6 |
 
 ### 1.2 边界（明确不做）
 
@@ -42,7 +48,11 @@
 | **评分与报告** | 属于 evaluation 模块。interview 只保证「回答数据齐备、状态已到 `completed`」（PRD §4.5） |
 | **AI 调用细节** | 只调 `ai.factory.get_provider()` 暴露的接口，不关心真实还是 Mock（PRD §6） |
 | **题目字段校验** | 题目的创建校验属于 question 模块 |
-| **在线答题（候选人侧）** | PRD §1.3 明确列入非目标，V1.1 才引入；MVP 仅 HR 手动录入 |
+| ~~**在线答题（候选人侧）**~~ | ⚠️ **MVP-2 起已在范围内**（PRD §4.8）：候选人凭邀请码逐题作答、交卷锁定。实现见 [module-12](./2026-09-20-module-12-interview-invitation-plan.md) |
+| **候选人的答题时限 / 倒计时 / 防切屏（MVP-2）** | PRD 未要求；引入会牵出计时器状态与前端轮询 |
+| **候选人撤回交卷（MVP-2）** | 交卷后锁定（§4.4）；需补答时由 HR 回退到 `ongoing` 后重发邀请 |
+| **候选人账号的创建逻辑（MVP-2）** | 委托 `auth.service.create_candidate_account`（[module-09 §5.2](./2026-09-20-module-09-auth-plan.md)），不在本模块复制账号规则 |
+| **作答的历史版本（MVP-2）** | PRD §5.2 明确不做（覆盖前的候选人原文不可追溯） |
 | **反向依赖 evaluation** | interview 不知道评估的存在；涉及 `evaluating` / `evaluated` 的迁移由 evaluation **调用 interview 的状态机接口**完成（§5.4） |
 
 ### 1.3 依赖方向（对应 PRD §3.3）
@@ -67,20 +77,24 @@ interview ✗→ evaluation（不反向依赖）
 | 文件 | 单一职责 |
 |---|---|
 | `backend/app/interview/__init__.py` | 包标识 |
-| `backend/app/interview/models.py` | `Interview`、`InterviewQuestion`、`Answer` 三个模型 |
+| `backend/app/interview/models.py` | `Interview`、`InterviewQuestion`、`Answer` 三个模型（**MVP-2 起加 `InterviewInvitation`**） |
 | `backend/app/interview/schemas.py` | 请求 / 响应 Pydantic 模型 |
 | `backend/app/interview/repository.py` | 三张表的数据访问（含 `owner_id` 过滤） |
-| `backend/app/interview/service.py` | 出题组装、回答记录、**状态机** |
-| `backend/app/interview/router.py` | `/api/interviews/*` 端点 |
+| `backend/app/interview/service.py` | 出题组装、回答记录、**状态机**（**MVP-2 起加邀请与候选人作答**） |
+| `backend/app/interview/router.py` | `/api/interviews/*` 端点（**HR 侧**） |
+| `backend/app/interview/candidate_router.py` | **MVP-2 新增**：`/api/candidate/interviews/*` 端点（守卫为 `candidate`，与 HR 端点分开文件） |
 
-**测试文件**：`backend/tests/test_interview.py`
+**测试文件**：`backend/tests/test_interview.py`；**MVP-2 新增** `test_interview_invitation.py`、`test_candidate_answering.py`
 
 **本模块需修改的上游文件**
 
 | 文件 | 修改内容 |
 |---|---|
-| `backend/app/main.py` | 注册 interview router |
-| `backend/alembic/versions/` | 新增三张表迁移 |
+| `backend/app/main.py` | 注册 interview router；**MVP-2 起另注册 `candidate_router`** |
+| `backend/alembic/versions/` | 新增三张表迁移；**MVP-2 起另加 `interview_invitation` 建表与 `answer` 加三列** |
+| `backend/script.sql` | **MVP-2 起需同步**上述结构与索引（module-00 §4 的一致性要求） |
+| `backend/app/core/config.py` | **MVP-2 起新增** `INVITATION_EXPIRE_DAYS`（默认 7） |
+| `backend/tests/conftest.py` | **MVP-2 起新增** `accepted_invitation` 夹具（供 module-14/15 复用） |
 
 ---
 
@@ -132,8 +146,17 @@ PRD §5.2 列出 `interview_id, question_id, seq, content_snapshot`。本设计�
 |---|---|---|---|
 | `id` | BIGINT | PK, AUTO_INCREMENT | 主键 |
 | `interview_question_id` | BIGINT | NOT NULL, FK → `interview_question.id` **CASCADE**, **UNIQUE** | 一道面试题对应一条回答 |
-| `content` | TEXT | NOT NULL | 候选人回答（HR 录入） |
+| `content` | TEXT | NOT NULL | 候选人回答（HR 录入或候选人自答） |
 | `recorded_at` | DATETIME | NOT NULL, DEFAULT NOW, ON UPDATE NOW | 最后记录时刻 |
+| `source`（**MVP-2**） | ENUM('hr','candidate') | NOT NULL, DEFAULT `'hr'` | **作答最初的来源通道**；历史数据默认 `hr` |
+| `answered_by`（**MVP-2**） | BIGINT | **NULL**, FK → `user.id` **RESTRICT** | **最后修改者**；迁移前的数据无法倒推，故允许 NULL |
+| `submitted_at`（**MVP-2**） | DATETIME | **NULL** | **候选人交卷时刻**；HR 手工录入时为 NULL |
+
+> **（MVP-2）三列的分工与不可合并性**：`source` 答「最初从哪条通道进来」，`answered_by` 答「最后是谁改的」，`submitted_at` 答「候选人是否已交卷」。HR 覆盖候选人作答后会出现 `source='candidate'` 而 `answered_by=HR` —— **两个事实都需要保留**（PRD §5.2）。
+>
+> **不加 `is_locked` 列**：「候选人能否改」由 `submitted_at` 是否为空推导。用第二个字段表达同一状态必然漂移。
+>
+> **交卷是面试级事实，但 `submitted_at` 落在作答行上**：候选人交卷时会给**全部题**写 `submitted_at`（未作答的题补空串作答行），从而保住单一事实来源。完整理由与替代方案见 [module-12 §5.5](./2026-09-20-module-12-interview-invitation-plan.md)。
 
 **PRD §5.2 原为**：`answer(id, interview_id, question_id, content, recorded_at)`。本设计改为以 **`interview_question_id`** 标识。理由：
 
@@ -172,13 +195,20 @@ PRD §5.2 的关键字段列表未列出这两张表的主键。但：
 
 | 方法 | 路径 | 说明 | 权限 | 成功码 | PRD §8 |
 |---|---|---|---|---|---|
-| POST | `/api/interviews` | 创建面试（含**同步出题组装**） | 登录 + 岗位可见 | 201 | ✓ |
-| GET | `/api/interviews` | 面试列表（按数据隔离过滤） | 登录 | 200 | ✓ |
-| GET | `/api/interviews/{id}` | 面试详情（含题目与回答） | 登录 + 可见 | 200 | ✓ |
-| PATCH | `/api/interviews/{id}` | **仅更新候选人信息** | 登录 + 可见 | 200 | ✓（范围收窄，见下） |
-| POST | `/api/interviews/{id}/answers` | 保存 / 更新某题回答 | 登录 + 可见 | 200 | ✓ |
-| POST | `/api/interviews/{id}/complete` | 标记面试完成 | 登录 + 可见 | 200 | ✓ |
-| POST | `/api/interviews/{id}/rollback` | 回退到进行中 | 登录 + 可见 | 200 | **本设计新增** |
+| POST | `/api/interviews` | 创建面试（含**同步出题组装**） | **admin, hr** + 岗位可见 | 201 | ✓ |
+| GET | `/api/interviews` | 面试列表（按数据隔离过滤） | **admin, hr** | 200 | ✓ |
+| GET | `/api/interviews/{id}` | 面试详情（含题目与回答） | **admin, hr** + 可见 | 200 | ✓ |
+| PATCH | `/api/interviews/{id}` | **仅更新候选人信息** | **admin, hr** + 可见 | 200 | ✓（范围收窄，见下） |
+| POST | `/api/interviews/{id}/answers` | 保存 / 更新某题回答（**含覆盖候选人作答**） | **admin, hr** + 可见 | 200 | ✓ |
+| POST | `/api/interviews/{id}/complete` | 标记面试完成 | **admin, hr** + 可见 | 200 | ✓ |
+| POST | `/api/interviews/{id}/rollback` | 回退到进行中 | **admin, hr** + 可见 | 200 | **本设计新增** |
+| POST | `/api/interviews/{id}/invitations` | **MVP-2**：生成作答邀请码 | **admin, hr** + 可见 | 201 | ✓ |
+| GET | `/api/interviews/{id}/invitations` | **MVP-2**：邀请列表与状态 | **admin, hr** + 可见 | 200 | ✓ |
+| DELETE | `/api/interviews/{id}/invitations/{inv_id}` | **MVP-2**：撤销邀请 | **admin, hr** + 可见 | 200 | ✓ |
+
+> **（MVP-2）「权限」列的变动**：原文写作「登录」「登录 + 可见」。引入 `candidate` 角色后「已登录」不再充分——候选人 token 同样满足它。自 MVP-2 起本表全部端点显式校验角色（`require_roles("admin","hr")`），再由 service 做可见性判定（§5.3）。守卫补全见 [module-16](./2026-09-20-module-16-permission-guard-plan.md)，**须与 module-09 同批发布**。
+>
+> **（MVP-2）候选人侧六个端点不在本表**：它们注册在 `/api/candidate/*` 下、守卫为 `require_roles("candidate")`，**实现在独立文件 `interview/candidate_router.py`**（按守卫分文件，避免同文件里挂错守卫）。端点和契约见 [module-12 §4.1、§4.2](./2026-09-20-module-12-interview-invitation-plan.md)；其中 `/feedback` 由 `evaluation` 包提供（[module-14](./2026-09-20-module-14-evaluation-feedback-plan.md)）。
 
 > **对 PRD §8 的修正：`PATCH` 不再承担状态变更**
 >
@@ -223,9 +253,16 @@ PRD §5.2 的关键字段列表未列出这两张表的主键。但：
 | `seq` | int | 序号，从 1 开始 |
 | `content` | str | 题干（取自 `content_snapshot`） |
 | `dimension` | str | 维度（取自 `dimension_snapshot`） |
-| `source` | str | 来源（取自 `source_snapshot`） |
+| `source` | str | **题目来源**（取自 `source_snapshot`）⚠️ 与 `answer_source` 含义不同，见下 |
 | `answer` | str \| null | 已回答内容；**未回答为 `null`** |
 | `recorded_at` | datetime \| null | — |
+| `answer_source`（**MVP-2**） | str \| null | **作答来源**：`hr` \| `candidate`；无作答记录时为 `null` |
+| `answered_by`（**MVP-2**） | int \| null | **作答最后修改者的 user id** |
+| `submitted_at`（**MVP-2**） | datetime \| null | **候选人交卷时刻**；HR 手工录入的作答恒为 `null` |
+
+> ⚠️ **命名冲突的显式处理（MVP-2）**：本对象已有一个 `source`，含义是**题目来源快照**。作答的 `answer.source` 是**另一件事**（哪条通道写的回答）。因此在新字段前加 `answer_` 前缀，命名为 **`answer_source`**。
+>
+> **绝不可**把作答来源也叫 `source` —— 同一个对象里出现两个同名不同义的字段，是排查成本最高的那类 bug（前端会把题目的「手工/AI」标签错当成作答通道）。HR 详情页需要这两个信息分别展示：题目来自题库还是 AI（`source`），以及这一题是候选人自己答的还是 HR 代录的（`answer_source`）。
 
 **POST `/api/interviews`**
 
@@ -265,7 +302,7 @@ PRD §5.2 的关键字段列表未列出这两张表的主键。但：
 | `list_interviews(db, user: User) -> list[InterviewListItem]` | 列表 | `scope_owner_id` 过滤（PRD §4.4） |
 | `get_interview(db, user: User, interview_id: int) -> InterviewDetail` | 详情 | 不存在 → 404；不可见 → 403 |
 | `update_candidate(db, user: User, interview_id: int, data: InterviewPatch) -> InterviewDetail` | 详情 | 按状态限制 |
-| `save_answer(db, user: User, interview_id: int, interview_question_id: int, content: str) -> QuestionItem` | 题目项 | 仅 `ongoing` 允许（PRD §5.3 ②「可随时编辑」） |
+| `save_answer(db, user: User, interview_id: int, interview_question_id: int, content: str) -> QuestionItem` | 题目项 | 仅 `ongoing` 允许（PRD §5.3 ②「可随时编辑」）。**MVP-2**：本方法即为 **HR 通道**，候选人交卷后仍可覆盖其作答（锁定只对候选人侧生效） |
 | `complete_interview(db, user: User, interview_id: int) -> InterviewDetail` | 详情 | `ongoing` → `completed`（PRD §5.1） |
 | `rollback_interview(db, user: User, interview_id: int) -> InterviewDetail` | 详情 | `completed` / `evaluated` → `ongoing`（PRD §5.1） |
 
@@ -280,6 +317,8 @@ PRD §5.2 的关键字段列表未列出这两张表的主键。但：
 | `transition_to_evaluated(db, interview_id: int) -> None` | — | `evaluating` → `evaluated` |
 | `transition_back_to_completed(db, interview_id: int) -> None` | — | 评估失败时 `evaluating` → `completed` |
 
+> **（MVP-2）新增的 service 方法不列在本节**：邀请管理（`create_invitation` / `list_invitations` / `revoke_invitation` / `accept_invitation`）与候选人侧（`get_interview_for_candidate` / `get_candidate_interview_detail` / `save_candidate_answer` / `submit_interview` / `list_my_interviews`）共 9 个方法的完整签名见 [module-12 §4.3](./2026-09-20-module-12-interview-invitation-plan.md)。上表 6 个「供 evaluation 使用的接口」**签名与语义均不变**。
+
 > **为何 evaluation 的迁移必须走 interview 的方法**：状态机的**唯一权威在 interview 模块**（PRD §5.1 将状态机列为 interview 的职责）。evaluation **不得**直接改 `interview.status` 字段，必须调用上表的迁移方法，以保证迁移合法性校验集中在一处。
 
 ### 4.4 repository 层方法签名
@@ -293,7 +332,7 @@ PRD §5.2 的关键字段列表未列出这两张表的主键。但：
 | `create_questions(db, items: list[dict]) -> list[InterviewQuestion]` | 列表 | 批量写入面试题（含快照） |
 | `list_questions(db, interview_id: int) -> list[InterviewQuestion]` | 列表 | **按 `seq` 升序** |
 | `get_question_entry(db, entry_id: int) -> InterviewQuestion \| None` | InterviewQuestion | — |
-| `upsert_answer(db, interview_question_id: int, content: str) -> Answer` | Answer | 存在则更新 `content` + `recorded_at`，不存在则创建 |
+| `upsert_answer(db, interview_question_id: int, content: str) -> Answer` | Answer | 存在则更新 `content` + `recorded_at`，不存在则创建。**MVP-2**：扩展为接受可选关键字参数 `source` / `answered_by` / `submitted_at`；HR 通道调用点**一行都不用改**（走模型默认） |
 | `list_answers(db, interview_id: int) -> list[Answer]` | 列表 | 联 `interview_question` 取 `interview_id` |
 | `count_questions(db, interview_id: int) -> int` | int | — |
 | `count_answers(db, interview_id: int) -> int` | int | — |
@@ -325,7 +364,9 @@ PRD §7 规定 AI 失败「重试 1 次 → 仍失败则标记失败、可重新
 
 失败时事务回滚，**AI 题目也不入库**（`bulk_create_from_ai` 在同一事务内），客户端收到 **502 `AI_PROVIDER_ERROR`** 并可重试。
 
-> **`draft` 状态说明**：PRD §5.1 定义了 `draft`，但本设计中 `POST /interviews` 是**单事务**完成「建面试 + 出题 + 置 ongoing」，因此 `draft` 是**事务内的瞬态值**，不会出现在已提交的数据里。保留该枚举值的两个理由：① 作为模型默认值最安全；② 为 PRD §11 列出的 V1.1「在线答题」预留（届时候选人侧答题可能需要草稿态）。
+> **`draft` 状态说明**：PRD §5.1 定义了 `draft`，但本设计中 `POST /interviews` 是**单事务**完成「建面试 + 出题 + 置 ongoing」，因此 `draft` 是**事务内的瞬态值**，不会出现在已提交的数据里。保留该枚举值的两个理由：① 作为模型默认值最安全；② 保留 PRD §5.1 已定义的完整状态集，便于未来引入「先建面试、后出题」的分步流程。
+>
+> ⚠️ **MVP-2 修正**：原文把「为 V1.1 在线答题预留草稿态」列为理由之一。该理由**已作废且方向相反**——在线答题自 MVP-2 起已在范围内（PRD §4.8），而 PRD §5.1 明确要求**候选人作答不进入面试状态机**（作答的进行状态由 `answer.submitted_at` 表达，不是面试状态）。因此**不得**为候选人答题再引入任何状态。
 
 ### 5.2 出题组装算法（PRD §5.3 ①）
 
@@ -374,6 +415,19 @@ PRD §5.3 ② 说回答「**可随时编辑**」。本设计将其限定为**仅
 4. repository.upsert_answer（存在则更新 content 与 recorded_at）
 5. commit
 ```
+
+**（MVP-2）两条作答通道**
+
+| 通道 | 入口 | 额外校验 | 写入的字段 |
+|---|---|---|---|
+| **HR 手工录入** | `POST /api/interviews/{id}/answers` | 与上述流程完全一致（**无新增校验**） | `content` / `recorded_at`；`source` 走默认 `hr` |
+| **候选人自答** | `POST /api/candidate/interviews/{id}/answers`（[module-12 §5.4](./2026-09-20-module-12-interview-invitation-plan.md)） | 先经 `get_interview_for_candidate`（404/403），再加**一条**：本人未交卷 | `content` / `source='candidate'` / `answered_by=候选人` / `submitted_at=None` |
+
+| 要点 | 说明 |
+|---|---|
+| **两条通道共用同一条 `ongoing` 限定** | 不是巧合：他们写的是**同一份数据**，写入约束自然应当一致 |
+| **锁定只对候选人侧生效** | HR 通道**不检查** `submitted_at` —— 这是 PRD §4.4「HR 侧不受锁影响」的落点。因此在实现上，「锁定」是候选人端点内的一条校验，**不是** `save_answer` 里的通用规则 |
+| 覆盖后 `source` 保留 `candidate` | `save_answer` 只写 `content` 与 `recorded_at`，不触碰新增三列 —— 这正是「只加列、不改语义」的收益（module-12 §5.6） |
 
 | 论点 | 说明 |
 |---|---|
@@ -426,6 +480,14 @@ interview/service.py
 | 标记完成 | ✗ | ✓ | ✗ | ✗ | ✗ |
 | 回退到进行中 | ✗ | — | ✓ | ✗ | ✓ |
 | 触发评估 | ✗ | ✗ | ✓ | ✗ | ✓ |
+| **候选人作答 / 交卷**（MVP-2） | ✗ | ✓ | ✗ | ✗ | ✗ |
+| **生成 / 撤销邀请**（MVP-2） | ✗ | ✓ | ✗ | ✗ | ✗ |
+
+> **（MVP-2）新增两行的说明**
+>
+> - **候选人作答与 HR 写回答共用同一条 `ongoing` 限定**：两条通道写的是同一份数据，「写 / 改回答」这一行的状态约束对二者相同。区别不在状态，而在两条通道各自的额外校验（HR 侧无；候选人侧需「本人未交卷」，见 §5.3）。
+> - **撤销邀请在任何状态下都允许**（表中按生成口径记为 `ongoing`）：撤销是**收紧**访问而非放宽，已接受的邀请被撤销后候选人立即失去访问权（module-12 §5.1）。因此它不需要状态前置条件，但生成邀请仍限定 `ongoing`。
+> - **状态迁移表（§5.4.1）一行不变** —— 候选人作答不进状态机，这是 PRD §5.1 的明确取舍。
 
 > `evaluated` 下的「触发评估」即**重新评估**，会用当前回答覆盖旧的逐题分、维度分与报告（见 evaluation 模块）。
 >
@@ -462,6 +524,10 @@ evaluation 只通过以下接口读取面试数据，**不直接查 interview �
 | **AI 出题失败** | `AI_PROVIDER_ERROR` | **502** | AI 出题失败，请稍后重试（**事务已回滚，无残留数据**） |
 | `candidate_name` 为空或超长 | `VALIDATION_ERROR` | 400 | — |
 | 回答内容超 10000 字符 | `VALIDATION_ERROR` | 400 | — |
+| **（MVP-2）角色不符**（候选人调 HR 端点 / HR 调候选人端点） | `FORBIDDEN` | 403 | 无权限执行此操作 |
+| **（MVP-2）候选人访问非本人面试** | `FORBIDDEN` | 403 | 无权限访问该面试 |
+
+> **（MVP-2）候选人侧的错误语义不列在本表**：邀请码失效、重复接受、交卷后修改、未交卷/非 `ongoing` 作答等共 12 条见 [module-12 §6](./2026-09-20-module-12-interview-invitation-plan.md)。本表只补「角色」与「跨端访问」两类通用错误。
 
 ---
 
@@ -481,6 +547,11 @@ evaluation 只通过以下接口读取面试数据，**不直接查 interview �
 | `test_get_nonexistent_interview` | 404 |
 | `test_save_answer_other_users_interview_forbidden` | 403 |
 | `test_complete_other_users_interview_forbidden` | 403 |
+| **`test_candidate_cannot_access_hr_interview_endpoints`**（MVP-2） | 候选人 token 对 HR 侧全部端点 → **一律 403** |
+| **`test_hr_cannot_access_candidate_endpoints`**（MVP-2） | hr / admin 对 `/api/candidate/interviews*` → 403 |
+| **`test_interview_endpoints_reject_anonymous`**（MVP-2） | 无 token → 401 |
+
+> MVP-2 的越权矩阵以**表驱动**形式集中实现于 `backend/tests/test_permissions.py`（[module-16 §7.1](./2026-09-20-module-16-permission-guard-plan.md)）。候选人侧的行为测试（作答、交卷、锁定、可见性）见 [module-12 §7](./2026-09-20-module-12-interview-invitation-plan.md)——**不在本模块重复编写**。
 
 ### 7.2 出题组装（PRD §5.3 ①）
 
@@ -566,6 +637,8 @@ evaluation 只通过以下接口读取面试数据，**不直接查 interview �
 ## 8. 任务分解（TDD 步骤，无代码）
 
 > 每步 2–5 分钟。**提交信息由你指定**。
+
+> **（MVP-2）Task 5.x 为 MVP-1 已完成的任务清单，保持不变。** MVP-2 的增量任务（`answer` 加三列、`interview_invitation` 建表、`candidate_router.py`、候选人作答复用 `ongoing` 校验等共 8 个 Task）见 [module-12 §8](./2026-09-20-module-12-interview-invitation-plan.md)。**不要在本模块重复实现**。
 
 ### Task 5.1：三张模型与迁移
 
@@ -666,6 +739,10 @@ evaluation 只通过以下接口读取面试数据，**不直接查 interview �
 - [ ] `get_answers_for_evaluation` 的 `dimension` / `question` 来自**快照**，未回答项 `answer` 为 **`None`**
 - [ ] `get_evaluation_dimensions` 返回岗位**当前**维度
 - [ ] 全部 interview 测试通过
+- [ ] **（MVP-2）** 面试状态机**五态与迁移表一行不变**（候选人作答未引入任何状态）
+- [ ] **（MVP-2）** `answer` 三列落地；候选人交卷后 HR 仍可覆盖且 `source` 保留 `candidate`
+- [ ] **（MVP-2）** HR 侧端点对候选人一律 403；候选人端点对 hr/admin 一律 403
+- [ ] **（MVP-2）** 候选人侧验收见 [module-12 §9](./2026-09-20-module-12-interview-invitation-plan.md)
 
 ---
 
@@ -674,7 +751,10 @@ evaluation 只通过以下接口读取面试数据，**不直接查 interview �
 | 风险 / 权衡 | 决策 | 理由 |
 |---|---|---|
 | AI 出题失败是否保留面试草稿 | **整体回滚** | 输入仅 3 个字段，重填成本低；避免新状态分支与新端点；符合 PRD §7「可重新触发」 |
-| `draft` 状态是否可达 | **事务内瞬态，不持久化** | 保留为模型默认值与 V1.1 在线答题预留；强行让它可达需引入重试端点，YAGNI |
+| `draft` 状态是否可达 | **事务内瞬态，不持久化** | 保留为模型默认值并保持 PRD §5.1 定义的状态集完整。⚠️ **MVP-2 修正**：原文「为 V1.1 在线答题预留」的理由已作废——在线答题已在范围内，且 PRD §5.1 明确候选人作答**不进状态机**；不得再为它引入状态 |
+| **（MVP-2）候选人作答是否需要新状态** | **不需要** | PRD §5.1 的明确取舍：作答是**输入通道**，交付/交卷事实由 `answer.source` / `answered_by` / `submitted_at` 表达。把它做成状态会让 `ongoing` / `completed` 的语义分裂（「HR 还没面」与「候选人已交卷」相互正交） |
+| **（MVP-2）作答来源的同名字段冲突** | 作答来源命名为 `answer_source` | 响应对象里已有 `source`（题目来源快照）。两个同名不同义的字段是排查成本最高的 bug 类型 |
+| **（MVP-2）交卷时的未作答题目** | 交卷时补空串作答行并写 `submitted_at` | `submitted_at` 在 `answer` 行上（PRD §5.2），但「交卷」是面试级事实；不补行则未作答的题无处记录交卷。理由见 module-12 §5.5 |
 | 出题是否随机化 | **不确定随机，round-robin + id 升序** | 可测试性优先；每次出题结果可预测，避免测试不稳定。实际多样性由题库内容与 AI 提供 |
 | `answer` 的标识键 | **`interview_question_id`** 而非 PRD 的 `(interview_id, question_id)` | 唯一性语义更准、与快照对齐、不阻碍扩展、消除冗余字段 |
 | 快照字段是否需要三个 | **需要**（content / dimension / source） | 缺任一都会让历史面试无法自洽（§3.2） |
