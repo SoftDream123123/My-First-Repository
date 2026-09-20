@@ -120,6 +120,27 @@ def get_by_id(db: Session, question_id: int) -> Question | None:
     return db.get(Question, question_id)
 
 
+def get_by_ids(db: Session, question_ids: list[int]) -> dict[int, Question]:
+    """批量取题，返回 {id: Question}。"""
+    if not question_ids:
+        return {}
+    stmt = select(Question).where(Question.id.in_(question_ids))
+    return {question.id: question for question in db.execute(stmt).scalars().all()}
+
+
+def get_position_names(db: Session, position_ids: list[int]) -> dict[int, str]:
+    """批量取岗位名，返回 {id: name}。
+
+    供 practice 解析会话筛选条件里的岗位名 —— practice 不允许依赖 position 模块
+    （plan §1.3），而 question 读 position 是允许的（list_positions_with_questions
+    同理）。
+    """
+    if not position_ids:
+        return {}
+    stmt = select(Position.id, Position.name).where(Position.id.in_(position_ids))
+    return {row[0]: row[1] for row in db.execute(stmt).all()}
+
+
 def update(db: Session, question: Question, **fields: object) -> Question:
     for key, value in fields.items():
         setattr(question, key, value)

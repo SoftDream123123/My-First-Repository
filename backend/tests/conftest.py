@@ -35,6 +35,7 @@ import app.auth.models  # noqa: E402,F401
 import app.evaluation.models  # noqa: E402,F401
 import app.interview.models  # noqa: E402,F401
 import app.position.models  # noqa: E402,F401
+import app.practice.models  # noqa: E402,F401
 import app.question.models  # noqa: E402,F401
 
 
@@ -109,6 +110,21 @@ def _truncate_all() -> None:
 def _clean_tables() -> None:
     """函数级：每个测试开始前清空数据。"""
     _truncate_all()
+
+
+@pytest.fixture(autouse=True)
+def _reset_practice_rate_limit() -> None:
+    """函数级：清空刷题的进程内限流窗口。
+
+    限流状态是**模块级内存**，不会随数据库清空而重置。若不重置，几百个用例
+    累积的提交次数会在整套跑时随机触发 409 —— 而且是离得越远的用例越容易挂，
+    排查起来毫无线索。
+    """
+    from app.practice import service as practice_service
+
+    practice_service.reset_rate_limit()
+    yield
+    practice_service.reset_rate_limit()
 
 
 # ------------------------------ 基础夹具 ------------------------------
@@ -232,6 +248,27 @@ CANDIDATE_PASSWORD = "cand12345678"
 
 
 @pytest.fixture
+def other_position(db, other_hr):
+    """由 other_hr 创建的第二个岗位。
+
+    跨 HR 的用例必须用这个 —— 在别人的岗位上建题会被 403 拒绝（岗位可见性按
+    created_by 判定），拿它当「另一个 HR 的岗位」会静默建不出数据。
+    """
+    from app.position import service as position_service
+    from app.position.schemas import PositionCreate
+
+    return position_service.create_position(
+        db,
+        other_hr,
+        PositionCreate(
+            name="前端工程师",
+            jd="负责前端页面的开发与维护。",
+            evaluation_dimensions=["沟通能力", "专业能力"],
+        ),
+    )
+
+
+@pytest.fixture
 def accepted_interview(
     client, hr_headers, candidate_user, candidate_headers, position
 ) -> dict:
@@ -267,3 +304,67 @@ def accepted_interview(
         "code": invitation["code"],
         "candidate_id": candidate_user.id,
     }
+
+
+# ---------------------------- 刷题夹具 ----------------------------
+
+
+@pytest.fixture
+def practice_questions(db, hr_user, position):
+    """题库：2 道单选 + 2 道简答（都带参考答案）。
+
+    直接落库而非走 HTTP：本夹具只需要数据本身，走一遍接口只会让前置更脆。
+    """
+    from app.question import repository
+
+    created = []
+    for index in (1, 2):
+        created.append(
+            repository.create(
+                db,
+                position_id=position.id,
+                category="通用",
+                dimension="沟通能力",
+                content=f"第{index}道单选题的题干内容描述",
+                difficulty="medium",
+                tags=[],
+                source="bank",
+                question_type="single_choice",
+                options=[f"第{index}题选项甲", f"第{index}题选项乙"],
+                reference_answer=f"第{index}题选项甲",
+                explanation=f"第{index}道单选题的解析",
+                created_by=hr_user.id,
+            )
+        )
+    for index in (1, 2):
+        created.append(
+            repository.create(
+                db,
+                position_id=position.id,
+                category="通用",
+                dimension="专业能力",
+                content=f"第{index}道简答题的题干内容描述",
+                difficulty="medium",
+                tags=[],
+                source="bank",
+                question_type="short_answer",
+                reference_answer=f"第{index}道简答题的参考答案文本内容",
+                explanation=f"第{index}道简答题的解析",
+                created_by=hr_user.id,
+            )
+        )
+    db.commit()
+    for question in created:
+        db.refresh(question)
+    return created
+
+
+@pytest.fixture
+def practice_session(db, candidate_user, practice_questions):
+    """候选人进行中的练习会话（4 题，快照已写满）。"""
+    from app.practice import service as practice_service
+    from app.practice.schemas import PracticeSessionCreate
+
+    return practice_service.start_session(
+        db, candidate_user, PracticeSessionCreate(size=4)
+    )

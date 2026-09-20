@@ -7,7 +7,7 @@
   · core 无对业务模块的顶层导入，只有函数体内延迟导入（§5.3-6）
   · 业务模块之间无反向依赖（§5.4-3）
   · 分层单向：router → service → repository → models（§5.4-2、§5.4-6）
-  · 七个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
+  · 八个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
 
 判定只看**模块级**导入：写在函数体内的延迟导入、以及 `if TYPE_CHECKING:`
 块内的类型专用导入都不算运行时依赖 —— 后者正是 core.deps 保持单向的手法。
@@ -20,19 +20,31 @@ import pytest
 
 APP = Path(__file__).resolve().parent.parent / "app"
 
-ALL_MODULES = ["core", "auth", "position", "question", "interview", "evaluation", "ai"]
-BUSINESS_MODULES = {"auth", "position", "question", "interview", "evaluation"}
+ALL_MODULES = [
+    "core",
+    "auth",
+    "position",
+    "question",
+    "interview",
+    "evaluation",
+    "ai",
+    "practice",
+]
+BUSINESS_MODULES = {"auth", "position", "question", "interview", "evaluation", "practice"}
 
-LAYERED_MODULES = ["auth", "position", "question", "interview", "evaluation"]
+LAYERED_MODULES = ["auth", "position", "question", "interview", "evaluation", "practice"]
 LAYER_FILES = ["models.py", "schemas.py", "repository.py", "service.py", "router.py"]
 
 # 模块 → 其**禁止**依赖的业务模块（计划书 §5.4-3「无反向依赖」）
 FORBIDDEN_DEPENDENCIES = {
-    "auth": {"position", "question", "interview", "evaluation"},
-    "position": {"question", "interview", "evaluation"},
-    "question": {"interview", "evaluation"},
-    "interview": {"evaluation"},
-    "evaluation": {"position", "question"},
+    "auth": {"position", "question", "interview", "evaluation", "practice"},
+    "position": {"question", "interview", "evaluation", "practice"},
+    "question": {"interview", "evaluation", "practice"},
+    "interview": {"evaluation", "practice"},
+    "evaluation": {"position", "question", "practice"},
+    # practice 与真实面试**完全解耦**：刷题是另一条业务线，
+    # 既不读 interview 的数据，也不该被 interview 反向依赖。
+    "practice": {"interview", "position", "evaluation"},
 }
 
 
@@ -84,7 +96,7 @@ def _own_module_refs(path: Path, module: str) -> set[str]:
 # ---------------------------- 包与分层存在性 ----------------------------
 
 
-def test_seven_modules_exist():
+def test_eight_modules_exist():
     actual = {p.name for p in APP.iterdir() if p.is_dir() and (p / "__init__.py").exists()}
     assert set(ALL_MODULES) <= actual
 

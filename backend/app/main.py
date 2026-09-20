@@ -125,6 +125,11 @@ def _register_routers() -> None:
 
     app.include_router(evaluation_router, prefix="/api")
 
+    # 刷题是独立的业务线（不依赖 interview），放最后注册。
+    from app.practice.router import router as practice_router
+
+    app.include_router(practice_router, prefix="/api")
+
 
 _register_routers()
 

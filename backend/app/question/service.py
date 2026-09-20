@@ -351,3 +351,26 @@ def list_practice_positions(db: Session) -> list[PracticePositionOut]:
         PracticePositionOut(**row)
         for row in repository.list_positions_with_questions(db)
     ]
+
+
+def get_practice_supply(db: Session, question_ids: list[int]) -> dict[int, Question]:
+    """供 practice 装配候选人视图与取判分依据。
+
+    不接 `user`、不做可见性过滤 —— 与 list_practice_questions 的口径一致
+    （候选人取全库题目）。会话开始后题目**不可能被删除**（practice_item 对
+    question 是 RESTRICT），因此这里的命中率是有保证的。
+
+    用途有二：① 补上快照未覆盖的展示字段（position_id / category / difficulty /
+    tags）；② 判分时读取题库当前的参考答案与解析。题干、选项、维度、题型一律
+    仍以**快照**为准，保证历史练习不受题库改动影响。
+    """
+    return repository.get_by_ids(db, question_ids)
+
+
+def get_position_names(db: Session, position_ids: list[int]) -> dict[int, str]:
+    """批量取岗位名 —— 供 practice 展示会话筛选条件。
+
+    由本模块代取而不是让 practice 直接读 position 表：practice 的依赖白名单里
+    没有 position（plan §1.3），而 question 读 position 是允许的。
+    """
+    return repository.get_position_names(db, position_ids)

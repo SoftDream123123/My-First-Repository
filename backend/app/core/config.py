@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     # 邀请码有效期（天）。过期是**读取时派生**的，不落库、不需要调度器。
     invitation_expire_days: int = 7
 
+    # ---- 刷题练习（PRD §4.7）----
+    # 开始练习未指定题数时的默认题量
+    practice_session_size_default: int = 10
+    # 单次练习题量硬上限（防一次拉全库）
+    practice_session_size_max: int = 20
+    # 会话列表 limit 的硬上限
+    practice_session_list_max: int = 100
+    # 每用户每分钟的计分动作上限（**进程内**计数，故单机部署须 --workers 1）
+    practice_rate_limit_per_minute: int = 60
+
     # ---- 其他 ----
     cors_origins: list[str] = ["http://localhost:5173"]
     sql_echo: bool = False

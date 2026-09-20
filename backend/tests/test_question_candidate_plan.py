@@ -30,25 +30,7 @@ def _create(client, headers, position_id, **overrides):
     return client.post("/api/questions", json=payload, headers=headers)
 
 
-@pytest.fixture
-def other_position(db, other_hr):
-    """由 other_hr 创建的第二个岗位。
-
-    跨 HR 的用例必须用这个 —— 在别人的岗位上建题会被 403 拒绝
-    （岗位可见性按 created_by 判定），拿它当「另一个 HR 的题」会静默建不出来。
-    """
-    from app.position import service as position_service
-    from app.position.schemas import PositionCreate
-
-    return position_service.create_position(
-        db,
-        other_hr,
-        PositionCreate(
-            name="前端工程师",
-            jd="负责前端页面的开发与维护。",
-            evaluation_dimensions=["沟通能力", "专业能力"],
-        ),
-    )
+# 注：跨 HR 的用例需要「另一个 HR 的岗位」，用 conftest 的 other_position 夹具。
 
 
 # ========================= 7.1 字段校验 =========================

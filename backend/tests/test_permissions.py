@@ -26,6 +26,12 @@ HR_PATH_PREFIXES = (
     "/api/users",
 )
 
+# HR 与 admin 都不应触及的候选人侧路径前缀。
+#
+# 候选人侧守卫是**精确匹配**（module-09 §4.5）：admin 在其中同样不通行 ——
+# 一旦放行，admin 的调用会污染候选人的练习数据与作答归属。
+CANDIDATE_PATH_PREFIXES = ("/api/candidate", "/api/practice")
+
 _HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 _PATH_PARAM = re.compile(r"\{[^}]+\}")
 
@@ -125,6 +131,29 @@ def test_no_hr_route_reachable_by_hr(client, hr_headers):
     assert checked >= 3, f"实际只检查了 {checked} 条路由，枚举可能已失效"
     assert not reachable, (
         "以下 admin 专属路由对 hr 可达：\n  " + "\n  ".join(reachable)
+    )
+
+
+@pytest.mark.parametrize("actor", ["hr", "admin"])
+def test_no_candidate_route_reachable_by_hr_side(client, request, actor):
+    """候选人侧路由对 hr 与 admin **都**必须恒 403。
+
+    与 HR 侧的方向相反：那边 admin 与 hr 都该通行，这边两者都不该通行。
+    admin 放行会让它的调用污染候选人的练习数据与作答归属。
+    """
+    headers = request.getfixturevalue(f"{actor}_headers")
+
+    reachable = []
+    checked = 0
+    for method, path in _iter_routes(CANDIDATE_PATH_PREFIXES):
+        resp = client.request(method, path, json={}, headers=headers)
+        checked += 1
+        if resp.status_code != 403:
+            reachable.append(f"{method} {path} -> {resp.status_code}")
+
+    assert checked >= 15, f"{actor} 只检查了 {checked} 条候选人路由，枚举可能已失效"
+    assert not reachable, (
+        f"以下候选人侧路由对 {actor} 可达：\n  " + "\n  ".join(reachable)
     )
 
 
