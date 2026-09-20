@@ -73,8 +73,26 @@ def _ensure_database(url: str) -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def _prepare_database() -> None:
-    """会话级：建库 + 建全部表。"""
-    _ensure_database(get_settings().database_url)
+    """会话级：建库 + 按模型重建全部表。
+
+    必须 **drop 后重建**，而不是只调 create_all：create_all 会跳过已存在的表，
+    因此模型改了列（新增列、扩枚举取值）时它不会生效 —— 表现为一句莫名其妙的
+    「Data truncated for column ...」，让人以为是代码写错了。
+    MVP-1 之后本表结构一直没动，所以这个坑到 MVP-2 才暴露出来。
+
+    重建前校验库名以 `_test` 结尾：本操作是破坏性的，若 DATABASE_URL 被外部
+    环境变量指向了开发库或生产库，宁可报错也不能把它drop 掉。
+    """
+    url = get_settings().database_url
+    db_name = make_url(url).database or ""
+    if not db_name.endswith("_test"):
+        raise RuntimeError(
+            f"拒绝在非测试库上重建表：当前库名为 {db_name!r}。"
+            "请在环境中设置 DATABASE_URL 指向以 `_test` 结尾的库。"
+        )
+
+    _ensure_database(url)
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
@@ -157,6 +175,35 @@ def other_hr(db):
 @pytest.fixture
 def other_hr_headers(other_hr) -> dict[str, str]:
     return {"Authorization": f"Bearer {create_access_token(other_hr.id)}"}
+
+
+# ------------------------------ 候选人夹具 ------------------------------
+# 这两个夹具是 module-12 / 13 / 14 / 16 测试的公共前置。
+
+
+@pytest.fixture
+def candidate_user(db):
+    from app.auth import service
+
+    return service.register_candidate(db, "cand_test", "cand12345678")
+
+
+@pytest.fixture
+def candidate_headers(candidate_user) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(candidate_user.id)}"}
+
+
+@pytest.fixture
+def other_candidate(db):
+    """第二个候选人 —— 用于验证候选人之间的数据隔离。"""
+    from app.auth import service
+
+    return service.register_candidate(db, "cand_other", "cand12345678")
+
+
+@pytest.fixture
+def other_candidate_headers(other_candidate) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(other_candidate.id)}"}
 
 
 # ---------------------------- 业务夹具 ----------------------------

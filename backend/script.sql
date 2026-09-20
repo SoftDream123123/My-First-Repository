@@ -64,7 +64,7 @@ CREATE TABLE `user` (
   `id`            BIGINT       NOT NULL AUTO_INCREMENT,
   `username`      VARCHAR(50)  NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL COMMENT 'bcrypt 哈希，绝不存明文',
-  `role`          ENUM('admin','hr') NOT NULL DEFAULT 'hr',
+  `role`          ENUM('admin','hr','candidate') NOT NULL DEFAULT 'hr',
   `is_active`     BOOL         NOT NULL DEFAULT 1,
   `created_at`    DATETIME     NOT NULL DEFAULT (now()),
   PRIMARY KEY (`id`),

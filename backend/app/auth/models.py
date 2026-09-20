@@ -9,6 +9,7 @@ from app.core.db import Base
 
 ROLE_ADMIN = "admin"
 ROLE_HR = "hr"
+ROLE_CANDIDATE = "candidate"
 
 
 class User(Base):
@@ -26,7 +27,7 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
-        Enum(ROLE_ADMIN, ROLE_HR, name="user_role"),
+        Enum(ROLE_ADMIN, ROLE_HR, ROLE_CANDIDATE, name="user_role"),
         nullable=False,
         default=ROLE_HR,
         server_default=ROLE_HR,

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     question_count_from_bank: int = 5
     question_count_from_ai: int = 3
 
+    # ---- 候选人侧（PRD §4.1）----
+    # 候选人自助注册开关。默认开启以便开箱演示；生产部署应置为 false，
+    # 此时候选人只能凭邀请码建号（凭邀请建号不受该开关影响）。
+    candidate_self_register: bool = True
+
     # ---- 其他 ----
     cors_origins: list[str] = ["http://localhost:5173"]
     sql_echo: bool = False

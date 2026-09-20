@@ -168,6 +168,23 @@ npm run dev        # → http://localhost:5173，/api 被代理到 8000
 
 ---
 
+## 候选人侧配置
+
+| 配置项 | 默认 | 含义 |
+|---|---|---|
+| `CANDIDATE_SELF_REGISTER` | **true** | 候选人自助注册开关 |
+
+**默认开启是为了开箱演示** —— 无 Key 的 Mock 环境也能跑通刷题闭环。
+
+> ⚠️ **生产部署应置为 `false`**。关闭后候选人只能凭 HR 发放的邀请码建号，
+> 账号与某场真实面试或刷题行为始终有真实关联。注意该开关**不影响凭邀请码建号**
+> —— 那条路径必须始终可用，否则关闭开关等于把候选人完全挡在门外。
+>
+> 关闭时的注册请求返回 `409 BUSINESS_ERROR`，`detail.reason` 为
+> `self_register_disabled`，前端可据此提示改用邀请码。
+
+---
+
 ## 运行测试
 
 ```bash
@@ -202,13 +219,14 @@ python scripts/smoke_e2e.py
 > —— 26 个接口的提交方式 / URL / 参数 / 响应 / 示例，以及 SSE 与错误处理的实现代码。
 > 本节只是速查表。
 
-统一前缀 `/api`，除登录外均需 `Authorization: Bearer <token>`。
+统一前缀 `/api`，除登录与候选人自助注册外均需 `Authorization: Bearer <token>`。
 
 ### 认证与用户
 
 | 方法 | 路径 | 权限 |
 |---|---|---|
 | POST | `/auth/login` | 公开 |
+| POST | `/auth/register` | 公开（候选人自助注册，可用 `CANDIDATE_SELF_REGISTER` 关闭） |
 | GET | `/auth/me` | 登录 |
 | POST / GET | `/users` | admin |
 | PATCH | `/users/{id}` | admin |

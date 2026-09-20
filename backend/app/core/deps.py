@@ -50,12 +50,29 @@ def get_current_user(
     return user
 
 
-def require_role(role: str) -> Callable[..., "User"]:
-    """依赖工厂：校验当前用户角色。用法：Depends(require_role("admin"))"""
+def require_roles(*roles: str) -> Callable[..., "User"]:
+    """依赖工厂：校验当前用户角色在允许集内。
+
+    用法：Depends(require_roles("admin", "hr"))
+
+    精确匹配，**不做层级包含** —— 不存在「admin 包含 hr」这类隐式规则。
+    HR 侧路由必须显式写出两个角色，候选人是终端用户角色、admin 在其中不通行。
+    显式列出是最容易评审的形式：新增角色时不会有意外的放行。
+    """
+    allowed = frozenset(roles)
 
     def _dependency(user: "User" = Depends(get_current_user)) -> "User":
-        if user.role != role:
+        if user.role not in allowed:
             raise ForbiddenError()
         return user
 
     return _dependency
+
+
+def require_role(role: str) -> Callable[..., "User"]:
+    """单角色守卫，`require_roles` 的薄封装。
+
+    保留它是为了不改动既有调用点（auth.router 的三处 admin 守卫）。
+    新代码一律用 `require_roles`。
+    """
+    return require_roles(role)

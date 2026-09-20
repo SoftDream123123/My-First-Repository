@@ -4,14 +4,18 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.auth.models import User
-from app.core.deps import get_current_user, get_db
+from app.auth.models import ROLE_ADMIN, ROLE_HR, User
+from app.core.deps import get_db, require_roles
 from app.evaluation import service, stream
 from app.evaluation.schemas import EvaluateTriggerResponse, ReportDetail
 from app.interview import service as interview_service
 from app.interview.models import STATUS_EVALUATING
 
 router = APIRouter(prefix="/interviews", tags=["评估"])
+
+# HR 侧端点：admin 与 hr 均可，candidate 一律 403（PRD §4.1）。
+# 候选人反馈端点属同一 URL 前缀但守卫不同，注册在 candidate_router.py。
+_hr_guard = require_roles(ROLE_ADMIN, ROLE_HR)
 
 _SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -29,7 +33,7 @@ _SSE_HEADERS = {
 def trigger_evaluation(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> EvaluateTriggerResponse:
     service.ensure_visible(db, user, interview_id)
 
@@ -63,7 +67,7 @@ def trigger_evaluation(
 def evaluation_stream(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> StreamingResponse:
     service.ensure_visible(db, user, interview_id)
     stream.heal_orphan(db, interview_id)
@@ -81,6 +85,6 @@ def evaluation_stream(
 def get_report(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> ReportDetail:
     return service.get_report(db, user, interview_id)

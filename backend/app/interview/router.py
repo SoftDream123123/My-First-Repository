@@ -7,8 +7,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.auth.models import User
-from app.core.deps import get_current_user, get_db
+from app.auth.models import ROLE_ADMIN, ROLE_HR, User
+from app.core.deps import get_db, require_roles
 from app.interview import service
 from app.interview.schemas import (
     AnswerCreate,
@@ -21,6 +21,10 @@ from app.interview.schemas import (
 
 router = APIRouter(prefix="/interviews", tags=["面试"])
 
+# HR 侧端点：admin 与 hr 均可，candidate 一律 403（PRD §4.1）。
+# 候选人侧端点守卫不同，因此拆在 candidate_router.py，不与此处混放。
+_hr_guard = require_roles(ROLE_ADMIN, ROLE_HR)
+
 
 @router.post(
     "",
@@ -31,7 +35,7 @@ router = APIRouter(prefix="/interviews", tags=["面试"])
 def create_interview(
     payload: InterviewCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.create_interview(db, user, payload)
 
@@ -39,7 +43,7 @@ def create_interview(
 @router.get("", response_model=list[InterviewListItem], summary="面试列表")
 def list_interviews(
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> list[InterviewListItem]:
     return service.list_interviews(db, user)
 
@@ -48,7 +52,7 @@ def list_interviews(
 def get_interview(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.get_interview(db, user, interview_id)
 
@@ -60,7 +64,7 @@ def update_candidate(
     interview_id: int,
     payload: InterviewPatch,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.update_candidate(db, user, interview_id, payload)
 
@@ -74,7 +78,7 @@ def save_answer(
     interview_id: int,
     payload: AnswerCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> QuestionItem:
     return service.save_answer(
         db, user, interview_id, payload.interview_question_id, payload.content
@@ -87,7 +91,7 @@ def save_answer(
 def complete_interview(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.complete_interview(db, user, interview_id)
 
@@ -100,6 +104,6 @@ def complete_interview(
 def rollback_interview(
     interview_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> InterviewDetail:
     return service.rollback_interview(db, user, interview_id)

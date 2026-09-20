@@ -9,13 +9,14 @@ from sqlalchemy.orm import Session
 from app.auth import service
 from app.auth.models import ROLE_ADMIN, User
 from app.auth.schemas import (
+    CandidateRegisterRequest,
     LoginRequest,
     LoginResponse,
     UserCreate,
     UserOut,
     UserUpdate,
 )
-from app.core.deps import get_current_user, get_db, require_role
+from app.core.deps import get_current_user, get_db, require_roles
 
 router = APIRouter()
 
@@ -34,6 +35,26 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     return LoginResponse(
         token=result.token, user=UserOut.model_validate(result.user)
     )
+
+
+@router.post(
+    "/auth/register",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["认证"],
+    summary="候选人自助注册（仅刷题权限）",
+)
+def register_candidate(
+    payload: CandidateRegisterRequest, db: Session = Depends(get_db)
+) -> UserOut:
+    """公开端点（PRD §4.1）。
+
+    刻意**不返回 token**：注册与登录是两个动作，否则 JWT 签发会有两条路径
+    （login 与 register），有效期与载荷逻辑出现第二处实现。前端在注册成功后
+    自动调 `/auth/login`，用户无感知。
+    """
+    user = service.register_candidate(db, payload.username, payload.password)
+    return UserOut.model_validate(user)
 
 
 @router.get(
@@ -59,7 +80,7 @@ def me(user: User = Depends(get_current_user)) -> UserOut:
 def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role(ROLE_ADMIN)),
+    _: User = Depends(require_roles(ROLE_ADMIN)),
 ) -> UserOut:
     user = service.create_user(db, payload.username, payload.password, payload.role)
     return UserOut.model_validate(user)
@@ -73,7 +94,7 @@ def create_user(
 )
 def list_users(
     db: Session = Depends(get_db),
-    _: User = Depends(require_role(ROLE_ADMIN)),
+    _: User = Depends(require_roles(ROLE_ADMIN)),
 ) -> list[UserOut]:
     return [UserOut.model_validate(u) for u in service.list_users(db)]
 
@@ -88,7 +109,7 @@ def update_user(
     user_id: int,
     payload: UserUpdate,
     db: Session = Depends(get_db),
-    actor: User = Depends(require_role(ROLE_ADMIN)),
+    actor: User = Depends(require_roles(ROLE_ADMIN)),
 ) -> UserOut:
     user = service.update_user(
         db, actor, user_id, role=payload.role, is_active=payload.is_active

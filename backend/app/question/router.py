@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.auth.models import User
-from app.core.deps import get_current_user, get_db
+from app.auth.models import ROLE_ADMIN, ROLE_HR, User
+from app.core.deps import get_db, require_roles
 from app.question import service
 from app.question.schemas import (
     QuestionCreate,
@@ -14,6 +14,9 @@ from app.question.schemas import (
 )
 
 router = APIRouter(prefix="/questions", tags=["题库"])
+
+# 本模块全部端点均为 HR 侧：admin 与 hr 均可，candidate 一律 403（PRD §4.1）。
+_hr_guard = require_roles(ROLE_ADMIN, ROLE_HR)
 
 
 @router.post(
@@ -25,7 +28,7 @@ router = APIRouter(prefix="/questions", tags=["题库"])
 def create_question(
     payload: QuestionCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> QuestionOut:
     return QuestionOut.model_validate(service.create_question(db, user, payload))
 
@@ -38,7 +41,7 @@ def list_questions(
     source: str | None = Query(default=None, description="bank | ai"),
     keyword: str | None = Query(default=None, description="按题干模糊匹配"),
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> list[QuestionOut]:
     filters = QuestionFilters(
         position_id=position_id,
@@ -57,7 +60,7 @@ def list_questions(
 def get_question(
     question_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> QuestionOut:
     return QuestionOut.model_validate(service.get_question(db, user, question_id))
 
@@ -67,7 +70,7 @@ def update_question(
     question_id: int,
     payload: QuestionUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> QuestionOut:
     return QuestionOut.model_validate(
         service.update_question(db, user, question_id, payload)
@@ -82,7 +85,7 @@ def update_question(
 def delete_question(
     question_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(_hr_guard),
 ) -> Response:
     service.delete_question(db, user, question_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

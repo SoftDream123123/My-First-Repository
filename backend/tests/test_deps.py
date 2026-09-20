@@ -1,7 +1,11 @@
 """core.deps 依赖注入测试。"""
 
+import pytest
+
 from app.auth.models import User
 from app.auth.service import scope_owner_id
+from app.core.deps import require_role, require_roles
+from app.core.exceptions import ForbiddenError
 
 
 class TestGetCurrentUser:
@@ -70,3 +74,50 @@ class TestScopeOwnerId:
         """非 admin 的一律按受限处理（白名单而非黑名单）。"""
         fake = User(id=123, username="x", password_hash="x", role="hr")
         assert scope_owner_id(fake) == 123
+
+
+class TestRequireRoles:
+    """多角色守卫（module-09 §4.5）。
+
+    直接调用依赖函数并显式传入 user —— 其 user 参数的默认值是
+    Depends(get_current_user)，显式传参即绕过 FastAPI 的依赖求解。
+    """
+
+    def test_require_roles_single_pass(self, hr_user):
+        assert require_roles("hr")(user=hr_user) is hr_user
+
+    def test_require_roles_multi_pass_admin(self, admin_user):
+        assert require_roles("admin", "hr")(user=admin_user) is admin_user
+
+    def test_require_roles_multi_pass_hr(self, hr_user):
+        assert require_roles("admin", "hr")(user=hr_user) is hr_user
+
+    def test_require_roles_reject_candidate_on_hr_guard(self, candidate_user):
+        with pytest.raises(ForbiddenError):
+            require_roles("admin", "hr")(user=candidate_user)
+
+    def test_require_roles_reject_admin_on_candidate_guard(self, admin_user):
+        """候选人侧守卫**精确匹配** —— admin 在其中不通行。
+
+        候选人是终端用户角色，admin 无正当理由代其刷题或作答；一旦放行
+        就会污染候选人的练习数据与作答归属。
+        """
+        with pytest.raises(ForbiddenError):
+            require_roles("candidate")(user=admin_user)
+
+    def test_require_roles_reject_hr_on_candidate_guard(self, hr_user):
+        with pytest.raises(ForbiddenError):
+            require_roles("candidate")(user=hr_user)
+
+    def test_require_role_still_equals_require_roles(self, admin_user, hr_user):
+        """薄封装未走样：两者行为一致。"""
+        assert require_role("admin")(user=admin_user) is admin_user
+
+        with pytest.raises(ForbiddenError):
+            require_role("admin")(user=hr_user)
+
+    def test_require_roles_requires_auth(self, client, position):
+        """守卫不绕过登录校验：无 token → 401 而非 403。"""
+        resp = client.get("/api/positions")
+        assert resp.status_code == 401
+        assert resp.json()["code"] == "UNAUTHORIZED"
