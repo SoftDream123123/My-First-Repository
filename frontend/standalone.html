@@ -1387,8 +1387,11 @@ a:hover { text-decoration: underline; }
 .practice-count { font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
 .practice-count.is-none { color: var(--watch); }
 
-/* ---- 练习进度：页面级的，因此比列表里的细条宽 ---- */
-.practice-progress {
+/* ---- 页面级进度条：一条细条 + 数字 + 尾部一个动作 ----
+   练习页（「已答 3 / 8 … 答对 2」）与在线答题的交卷条（「已答 3 / 8 … 交卷」）
+   是同一种构件，共用一套样式，只在尾部那颗按钮上分叉。 */
+.practice-progress,
+.submit-bar {
   display: flex;
   align-items: center;
   gap: var(--s3);
@@ -1398,9 +1401,16 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--line);
   border-radius: var(--r-surface);
 }
-.practice-progress-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
-.practice-progress-fill { height: 100%; background: var(--brand); }
-.practice-progress-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
+.practice-progress-track,
+.submit-bar-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.practice-progress-fill,
+.submit-bar-fill { height: 100%; background: var(--brand); }
+.practice-progress-text,
+.submit-bar-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
+.submit-bar .btn { flex: none; }
+/* 已交卷 / 通道关闭后，这条不再表示「还差多少」，而是一个既成事实 */
+.submit-bar.is-frozen { background: #fafcfe; }
+.submit-bar.is-frozen .submit-bar-text { flex: 1; }
 
 /* ---- 单选题的作答控件 ---- */
 .choice-option {
@@ -1480,6 +1490,37 @@ a:hover { text-decoration: underline; }
 }
 .summary-bar-track { margin-top: var(--s2); height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
 .summary-bar-fill { height: 100%; background: var(--brand); }
+
+/* ---- 候选人端的面试状态标签 ----
+   只有「要你动手」的两态上色（待作答 / 有反馈），其余一律灰。
+   `--pass` / `--watch` 在这四个标签里**一次都不出现**：候选人不看分数，
+   分数色带也就不该出现 —— 颜色是数据的函数，不是装饰。 */
+.tag--await,
+.tag--feedback {
+  background: var(--brand-wash);
+  border-color: var(--brand-line);
+  color: var(--brand-deep);
+}
+.tag--submitted,
+.tag--closed {
+  background: #eef2f6;
+  border-color: #dde5ec;
+  color: var(--muted);
+}
+
+/* ---- 面试反馈：一份文书，不是一块看板 ----
+   宽度收在 1000px（与准备助手同一种读法），内容是**顺着读**的：
+   结论 → 优点 → 待改进。HR 报告那套是「左右对照」，候选人这边不需要对照。 */
+.feedback-page { max-width: 1000px; }
+/* 提示条与下面的面板左右对齐。`.note-box` 自带的 46em 上限是给卡片里那一句用的，
+   放在整页宽的文书里会让右边缘参差不齐 */
+.feedback-page .note-box { max-width: none; }
+.feedback-lede { font-size: 17px; line-height: 1.85; max-width: 34em; }
+/* full 档才出现的那一行总分：`.score-value` 自带 margin-left:auto，
+   那是给逐题行右对齐用的，这里要取消 */
+.feedback-total { display: flex; align-items: baseline; gap: var(--s3); margin-top: var(--s3); }
+.feedback-total .score-value { margin-left: 0; font-size: var(--t-2xl); }
+.feedback-total-label { font-size: var(--t-sm); color: var(--muted); }
 
 /* ---- 未实现的模块占位（原型建设期用） ---- */
 .placeholder {
@@ -2076,7 +2117,9 @@ __modules['./mock.js'] = function (exports, __require) {
       },
     ],
     interviews: [
-      { id: 1, position_id: 1, candidate_name: '张书宁', candidate_contact: 'zhang.shuning@example.com', status: 'evaluated',  created_at: '2026-09-14T14:00:00', completed_at: '2026-09-14T15:20:00', created_by: 1, answered: 8 },
+      // 面试 1 与 2 同属候选人李昀（li.yun 是登录页给出的演示账号）：一场已评估
+      // （有脱敏反馈）、一场进行中（待作答），同一个账号登录后两种状态都能看到。
+      { id: 1, position_id: 1, candidate_name: '李昀',   candidate_contact: 'li.yun@example.com',        status: 'evaluated',  created_at: '2026-09-14T14:00:00', completed_at: '2026-09-14T15:20:00', created_by: 1, answered: 8 },
       { id: 2, position_id: 1, candidate_name: '李昀',   candidate_contact: 'li.yun@example.com',        status: 'ongoing',    created_at: '2026-09-16T10:30:00', completed_at: null,                  created_by: 1, answered: 3, resume_id: 1 },
       { id: 3, position_id: 2, candidate_name: '王一鸣', candidate_contact: null,                        status: 'completed',  created_at: '2026-09-15T09:00:00', completed_at: '2026-09-15T10:40:00', created_by: 2, answered: 7 },
       { id: 4, position_id: 3, candidate_name: '陈嘉',   candidate_contact: 'chen.jia@example.com',      status: 'evaluating', created_at: '2026-09-16T11:10:00', completed_at: '2026-09-16T12:00:00', created_by: 3, answered: 8 },
@@ -2096,22 +2139,28 @@ __modules['./mock.js'] = function (exports, __require) {
       },
     ],
     invitations: [
-      // 面试 1（已评估）一张已接受；面试 2（进行中）覆盖 待接受 / 已过期 / 已撤销 三种
+      // 面试 1（已评估）一张已接受；面试 2（进行中）覆盖 待接受 / 已过期 / 已撤销 三种失效态
       { id: 1, interview_id: 1, code: 'Kq3n8XvT2mLpRa7BwYc9dA', status: 'accepted', candidate_user_id: 5,
-        expires_at: '2100-01-01T00:00:00', accepted_at: '2026-09-14T09:30:00', created_at: '2026-09-14T14:05:00', created_by: 1 },
+        expires_at: '2100-01-01T00:00:00', accepted_at: '2026-09-14T14:35:00', created_at: '2026-09-14T14:05:00', created_by: 1 },
       { id: 2, interview_id: 2, code: 'Zm4Hr6Ps1QwEk9Lt3Vb8Ny', status: 'pending', candidate_user_id: null,
         expires_at: '2100-01-01T00:00:00', accepted_at: null, created_at: '2026-09-16T10:35:00', created_by: 1 },
       { id: 3, interview_id: 2, code: 'Tb7Wq2Mn5Zx4Cr8Jv1Hf6L', status: 'pending', candidate_user_id: null,
         expires_at: '2026-09-17T10:40:00', accepted_at: null, created_at: '2026-09-16T10:40:00', created_by: 1 },
       { id: 4, interview_id: 2, code: 'Yd9Uk3Gh6Nm1Pz5Rw8Qc4V', status: 'revoked', candidate_user_id: null,
         expires_at: '2100-01-01T00:00:00', accepted_at: null, created_at: '2026-09-16T10:45:00', created_by: 1 },
+      // 李昀（user 5）在面试 2 上也有一张已接受的邀请 —— 他因此有一场「待作答」的面试，
+      // 演示账号登录后才走得到在线答题；周晓禾（user 6）在面试 5 上同理。
+      { id: 5, interview_id: 2, code: 'Nf2Kp8Xq4Rt6Bw1Mc7Zv3L', status: 'accepted', candidate_user_id: 5,
+        expires_at: '2100-01-01T00:00:00', accepted_at: '2026-09-16T11:20:00', created_at: '2026-09-16T10:50:00', created_by: 1 },
+      { id: 6, interview_id: 5, code: 'Hq5Jm9Pd3Wx7Cv2Nb8Ts4K', status: 'accepted', candidate_user_id: 6,
+        expires_at: '2100-01-01T00:00:00', accepted_at: '2026-09-18T15:25:00', created_at: '2026-09-18T15:16:00', created_by: 1 },
     ],
     // 刷题的会话与作答。作答不建表之外的派生视图（错题本、统计）全部从这里算
     practiceSessions: [],
     practiceItems: [],
   };
 
-  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 5, practice: 1, practiceItem: 1 };
+  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 7, practice: 1, practiceItem: 1 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -2661,10 +2710,18 @@ __modules['./mock.js'] = function (exports, __require) {
     工程素养: '我会先写一个能稳定复现的最小例子，再动手改。没有复现步骤的话，修好了也说不清是不是修对了。',
   };
 
+  /** 走到 completed 及以后的场次，候选人**必定已经交过卷** —— 交卷事实落在作答上
+      （answer.submitted_at），不落在面试状态上（PRD §5.1）。种子若不补这一笔，
+      候选人端就会出现「已评估，但我还没交卷」这种自相矛盾的状态。 */
+  const SETTLED_STATUSES = ['completed', 'evaluating', 'evaluated'];
+
   /** 按真实出题组装规则，为种子面试生成题目与已作答部分。 */
   function seedInterviews() {
     for (const interview of state.interviews) {
       const position = state.positions.find((p) => p.id === interview.position_id);
+      const settled = SETTLED_STATUSES.includes(interview.status);
+      // 交卷必然早于 HR 标记完成，这里取完成时刻作近似，早于它即自洽
+      const submittedAt = settled ? interview.completed_at : null;
       interview.questions = assembleQuestions(position, interview.created_by).map((item, index) => {
         const answered = index < interview.answered;
         return {
@@ -2676,7 +2733,9 @@ __modules['./mock.js'] = function (exports, __require) {
           question_id: item.question_id,
           answer: answered ? (item.question_id ? BANK_ANSWERS[item.question_id] : DIMENSION_ANSWERS[item.dimension]) ?? null : null,
           recorded_at: answered ? interview.created_at : null,
-          answer_source: answered ? 'hr' : null,
+          // 已收口的场次里，作答最初由候选人自己提交（HR 事后可覆盖，来源不变）
+          answer_source: answered ? (settled ? 'candidate' : 'hr') : null,
+          submitted_at: settled ? submittedAt : null,
         };
       });
     }
@@ -3267,11 +3326,54 @@ __modules['./mock.js'] = function (exports, __require) {
     };
   }
 
-  /** 候选人脱敏视图：只含结论、优点、待改进，不含任何分数（PRD §4.9）。 */
+  /** 原型开关：把候选人反馈切到 full 档（下发总分），用来走查 full 分支。?feedback=full */
+  function feedbackLevel() {
+    if (/[?&]feedback=full(&|$)/.test(location.search)) return 'full';
+    try {
+      return localStorage.getItem('prototype.feedbackLevel') === 'full' ? 'full' : 'summary';
+    } catch { return 'summary'; }
+  }
+  exports.setFeedbackLevel = function (on) {
+    try {
+      if (on) localStorage.setItem('prototype.feedbackLevel', 'full');
+      else localStorage.removeItem('prototype.feedbackLevel');
+    } catch { /* 忽略 */ }
+  };
+
+  /**
+   * 面向候选人本人的综合结论。
+   *
+   * **刻意不带招聘方的去留判断。** 报告里那句「建议进入下一轮 / 不建议继续推进」
+   * 是 HR 的决策，应当由 HR 另行沟通 —— 让一个人在自助页面上读到「不建议推进」
+   * 既生硬也不是这个页面的职责。这里只讲这场发挥的总体情况：强在哪、弱在哪。
+   * （优缺点的条目仍与 HR 报告逐条一致，便于两处对照，故不在此重写。）
+   */
+  function candidateConclusion(strong, weak) {
+    const names = (list) => list.map((d) => d.dimension).join('、');
+    // 只点出强项与弱项**是哪几个维度**，理由交给下面的「优点 / 待改进」——
+    // 结论里再复述一遍理由，会和紧接着的条目逐字重复，读起来像同一句话说了两遍
+    const good = strong.length
+      ? `你在${names(strong)}上的表现比较扎实`
+      : '各个维度上还没有体现出明显突出的部分';
+    const gap = weak.length
+      ? `${names(weak)}是还需要补强的地方`
+      : '各维度表现比较均衡，没有明显短板';
+    return `感谢你参与本次面试。以下是这场面试的反馈，供你参考：${good}，${gap}。`;
+  }
+
+  /** 落库的反馈**是一份中性文案**：不带档位、不带总分。
+      档位只决定读取时下发什么，因此改配置**不需要重新生成反馈**
+      （与后端「缓存中性文案、总分从 report 读」的取舍同构）。 */
   function feedbackFrom(report) {
+    const dims = report.dimension_scores || [];
+    const strong = dims
+      .filter((d) => d.score >= 6.5).sort((a, b) => b.score - a.score).slice(0, 2);
+    const weak = dims
+      .filter((d) => d.score < 6.5).sort((a, b) => a.score - b.score).slice(0, 2);
+
     return {
       interview_id: report.interview_id,
-      conclusion: report.conclusion,
+      conclusion: candidateConclusion(strong, weak),
       strengths: report.strengths,
       weaknesses: report.weaknesses,
       generated_at: new Date().toISOString(),
@@ -3774,6 +3876,152 @@ __modules['./mock.js'] = function (exports, __require) {
 
     const interview = state.interviews.find((i) => i.id === invitation.interview_id);
     return ok({ interview_id: interview.id, interview: candidateInterviewView(interview) });
+  });
+
+  /* ---- 在线答题：我的面试 / 详情 / 作答 / 交卷 / 脱敏反馈 ----
+     候选人能否访问某场面试的**唯一判据**是「他手里有一张该面试的 accepted 邀请」，
+     刻意不复用 HR 的 `created_by` —— 候选人不是面试的创建者（PRD §4.1）。
+     与后端 interview.service.get_interview_for_candidate 是同一条判据。 */
+
+  function getInterviewForCandidate(user, interviewId) {
+    const id = Number(interviewId);
+    const invited = state.invitations.some(
+      (i) => i.interview_id === id && i.candidate_user_id === user.id && i.status === 'accepted',
+    );
+    const interview = state.interviews.find((i) => i.id === id);
+    // 「不存在」与「不属于本人」返回同一句 403：否则这个端点就成了面试 id 探测接口
+    if (!invited || !interview) return { error: fail(403, 'FORBIDDEN', '无权限访问该面试') };
+    return { interview };
+  }
+
+  /** 实际有内容的作答数 —— 交卷时补的空串不算（与后端 _count_non_empty_answers 同口径）。 */
+  function countAnswered(interview) {
+    return (interview.questions || []).filter((q) => (q.answer ?? '').trim() !== '').length;
+  }
+
+  /** 只下发题干与自己的作答：不带 HR 的评语与评分，也不带来源快照与匹配理由 ——
+      那些是 HR 的出题策略，不是候选人该看到的（PRD §4.6）。 */
+  function candidateQuestionView(question) {
+    return {
+      interview_question_id: question.interview_question_id,
+      seq: question.seq,
+      content: question.content,
+      // ''（作答行存在但留空）与 null（还没作答行）是两种事实，不合并
+      my_answer: question.answer ?? null,
+      dimension: question.dimension,
+    };
+  }
+
+  on('GET', '/candidate/interviews', ({ user }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const rows = state.invitations
+      .filter((i) => i.candidate_user_id === user.id && i.status === 'accepted')
+      .map((i) => state.interviews.find((interview) => interview.id === i.interview_id))
+      .filter(Boolean)
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    return ok(rows.map(candidateInterviewView));
+  });
+
+  on('GET', '/candidate/interviews/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const found = getInterviewForCandidate(user, params.id);
+    if (found.error) return found.error;
+    const interview = found.interview;
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    return ok({
+      id: interview.id,
+      position_name: position?.name ?? '—',
+      status: interview.status,
+      created_at: interview.created_at,
+      submitted: candidateSubmittedAt(interview) != null,
+      submitted_at: candidateSubmittedAt(interview),
+      questions: (interview.questions || []).map(candidateQuestionView),
+    });
+  });
+
+  on('POST', '/candidate/interviews/:id/answers', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const found = getInterviewForCandidate(user, params.id);
+    if (found.error) return found.error;
+    const interview = found.interview;
+
+    // 与 HR 通道共用同一条 ongoing 限定 —— 两条通道写的是**同一份数据**
+    if (interview.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '当前状态下不可作答');
+    }
+    if (candidateSubmittedAt(interview)) {
+      return fail(409, 'BUSINESS_ERROR', '已交卷，不可修改作答');
+    }
+
+    const entry = (interview.questions || []).find(
+      (q) => q.interview_question_id === Number(body?.interview_question_id),
+    );
+    if (!entry) return fail(404, 'NOT_FOUND', '题目不属于该面试');
+
+    const content = String(body?.content ?? '');
+    if (content.length > 10000) {
+      return fail(400, 'VALIDATION_ERROR', '请求参数不合法',
+        { fields: [{ field: 'content', message: '回答长度不能超过 10000 字' }] });
+    }
+    entry.answer = content;
+    entry.answer_source = entry.answer_source || 'candidate';
+    entry.recorded_at = new Date().toISOString();
+    return ok({ interview_question_id: entry.interview_question_id, content, submitted_at: null });
+  });
+
+  on('POST', '/candidate/interviews/:id/submit', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const found = getInterviewForCandidate(user, params.id);
+    if (found.error) return found.error;
+    const interview = found.interview;
+
+    // **幂等检查先于状态检查**：已交卷后 HR 可能已把面试推进到 completed，
+    // 若先判状态会返回 409，让前端重试看到一个自相矛盾的错误（与后端同序）
+    const existing = candidateSubmittedAt(interview);
+    if (existing) {
+      return ok({ interview_id: interview.id, submitted_at: existing, answered_count: countAnswered(interview) });
+    }
+    if (interview.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '当前状态下不可交卷');
+    }
+
+    const submittedAt = new Date().toISOString();
+    // 未作答的题也补上 submitted_at（内容留空）—— 交卷锁的是**整卷**，
+    // 不是「答过的那些题」（与后端 bulk_upsert_empty_answers + mark_all_submitted 同构）
+    for (const question of interview.questions || []) {
+      question.answer = question.answer ?? '';
+      question.answer_source = question.answer_source || 'candidate';
+      question.submitted_at = submittedAt;
+    }
+    return ok({ interview_id: interview.id, submitted_at: submittedAt, answered_count: countAnswered(interview) });
+  });
+
+  on('GET', '/candidate/interviews/:id/feedback', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const found = getInterviewForCandidate(user, params.id);
+    if (found.error) return found.error;
+    const interview = found.interview;
+
+    // 未评估是**正常状态**而不是错误，前端据此显示「过一阵再来」
+    if (interview.status !== 'evaluated') {
+      return fail(409, 'BUSINESS_ERROR', '评估尚未完成');
+    }
+    const feedback = candidateFeedback.get(interview.id);
+    const report = reports.get(interview.id);
+    if (!feedback || !report) return fail(409, 'BUSINESS_ERROR', '评估尚未完成');
+
+    const level = feedbackLevel();
+    return ok({
+      ...feedback,
+      level,
+      // 总分在**读取时**按当前档位裁剪，不落进反馈记录 —— 改档无需重新生成
+      overall_score: level === 'full' ? report.overall_score : null,
+    });
   });
 
   /* ---- 刷题：筛选项、取题、会话、判分 ---- */
@@ -4439,9 +4687,9 @@ __modules['./router.js'] = function (exports, __require) {
     // 刷题是次一级的自主行为（module-15 §3.1）。因此它一旦实现，就是候选人端的默认页。
     { path: '/candidate/login',                    key: 'candidateLogin',    side: 'candidate', isPublic: true, label: '登录' },
     { path: '/candidate/activate',                 key: 'candidateActivate', side: 'candidate', isPublic: true, open: true, label: '激活' },
-    { path: '/candidate/interviews',               key: 'candidateInterviews', side: 'candidate', nav: '我的面试', label: '我的面试', pending: true },
-    { path: '/candidate/interviews/:id',           key: 'candidateInterviewDetail', side: 'candidate', label: '在线作答', pending: true },
-    { path: '/candidate/interviews/:id/feedback',  key: 'candidateFeedback', side: 'candidate', label: '面试反馈', pending: true },
+    { path: '/candidate/interviews',               key: 'candidateInterviews', side: 'candidate', nav: '我的面试', label: '我的面试' },
+    { path: '/candidate/interviews/:id',           key: 'candidateInterviewDetail', side: 'candidate', label: '在线作答' },
+    { path: '/candidate/interviews/:id/feedback',  key: 'candidateFeedback', side: 'candidate', label: '面试反馈' },
     { path: '/candidate/practice',                 key: 'candidatePractice', side: 'candidate', nav: '刷题',     label: '刷题' },
     { path: '/candidate/practice/:id',             key: 'practiceSession',   side: 'candidate', label: '练习' },
     { path: '/candidate/wrong-book',               key: 'wrongBook',         side: 'candidate', nav: '错题本',   label: '错题本' },
@@ -4917,6 +5165,30 @@ __modules['./components/shell.js'] = function (exports, __require) {
     return el('span', { class: 'tag tag--dim', text: dimension });
   }
 
+  /* ---- 候选人看到的「我的面试」状态 ----
+     候选人关心的是**他自己接下来要做什么**，不是 HR 的面试状态机
+     （draft / ongoing / completed / evaluating / evaluated）。后端下发的是 HR 的
+     status，翻译在这一层做一次 —— 否则列表页与详情页会各译一套说法。 */
+  const CANDIDATE_STATE_LABELS = {
+    await: '待作答',
+    submitted: '已交卷',
+    feedback: '有反馈',
+    closed: '已结束',
+  };
+
+  function candidateState(item) {
+    // 评估完成就一定有反馈可看，与「有没有交过卷」无关（反馈接口也只认 status）
+    if (item.status === 'evaluated') return 'feedback';
+    if (item.submitted) return 'submitted';
+    // 没交过卷、面试却已经收口（HR 手工标记完成）：这不是「待作答」，如实说「已结束」
+    return item.status === 'ongoing' ? 'await' : 'closed';
+  }
+
+  function candidateStateTag(item) {
+    const state = candidateState(item);
+    return el('span', { class: `tag tag--${state}`, text: CANDIDATE_STATE_LABELS[state] });
+  }
+
   /** 面板标题行：标题 + 可选注解 + 可选操作按钮。 */
   function panelHead(title, note, actions) {
     return el('div', { class: 'panel-head' },
@@ -4995,6 +5267,8 @@ __modules['./components/shell.js'] = function (exports, __require) {
   exports.statusTag = statusTag;
   exports.sourceTag = sourceTag;
   exports.dimTag = dimTag;
+  exports.candidateState = candidateState;
+  exports.candidateStateTag = candidateStateTag;
   exports.panelHead = panelHead;
   exports.scoreClass = scoreClass;
   exports.choiceRecap = choiceRecap;
@@ -8146,10 +8420,10 @@ __modules['./pages/candidate-login.js'] = function (exports, __require) {
   const { navigate, defaultRoute } = __require('./router.js');
 
   const FLOW = [
-    { label: '取题', text: '按岗位、难度、题型筛一套题；没做完的练习随时可以接着做。' },
-    { label: '作答', text: '单选与简答两类题型，逐题提交，答案提交即保存。' },
-    { label: '判分', text: '单选当场判分；简答给出得分、参考答案与解析，看得出分扣在哪。' },
-    { label: '复看', text: '答错的题自动进错题本，正确率按维度统计，知道该补哪一块。' },
+    { label: '受邀', text: '拿到招聘方发来的邀请码，激活后这场面试就出现在「我的面试」里。' },
+    { label: '作答', text: '一题一题往下答，离开输入框会自动保存；交卷之后不能再改。' },
+    { label: '反馈', text: '招聘方评估完成后，可以看到不含分数的脱敏反馈：结论、优点与待改进。' },
+    { label: '练手', text: '没有面试时也能自己刷题：单选当场判分，简答给解析，答错的进错题本。' },
   ];
 
   function buildAside() {
@@ -8159,8 +8433,8 @@ __modules['./pages/candidate-login.js'] = function (exports, __require) {
       el('div', { class: 'login-mark', text: '面试助手' }),
       el('div', { class: 'login-mark-sub', text: '候选人端' }),
       el('h1', { class: 'login-claim' },
-        el('span', { text: '面试之前，' }),
-        el('span', { text: '先练到答得出来。' })),
+        el('span', { text: '面试在这里答，' }),
+        el('span', { text: '题在这里练。' })),
       el('ol', { class: 'login-flow' }, FLOW.map((item, index) =>
         el('li', { class: 'login-flow-item' },
           el('span', { class: 'login-flow-index', text: String(index + 1) }),
@@ -9254,6 +9528,567 @@ __modules['./pages/candidate-stats.js'] = function (exports, __require) {
 };
 
 /* ==========================================================================
+   pages/candidate-interviews.js —— 我的面试
+   候选人端的默认落地页（路由表里排在最前）。这一屏只回答一个问题：
+   **我接下来该做什么。** 因此分两块而不是一张大表 ——
+   「待你作答」是他要动手的事，「我的记录」是其余（已交卷 / 有反馈 / 已结束）。
+
+   状态标签的颜色刻意只有两种：要动手的（待作答 / 有反馈）用品牌靛蓝，其余全灰。
+   分数色带（--pass / --watch）在候选人侧一次都不出现 —— 他看不到分数，
+   颜色就不该暗示分数存在。
+   ========================================================================== */
+__modules['./pages/candidate-interviews.js'] = function (exports, __require) {
+  const { el, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const {
+    candidateState, candidateStateTag, contextTitle, createShell, emptyState,
+    formatDateTime, loadingBlock, navigate, panelHead,
+  } = __require('./components/shell.js');
+
+  function progressCell(item) {
+    const total = item.question_count || 0;
+    const done = item.answered_count || 0;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    return el('div', { class: 'progress' },
+      el('div', { class: 'progress-track' },
+        el('div', { class: 'progress-fill', style: `width:${percent}%` })),
+      el('span', { class: 'progress-value', text: `${done} / ${total}` }));
+  }
+
+  function positionCell(item) {
+    return el('td', {}, el('strong', { text: item.position_name }));
+  }
+
+  const TIME_HEAD = '收到邀请';
+
+  function awaitingTable(items) {
+    return el('table', { class: 'table' },
+      el('thead', {}, el('tr', {},
+        el('th', { text: '岗位' }),
+        el('th', { text: '进度' }),
+        el('th', { text: TIME_HEAD }),
+        el('th', {}))),
+      el('tbody', {}, items.map((item) => el('tr', {},
+        positionCell(item),
+        el('td', {}, progressCell(item)),
+        el('td', { class: 'meta', text: formatDateTime(item.created_at) }),
+        el('td', { class: 'cell-actions' },
+          el('button', {
+            class: 'btn btn--primary btn--sm',
+            text: '进入作答',
+            onClick: () => navigate(`/candidate/interviews/${item.id}`),
+          }))))));
+  }
+
+  function recordTable(items) {
+    return el('table', { class: 'table' },
+      el('thead', {}, el('tr', {},
+        el('th', { text: '岗位' }),
+        el('th', { text: '状态' }),
+        el('th', { text: '题数' }),
+        el('th', { text: TIME_HEAD }),
+        el('th', {}))),
+      el('tbody', {}, items.map((item) => {
+        const state = candidateState(item);
+        return el('tr', {},
+          positionCell(item),
+          el('td', {}, candidateStateTag(item)),
+          el('td', { class: 'cell-num', text: String(item.question_count ?? 0) }),
+          el('td', { class: 'meta', text: formatDateTime(item.created_at) }),
+          el('td', { class: 'cell-actions' },
+            // 有反馈的场次直接给反馈入口：那是候选人在这页上最想看的东西
+            state === 'feedback'
+              ? el('button', {
+                  class: 'btn btn--primary btn--sm',
+                  text: '查看反馈',
+                  onClick: () => navigate(`/candidate/interviews/${item.id}/feedback`),
+                })
+              : el('button', {
+                  class: 'btn btn--quiet btn--sm',
+                  text: '查看作答',
+                  onClick: () => navigate(`/candidate/interviews/${item.id}`),
+                })));
+      })));
+  }
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('我的面试'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载你的面试…'));
+
+    let items = [];
+    try {
+      items = await api.get('/candidate/interviews');
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container) }))));
+      return;
+    }
+
+    const head = el('div', { class: 'page-head' },
+      el('div', {},
+        el('h1', { text: '我的面试' }),
+        el('p', { class: 'page-lede' },
+          '招聘方邀请你参加的面试都在这里。交卷前可以随时改，交卷后由招聘方评估，评估完成就能看到反馈。')));
+
+    if (!items.length) {
+      mount(main, head, el('div', { class: 'panel' }, emptyState(
+        '还没有面试',
+        '招聘方发给你的邀请码可以直接进面试；只想先练手的话，去刷题。',
+        el('button', {
+          class: 'btn btn--primary',
+          text: '凭邀请码进入',
+          onClick: () => navigate('/candidate/activate'),
+        }))));
+      return;
+    }
+
+    const awaiting = items.filter((item) => candidateState(item) === 'await');
+    const records = items.filter((item) => candidateState(item) !== 'await');
+
+    mount(main, head,
+      awaiting.length
+        ? el('div', { class: 'panel' },
+            panelHead('待你作答', awaiting.length > 1 ? `${awaiting.length} 场` : '招聘方在等你交卷'),
+            awaitingTable(awaiting))
+        : null,
+      records.length
+        ? el('div', { class: 'panel' },
+            panelHead('我的记录', `${records.length} 场`),
+            recordTable(records))
+        : null);
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/candidate-interview-detail.js —— 在线答题
+   与刷题页刻意不同：那边**整卷铺开**（自己跟自己较劲，可以来回跳），
+   这边**一题一题**（正式面试是有秩序的，且交卷是一次性动作）。
+   左侧导航一眼列出「待答 / 已答」—— 交卷前最需要防的是漏答，
+   核对漏答靠的正是这份清单，而不是把八道题摊在一屏里往上翻。
+
+   一处必须小心的实现细节：点「交卷」时先把当前输入框里没保存的内容落下去。
+   「写完最后一段直接点交卷」是最自然的路径，而失焦保存要等 blur ——
+   不先存，最后一段作答会随交卷一起丢掉，而且交卷之后再也改不了。
+   ========================================================================== */
+__modules['./pages/candidate-interview-detail.js'] = function (exports, __require) {
+  const { el, clear, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal } = __require('./components/modal.js');
+  const {
+    baseTitle, contextTitle, createShell, dimTag, emptyState, formatDateTime,
+    loadingBlock, navigate,
+  } = __require('./components/shell.js');
+
+  const SAVE_LABELS = { idle: '', saving: '保存中…', saved: '已保存', failed: '保存失败' };
+  const filled = (question) => (question.my_answer ?? '').trim() !== '';
+  const savedValue = (question) => question.my_answer ?? '';
+
+  let activeTitle = null;
+  exports.destroy = function () { if (activeTitle) document.title = activeTitle; };
+
+  async function render(container, params) {
+    const interviewId = params.id;
+    const { root, main } = createShell(contextTitle('在线作答'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载面试…'));
+
+    let detail;
+    try {
+      detail = await api.get(`/candidate/interviews/${interviewId}`);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
+        el('button', {
+          class: 'btn btn--primary',
+          text: '返回我的面试',
+          onClick: () => navigate('/candidate/interviews'),
+        }))));
+      return;
+    }
+
+    const questions = detail.questions || [];
+    let submitted = detail.submitted;
+    let submittedAt = detail.submitted_at;
+    let currentIndex = 0;
+    const saveStates = {};
+
+    // 与后端的两条限制对齐：非 ongoing 不可作答、已交卷不可改
+    const canAnswer = () => !submitted && detail.status === 'ongoing';
+
+    activeTitle = baseTitle();
+    document.title = `${detail.position_name} · 在线作答`;
+
+    const lede = el('p', { class: 'page-lede' });
+    const barHolder = el('div', {});
+    const navColumn = el('div', {});
+    const editorHolder = el('div', {});
+    // 交卷前要 flush 当前输入框，因此持有这两个节点的引用，不去查 DOM
+    let editorTextarea = null;
+    let editorStateNode = null;
+    // 交卷是异步的：flush 期间交卷条可能被重画（保存成功要刷新「已答 N / N」），
+    // 因此不持有按钮引用，每次现查；防连点交给这个标志
+    let submitting = false;
+
+    if (!questions.length) {
+      mount(main, el('div', { class: 'page-head' }, el('div', {},
+        el('h1', { text: detail.position_name }))),
+        el('div', { class: 'panel' }, emptyState(
+          '这场面试还没有题目',
+          '招聘方可能还在准备题目，过一阵再来看看。',
+          el('button', {
+            class: 'btn btn--ghost',
+            text: '返回我的面试',
+            onClick: () => navigate('/candidate/interviews'),
+          }))));
+      return;
+    }
+
+    /* ------------------------------ 交卷条 ------------------------------ */
+
+    function buildBar() {
+      if (submitted) {
+        return el('div', { class: 'submit-bar is-frozen' },
+          el('span', { class: 'submit-bar-text', text: `已于 ${formatDateTime(submittedAt)} 交卷` }),
+          detail.status === 'evaluated'
+            ? el('button', {
+                class: 'btn btn--primary',
+                text: '查看反馈',
+                onClick: () => navigate(`/candidate/interviews/${interviewId}/feedback`),
+              })
+            : el('span', { class: 'meta', text: '招聘方评估完成后，这里会出现反馈入口' }));
+      }
+
+      // 没有交卷、面试却被收口了：这页只剩「回看」一个用途，
+      // 也就没有「还差多少 / 交卷」可讲 —— 不摆这条，免得和上面的说明说同一句话
+      if (!canAnswer()) return null;
+
+      const total = questions.length;
+      const done = questions.filter(filled).length;
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      const submit = el('button', { class: 'btn btn--primary', text: '交卷' });
+      submit.addEventListener('click', () => askSubmit());
+
+      return el('div', { class: 'submit-bar' },
+        el('span', { class: 'submit-bar-text', text: `已答 ${done} / ${total}` }),
+        el('div', { class: 'submit-bar-track' },
+          el('div', { class: 'submit-bar-fill', style: `width:${percent}%` })),
+        submit);
+    }
+
+    /** 交卷条上那颗按钮。每次现查 —— 保存成功会重画这条，旧引用会失效。 */
+    function barButton() { return barHolder.querySelector('.btn'); }
+
+    function paintBar() {
+      clear(barHolder);
+      const bar = buildBar();
+      // 原生 append 会把 null 变成字符串 "null"，必须自己判一下（dom 的 append 才跳过空值）
+      if (bar) barHolder.append(bar);
+    }
+
+    function paintNav() {
+      clear(navColumn);
+      navColumn.append(buildNav());
+    }
+
+    /* ------------------------------ 单题 ------------------------------ */
+
+    function saveAnswer(question, textarea, stateNode) {
+      saveStates[question.interview_question_id] = 'saving';
+      stateNode.className = 'save-state is-saving';
+      stateNode.textContent = SAVE_LABELS.saving;
+
+      return api.post(`/candidate/interviews/${interviewId}/answers`, {
+        interview_question_id: question.interview_question_id,
+        content: textarea.value,
+      })
+        .then((saved) => {
+          question.my_answer = saved.content;
+          saveStates[question.interview_question_id] = 'saved';
+          stateNode.className = 'save-state is-saved';
+          stateNode.textContent = SAVE_LABELS.saved;
+          // 交卷条的「已答 N / N」与导航的「已答 / 待答」都变了，两处都要重画。
+          // **不重画编辑区** —— 那会把光标从输入框里踢出去
+          paintBar();
+          paintNav();
+          return true;
+        })
+        .catch((error) => {
+          saveStates[question.interview_question_id] = 'failed';
+          stateNode.className = 'save-state is-failed';
+          stateNode.textContent = SAVE_LABELS.failed;
+          toast.error(error.message);
+          return false;
+        });
+    }
+
+    function buildEditor() {
+      const question = questions[currentIndex];
+      const state = saveStates[question.interview_question_id] || 'idle';
+      editorStateNode = el('span', {
+        class: `save-state${state === 'saved' ? ' is-saved' : ''}`,
+        text: SAVE_LABELS[state],
+      });
+
+      const editable = canAnswer();
+      editorTextarea = el('textarea', {
+        class: 'textarea',
+        id: 'candidate-answer',
+        maxlength: '10000', // 与后端 content ≤ 10000 对齐
+        placeholder: editable ? '写下你的回答。离开输入框会自动保存。' : '',
+        readOnly: !editable,
+        value: savedValue(question),
+      });
+
+      if (editable) {
+        // 失焦保存即可 —— 不做输入防抖，避免高频请求（与 HR 详情页同一手法）
+        editorTextarea.addEventListener('blur', () => {
+          if (editorTextarea.value === savedValue(question)) return; // 没改就不发请求
+          saveAnswer(question, editorTextarea, editorStateNode);
+        });
+      }
+
+      return el('section', { class: 'editor' },
+        el('div', { class: 'editor-head' },
+          el('span', { class: 'editor-seq', text: String(question.seq) }),
+          dimTag(question.dimension)),
+
+        el('p', { class: 'editor-question', text: question.content }),
+
+        el('div', { class: 'editor-answer-head' },
+          el('label', { class: 'field-label', for: 'candidate-answer', text: '我的回答' }),
+          el('span', { class: 'hint', text: editable ? '离开输入框时会自动保存' : '' })),
+        editorTextarea,
+        el('div', { class: 'editor-actions' },
+          el('span', { style: 'margin-left:auto' }, editorStateNode)),
+
+        el('div', { class: 'editor-pager' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm',
+            text: '上一题',
+            disabled: currentIndex === 0,
+            onClick: () => { currentIndex -= 1; paint(); },
+          }),
+          el('button', {
+            class: 'btn btn--ghost btn--sm',
+            text: '下一题',
+            disabled: currentIndex === questions.length - 1,
+            onClick: () => { currentIndex += 1; paint(); },
+          })));
+    }
+
+    function buildNav() {
+      return el('div', { class: 'qnav' },
+        el('div', { class: 'qnav-head' },
+          el('span', { text: '题目' }),
+          el('span', {
+            class: 'qnav-count',
+            text: `${questions.filter(filled).length} / ${questions.length}`,
+          })),
+        el('ol', { class: 'qnav-list' }, questions.map((question, index) => {
+          const done = filled(question);
+          // 答不了的时候（已交卷 / 通道已关闭）剩下的那些题**不是「待答」**——
+          // 「待答」意味着还能动手，那是句假话
+          const mark = done ? '已答' : (canAnswer() ? '待答' : '未答');
+          return el('li', {},
+            el('button', {
+              class: ['qnav-item',
+                index === currentIndex ? 'is-current' : '',
+                done ? 'is-answered' : ''].filter(Boolean).join(' '),
+              type: 'button',
+              'aria-current': index === currentIndex ? 'true' : null,
+              title: question.content,
+              onClick: () => { currentIndex = index; paint(); },
+            },
+              el('span', { class: 'qnav-num', text: String(question.seq) }),
+              el('span', { class: 'qnav-dim', text: question.dimension }),
+              el('span', { class: 'qnav-mark', text: mark }),
+            ));
+        })));
+    }
+
+    /**
+     * 把当前输入框里还没保存的内容落下去。
+     * 存不下就返回 false —— 调用方据此**中止交卷**：交卷后这段作答再也改不了，
+     * 与其丢掉它，不如让当事人先看到「保存失败」。
+     */
+    async function flushCurrent() {
+      const question = questions[currentIndex];
+      if (!editorTextarea || editorTextarea.value === savedValue(question)) return true;
+      return saveAnswer(question, editorTextarea, editorStateNode);
+    }
+
+    async function askSubmit() {
+      if (submitting) return; // 防连点：flush 与确认弹窗都是异步的
+      submitting = true;
+      barButton().disabled = true;
+
+      // 先落盘再问 —— 见文件头上那段说明
+      const flushed = await flushCurrent();
+      if (!flushed) {
+        submitting = false;
+        barButton().disabled = false;
+        return;
+      }
+      barButton().disabled = false;
+
+      const blank = questions.length - questions.filter(filled).length;
+      const ok = await confirmModal({
+        title: '交卷？',
+        message: blank
+          ? `还有 ${blank} 题没有作答。交卷后你不能再修改作答，招聘方会按已提交的内容评估。`
+          : '全部题目都已作答。交卷后不能再修改。',
+        confirmLabel: '交卷',
+        danger: false,
+      });
+      if (!ok) {
+        submitting = false;
+        return;
+      }
+
+      barButton().disabled = true;
+      barButton().textContent = '交卷中…';
+      try {
+        const result = await api.post(`/candidate/interviews/${interviewId}/submit`, {});
+        submitted = true;
+        submittedAt = result.submitted_at;
+        submitting = false;
+        paint();
+        toast.success(`已交卷，提交了 ${result.answered_count} 题作答`);
+      } catch (error) {
+        submitting = false;
+        toast.error(error.message);
+        barButton().disabled = false;
+        barButton().textContent = '交卷';
+      }
+    }
+
+    function paint() {
+      lede.textContent = submitted
+        ? '你已交卷，作答已锁定。下面是这场面试的题目与你提交的内容。'
+        : canAnswer()
+          ? '一题一题往下答，离开输入框会自动保存。'
+          : '招聘方已结束这场面试，作答通道已关闭。下面是题目与你当时的作答。';
+      paintBar();
+      paintNav();
+      clear(editorHolder);
+      editorHolder.append(buildEditor());
+    }
+
+    mount(main,
+      el('div', { class: 'page-head' }, el('div', {},
+        el('h1', { text: detail.position_name }),
+        lede)),
+      barHolder,
+      el('div', { class: 'detail-layout' }, navColumn, editorHolder));
+    paint();
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/candidate-feedback.js —— 面试反馈（脱敏）
+   一份**文书**，不是一块看板：宽度收在 1000px（与准备助手同一种读法），
+   综合结论 → 优点 → 待改进，顺着读。HR 报告是「左右对照」，这里不需要对照。
+
+   两处刻意的克制：
+   1. **颜色跟着可见的分数走。** 候选人默认看不到任何分数，优点 / 待改进因此沿用
+      `.find-item` 的**灰**边框，不加 `.is-pass` / `.is-watch`。配置开到 full 档时
+      也只有总分上色 —— 逐题分与维度分仍然不下发，给建议条目上色等于让人去对一组
+      看不见的数字。
+   2. **口径与 HR 报告不同**：不带招聘方的去留判断。报告里那句「建议进入下一轮 /
+      不建议继续推进」是 HR 的决策，该由 HR 另行沟通，不该出现在自助页面上。
+   ========================================================================== */
+__modules['./pages/candidate-feedback.js'] = function (exports, __require) {
+  const { el, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const {
+    contextTitle, createShell, emptyState, formatDateTime, loadingBlock,
+    navigate, scoreClass,
+  } = __require('./components/shell.js');
+
+  function findList(items) {
+    return el('div', { class: 'find-list' },
+      (items || []).map((text) => el('p', { class: 'find-item', text })));
+  }
+
+  function section(label, body) {
+    return el('section', { class: 'dossier-section' },
+      el('div', { class: 'dossier-label', text: label }),
+      body);
+  }
+
+  function backButton() {
+    return el('button', {
+      class: 'btn btn--ghost',
+      text: '返回我的面试',
+      onClick: () => navigate('/candidate/interviews'),
+    });
+  }
+
+  async function render(container, params) {
+    const interviewId = params.id;
+    const { root, main } = createShell(contextTitle('面试反馈'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载反馈…'));
+
+    // 先取面试本身：岗位名只在那边，反馈响应里没有（CandidateFeedbackOut 是白名单）
+    let detail;
+    try {
+      detail = await api.get(`/candidate/interviews/${interviewId}`);
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('打不开这份反馈', error.message, backButton())));
+      return;
+    }
+
+    let feedback;
+    try {
+      feedback = await api.get(`/candidate/interviews/${interviewId}/feedback`);
+    } catch (error) {
+      // 未评估 → 409：这是**正常状态**，不是错误，因此用空态而不是报错样式
+      const notReady = error.status === 409;
+      mount(main, el('div', { class: 'panel' }, notReady
+        ? emptyState('反馈还没出来',
+            '招聘方评估完成后才能生成反馈，过一阵再来看看。', backButton())
+        : emptyState('反馈加载失败', error.message, backButton())));
+      return;
+    }
+
+    const score = typeof feedback.overall_score === 'number'
+      ? el('div', { class: 'feedback-total' },
+          el('span', {
+            class: `score-value ${scoreClass(feedback.overall_score)}`,
+            text: String(feedback.overall_score),
+          }),
+          // 只写单位：块标题已经是「总分」，这里再写一遍就是同一句话说两次
+          el('span', { class: 'feedback-total-label', text: '/ 10' }))
+      : null;
+
+    mount(main, el('div', { class: 'feedback-page' },
+      el('div', { class: 'page-head' }, el('div', {},
+        el('h1', { text: '面试反馈' }),
+        el('p', { class: 'page-lede', text: detail.position_name }))),
+
+      // 把「脱敏」这条规则**说出来**，而不是让它看起来像加载失败。
+      // 文案必须跟着档位走 —— full 档下总分就在下面，还说「不含分数」就是自相矛盾
+      el('p', { class: 'note-box' }, feedback.level === 'full'
+        ? '这份反馈来自招聘方。按当前档位，它含总分、综合结论与建议 —— 逐题评价与维度明细不在候选人反馈的范围内。'
+        : '这份反馈来自招聘方。按脱敏规则，它只含综合结论与建议 —— 不含分数、逐题评价与维度明细。'),
+
+      el('div', { class: 'panel' },
+        score ? section('总分', score) : null,
+        section('综合结论', el('p', { class: 'feedback-lede', text: feedback.conclusion })),
+        section('优点', findList(feedback.strengths)),
+        section('待改进', findList(feedback.weaknesses)))));
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -9311,6 +10146,9 @@ __modules['./main.js'] = function (exports, __require) {
     // ---- 候选人端 ----
     candidateLogin: __require('./pages/candidate-login.js'),
     candidateActivate: __require('./pages/candidate-activate.js'),
+    candidateInterviews: __require('./pages/candidate-interviews.js'),
+    candidateInterviewDetail: __require('./pages/candidate-interview-detail.js'),
+    candidateFeedback: __require('./pages/candidate-feedback.js'),
     candidatePractice: __require('./pages/candidate-practice.js'),
     practiceSession: __require('./pages/practice-session.js'),
     wrongBook: __require('./pages/candidate-wrong-book.js'),
