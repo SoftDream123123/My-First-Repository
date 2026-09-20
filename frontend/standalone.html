@@ -105,6 +105,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* 显式接管 [hidden]：组件层里 display:grid / flex 的规则与它同优先级，
+   靠声明顺序决胜太脆 —— 一处顺序调整就会让「隐藏」失效。 */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   /* 仅 PC（PRD §2）。低于 1280 时横向滚动，不做响应式折叠。 */
@@ -399,7 +403,6 @@ a:hover { text-decoration: underline; }
   font-size: var(--t-xs);
   color: var(--danger);
 }
-.field-error[hidden] { display: none; }
 
 .input, .select, .textarea {
   width: 100%;
@@ -447,6 +450,96 @@ a:hover { text-decoration: underline; }
 .tag--off        { background: #eef2f6; border-color: #dde5ec; color: var(--muted); }
 
 .mine-badge { margin-left: var(--s1); font-size: var(--t-xs); color: var(--faint); }
+
+/* ---- 列表 + 案卷：左列选条目，右列看全文 ----
+   岗位和面试详情共用这套。JD 与评估维度是成段的内容，塞进表格单元格
+   只能靠截断和展开行，两者都不是好读法。 */
+.split {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--s5);
+  align-items: start;
+}
+.split-list {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+}
+.split-list-head { padding: var(--s3); border-bottom: 1px solid var(--line-soft); }
+.split-list-head .input { height: 32px; }
+.split-list-body { max-height: 62vh; overflow-y: auto; }
+
+.split-item {
+  display: block;
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--line-soft);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.split-item:last-child { border-bottom: none; }
+.split-item:hover { background: #f7fafc; }
+.split-item.is-active { background: var(--brand-wash); border-left-color: var(--brand); }
+.split-item-name { font-size: 14px; font-weight: 600; }
+.split-item-meta { margin-top: 2px; font-size: var(--t-xs); color: var(--muted); }
+
+.dossier-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s5);
+  padding: var(--s5);
+  border-bottom: 1px solid var(--line-soft);
+}
+.dossier-title { font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.01em; }
+.dossier-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+.dossier-actions { display: flex; gap: var(--s2); flex: none; }
+.dossier-section { padding: var(--s5); }
+.dossier-section + .dossier-section { border-top: 1px solid var(--line-soft); }
+.dossier-label {
+  margin-bottom: var(--s3);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.dossier-text {
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  max-width: 44em;
+}
+.tag-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* ---- 维度编辑器 ---- */
+.dim-editor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.dim-editor-remove {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: var(--t-lg);
+  line-height: 1;
+  color: var(--faint);
+}
+.dim-editor-remove:hover:not(:disabled) { color: var(--danger); background: var(--danger-wash); }
 
 /* ---- 空态 / 加载 ---- */
 .empty {
@@ -914,9 +1007,43 @@ __modules['./mock.js'] = function (exports, __require) {
       { id: 3, username: 'zhao.ming', password: 'hr12345678', role: 'hr',    is_active: true,  created_at: '2026-09-01T10:05:00' },
       { id: 4, username: 'chen.xi',   password: 'hr12345678', role: 'hr',    is_active: false, created_at: '2026-09-05T16:42:00' },
     ],
+    positions: [
+      {
+        id: 1,
+        name: '后端工程师',
+        jd: '负责核心交易链路的服务设计与开发。要求熟悉 Python 或 Go，理解 MySQL 索引与事务，有高并发场景的排查经验。团队规模 8 人，直接汇报给技术负责人。',
+        evaluation_dimensions: ['沟通能力', '专业能力', '逻辑思维', '文化契合'],
+        created_by: 2,
+        created_at: '2026-08-12T10:20:00',
+      },
+      {
+        id: 2,
+        name: '产品经理',
+        jd: '负责 B 端产品的需求调研与方案设计。需要能独立完成用户访谈、撰写 PRD，并与研发和设计紧密协作推动落地。有 SaaS 或供应链经验优先。',
+        evaluation_dimensions: ['需求洞察', '沟通能力', '逻辑思维'],
+        created_by: 2,
+        created_at: '2026-08-14T15:00:00',
+      },
+      {
+        id: 3,
+        name: '数据分析师',
+        jd: '支持业务侧的数据需求，搭建指标体系与看板。要求熟练使用 SQL，具备将业务问题转化为分析框架的能力，能自己把结论讲清楚。',
+        evaluation_dimensions: ['专业能力', '逻辑思维'],
+        created_by: 3,
+        created_at: '2026-09-02T09:40:00',
+      },
+      {
+        id: 4,
+        name: '前端工程师',
+        jd: '负责管理后台的页面与交互实现。要求扎实的原生 JavaScript 功底，能读懂设计稿并主动追问边界情况。这个岗位不写框架胶水代码，看重对 DOM 与渲染性能的理解。',
+        evaluation_dimensions: ['专业能力', '工程素养', '沟通能力'],
+        created_by: 2,
+        created_at: '2026-09-10T11:15:00',
+      },
+    ],
   };
 
-  const seq = { user: 5 };
+  const seq = { user: 5, position: 5 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -1021,6 +1148,116 @@ __modules['./mock.js'] = function (exports, __require) {
     return ok(publicUser(target));
   });
 
+  /* ---- positions ---- */
+
+  /** 普通 HR 只看自己创建的；admin 看全部。 */
+  function visiblePositions(user) {
+    return user.role === 'admin'
+      ? state.positions
+      : state.positions.filter((p) => p.created_by === user.id);
+  }
+
+  /** 区分「不存在」（404）与「存在但无权访问」（403）——两者是不同的事。 */
+  function locatePosition(user, id) {
+    const row = state.positions.find((p) => p.id === Number(id));
+    if (!row) return { error: fail(404, 'NOT_FOUND', '岗位不存在') };
+    if (user.role !== 'admin' && row.created_by !== user.id) {
+      return { error: fail(403, 'FORBIDDEN', '无权访问该岗位') };
+    }
+    return { row };
+  }
+
+  function validatePosition(body) {
+    const fields = [];
+    const name = String(body?.name ?? '').trim();
+    const jd = String(body?.jd ?? '').trim();
+    const dims = body?.evaluation_dimensions;
+
+    if (!name) fields.push({ field: 'name', message: '请填写岗位名称' });
+    else if (name.length > 100) fields.push({ field: 'name', message: '岗位名称不能超过 100 个字符' });
+    if (!jd) fields.push({ field: 'jd', message: '请填写岗位描述' });
+    else if (jd.length > 10000) fields.push({ field: 'jd', message: '岗位描述不能超过 10000 个字符' });
+
+    if (!Array.isArray(dims) || !dims.length) {
+      fields.push({ field: 'evaluation_dimensions', message: '至少需要 1 个评估维度' });
+    } else if (dims.some((d) => !String(d).trim())) {
+      fields.push({ field: 'evaluation_dimensions', message: '评估维度不能为空' });
+    } else if (dims.length > 10) {
+      fields.push({ field: 'evaluation_dimensions', message: '评估维度不能超过 10 个' });
+    }
+
+    return fields;
+  }
+
+  on('GET', '/positions', ({ user }) => {
+    const denied = requireLogin(user);
+    return denied || ok(visiblePositions(user));
+  });
+
+  on('POST', '/positions', ({ user, body }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const fields = validatePosition(body);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    const name = body.name.trim();
+    // 同名校验按 owner 划范围（后端 get_by_owner_and_name），不是全库唯一
+    if (state.positions.some((p) => p.created_by === user.id && p.name === name)) {
+      return fail(409, 'CONFLICT', '该岗位名称已存在');
+    }
+
+    const row = {
+      id: seq.position++,
+      name,
+      jd: body.jd.trim(),
+      evaluation_dimensions: body.evaluation_dimensions.map((d) => String(d).trim()),
+      created_by: user.id,
+      created_at: new Date().toISOString(),
+    };
+    state.positions.push(row);
+    return created(row);
+  });
+
+  on('PUT', '/positions/:id', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locatePosition(user, params.id);
+    if (located.error) return located.error;
+
+    const fields = validatePosition(body);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    const name = body.name.trim();
+    if (state.positions.some((p) => p.created_by === user.id && p.name === name && p.id !== located.row.id)) {
+      return fail(409, 'CONFLICT', '该岗位名称已存在');
+    }
+
+    located.row.name = name;
+    located.row.jd = body.jd.trim();
+    located.row.evaluation_dimensions = body.evaluation_dimensions.map((d) => String(d).trim());
+    return ok(located.row);
+  });
+
+  on('DELETE', '/positions/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const located = locatePosition(user, params.id);
+    if (located.error) return located.error;
+
+    // questions / interviews 由后面的模块补上；引用校验在那之后才真正起作用
+    const usedByQuestion = (state.questions || []).some((q) => q.position_id === located.row.id);
+    const usedByInterview = (state.interviews || []).some((i) => i.position_id === located.row.id);
+    if (usedByQuestion || usedByInterview) {
+      return fail(409, 'CONFLICT', '该岗位已被题库或面试引用，无法删除');
+    }
+
+    state.positions.splice(state.positions.indexOf(located.row), 1);
+    return { status: 204 };
+  });
+
   /* ---- fetch 拦截 ---- */
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1093,7 +1330,7 @@ __modules['./router.js'] = function (exports, __require) {
     { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情', pending: true },
     { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告', pending: true },
     { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备', pending: true },
-    { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位',     pending: true },
+    { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
     { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库',     pending: true },
     { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', label: '用户管理', adminOnly: true },
   ];
@@ -1960,6 +2197,351 @@ __modules['./pages/users.js'] = function (exports, __require) {
 };
 
 /* ==========================================================================
+   pages/positions.js —— 岗位管理
+   布局是「列表 + 案卷」而不是表格：JD 是成段的文字、评估维度是一组标签，
+   两者塞进单元格都只能靠截断与展开行。左侧选，右侧读全文。
+
+   维度编辑器做前端即时校验 —— 与后端 position 的规则对齐，
+   避免提交必然失败的请求。
+   ========================================================================== */
+__modules['./pages/positions.js'] = function (exports, __require) {
+  const { el, mount, clear } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const { confirmModal, openModal } = __require('./components/modal.js');
+  const { contextTitle, createShell, emptyState, formatDate, loadingBlock, dimTag } = __require('./components/shell.js');
+
+  const MAX_DIMENSIONS = 10;
+  const MAX_DIMENSION_LENGTH = 50;
+
+  /* --------------------------- 维度编辑器 --------------------------- */
+
+  function validateDimensions(values) {
+    const cleaned = values.map((v) => v.trim());
+    if (!cleaned.length) return '至少需要 1 个评估维度';
+    if (cleaned.length > MAX_DIMENSIONS) return `评估维度不能超过 ${MAX_DIMENSIONS} 个`;
+    if (cleaned.some((v) => !v)) return '评估维度不能为空';
+    if (cleaned.some((v) => v.length > MAX_DIMENSION_LENGTH)) {
+      return `单个评估维度不能超过 ${MAX_DIMENSION_LENGTH} 个字符`;
+    }
+    const seen = new Set();
+    for (const value of cleaned) {
+      const key = value.toLowerCase();
+      if (seen.has(key)) return `评估维度重复：${value}`;
+      seen.add(key);
+    }
+    return null;
+  }
+
+  function buildDimensionEditor(initial) {
+    const values = [...initial];
+    const list = el('div', {});
+    const errorNode = el('p', { class: 'field-error', hidden: true });
+
+    function repaint() {
+      clear(list);
+      values.forEach((value, index) => {
+        const input = el('input', {
+          class: 'input',
+          value,
+          maxlength: String(MAX_DIMENSION_LENGTH),
+          'aria-label': `评估维度 ${index + 1}`,
+          onInput: (event) => { values[index] = event.target.value; },
+        });
+
+        list.append(
+          el(
+            'div',
+            { class: 'dim-editor-row' },
+            input,
+            el('button', {
+              class: 'btn btn--quiet dim-editor-remove',
+              type: 'button',
+              text: '×',
+              title: '删除这一项',
+              'aria-label': `删除维度 ${index + 1}`,
+              onClick: () => { values.splice(index, 1); repaint(); },
+            }),
+          ),
+        );
+      });
+    }
+
+    repaint();
+
+    const addButton = el('button', {
+      class: 'btn btn--ghost btn--sm',
+      type: 'button',
+      text: '添加维度',
+      onClick: () => {
+        if (values.length >= MAX_DIMENSIONS) { toast.error(`最多 ${MAX_DIMENSIONS} 个维度`); return; }
+        values.push('');
+        repaint();
+        list.querySelector('.dim-editor-row:last-child .input')?.focus();
+      },
+    });
+
+    return {
+      node: el(
+        'div',
+        {},
+        list,
+        el('div', { style: 'margin-top:8px' }, addButton),
+        el('p', { class: 'field-note', text: '这些维度决定了 AI 出题的方向，也是评估报告里雷达图的轴。' }),
+        errorNode,
+      ),
+      errorNode,
+      /** 校验通过返回维度数组，否则返回 null 并把错误显示出来。 */
+      read() {
+        const error = validateDimensions(values);
+        if (error) { errorNode.textContent = error; errorNode.hidden = false; return null; }
+        errorNode.hidden = true;
+        return values.map((v) => v.trim());
+      },
+    };
+  }
+
+  /* ------------------------------ 表单弹窗 ------------------------------ */
+
+  function openPositionModal(position, onSaved) {
+    const isEdit = Boolean(position);
+
+    const nameInput = el('input', {
+      class: 'input', id: 'position-name', value: position?.name ?? '', maxlength: '100',
+    });
+
+    const jdInput = el('textarea', {
+      class: 'textarea', id: 'position-jd', value: position?.jd ?? '', maxlength: '10000', rows: '7',
+      placeholder: '写清职责、要求与团队情况。AI 依据这段文字出题，写得越具体，题目越贴合。',
+    });
+
+    const editor = buildDimensionEditor(position?.evaluation_dimensions ?? ['沟通能力', '专业能力']);
+
+    // 错误节点必须先建出来、放进表单里，再登记到映射 —— 登记一个游离节点
+    // 等于报错永远不显示。维度错误由编辑器自己持有节点，也接到同一条出口上，
+    // 这样后端 400 也能落到维度区而不是弹一句笼统的话。
+    const nameError = fieldError();
+    const jdError = fieldError();
+    const errors = fieldErrors({
+      name: nameError,
+      jd: jdError,
+      evaluation_dimensions: editor.errorNode,
+    });
+
+    const submit = el('button', { class: 'btn btn--primary', text: isEdit ? '保存' : '创建岗位' });
+
+    const body = el(
+      'div',
+      {},
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'position-name', text: '岗位名称' }),
+        nameInput,
+        nameError),
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'position-jd', text: '岗位描述（JD）' }),
+        jdInput,
+        jdError),
+      el('div', { class: 'field' },
+        el('span', { class: 'field-label', text: '评估维度' }),
+        editor.node),
+    );
+
+    const handle = openModal({
+      title: isEdit ? '编辑岗位' : '创建岗位',
+      body,
+      wide: true,
+      footer: [
+        el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+        submit,
+      ],
+    });
+
+    submit.addEventListener('click', async () => {
+      errors.clear();
+      if (!nameInput.value.trim()) { errors.show('name', '请填写岗位名称'); nameInput.focus(); return; }
+      if (!jdInput.value.trim()) { errors.show('jd', '请填写岗位描述'); jdInput.focus(); return; }
+
+      const dimensions = editor.read();
+      if (!dimensions) return;
+
+      handle.setBusy(true);
+      try {
+        const payload = {
+          name: nameInput.value.trim(),
+          jd: jdInput.value.trim(),
+          evaluation_dimensions: dimensions,
+        };
+        if (isEdit) await api.put(`/positions/${position.id}`, payload);
+        else await api.post('/positions', payload);
+        handle.close();
+        toast.success(isEdit ? '岗位已保存' : '岗位已创建');
+        onSaved();
+      } catch (error) {
+        handle.setBusy(false);
+        // 400 落到字段；409（岗位名已存在）等仍用后端文案提示
+        if (!errors.fromServer(error)) toast.error(error.message);
+      }
+    });
+  }
+
+  /* -------------------------------- 页面 -------------------------------- */
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('岗位'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载岗位…'));
+
+    let positions;
+    try {
+      positions = await api.get('/positions');
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('岗位加载失败', error.message)));
+      return;
+    }
+
+    let selectedId = positions[0]?.id ?? null;
+    let keyword = '';
+
+    const listBody = el('div', { class: 'split-list-body' });
+    const dossier = el('div', { class: 'panel' });
+    const split = el('div', { class: 'split' }, el('div', { class: 'split-list' }, listBody), dossier);
+    const emptyPanel = el('div', { class: 'panel' });
+    const bodyHost = el('div', {}, split, emptyPanel);
+
+    const searchInput = el('input', {
+      class: 'input',
+      placeholder: '搜索岗位名称',
+      onInput: (event) => { keyword = event.target.value.trim(); paintList(); },
+    });
+
+    function create() { openPositionModal(null, reload); }
+
+    async function reload() {
+      try {
+        positions = await api.get('/positions');
+      } catch (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (!positions.some((p) => p.id === selectedId)) selectedId = positions[0]?.id ?? null;
+      paint();
+    }
+
+    async function removePosition(position) {
+      const ok = await confirmModal({
+        title: `删除岗位「${position.name}」？`,
+        message: '如果这个岗位下已经有题目或面试，删除会被拒绝。',
+      });
+      if (!ok) return;
+      try {
+        await api.del(`/positions/${position.id}`);
+        toast.success('岗位已删除');
+        reload();
+      } catch (error) {
+        toast.error(error.message); // 409 的文案直接来自后端
+      }
+    }
+
+    function paintList() {
+      clear(listBody);
+      const rows = positions.filter((p) => !keyword || p.name.includes(keyword));
+
+      if (!rows.length) {
+        listBody.append(el('p', { class: 'hint', style: 'padding:var(--s4)' }, '没有匹配的岗位。'));
+        return;
+      }
+
+      for (const position of rows) {
+        listBody.append(
+          el('button', {
+            class: `split-item${position.id === selectedId ? ' is-active' : ''}`,
+            type: 'button',
+            'aria-current': position.id === selectedId ? 'true' : null,
+            onClick: () => { selectedId = position.id; paintList(); paintDossier(); },
+          },
+            el('div', { class: 'split-item-name', text: position.name }),
+            el('div', {
+              class: 'split-item-meta',
+              text: `${position.evaluation_dimensions.length} 个评估维度`,
+            }),
+          ),
+        );
+      }
+    }
+
+    function paintDossier() {
+      clear(dossier);
+      const position = positions.find((p) => p.id === selectedId);
+      if (!position) {
+        dossier.append(emptyState('请选择一个岗位', '左侧选中后，这里显示它的 JD 与评估维度。'));
+        return;
+      }
+
+      dossier.append(
+        el('div', { class: 'dossier-head' },
+          el('div', {},
+            el('h2', { class: 'dossier-title', text: position.name }),
+            el('div', { class: 'dossier-meta' },
+              el('span', { text: `${position.evaluation_dimensions.length} 个评估维度` }),
+              el('span', { text: `创建于 ${formatDate(position.created_at)}` }),
+            ),
+          ),
+          el('div', { class: 'dossier-actions' },
+            el('button', { class: 'btn btn--ghost', text: '编辑', onClick: () => openPositionModal(position, reload) }),
+            el('button', { class: 'btn btn--ghost', text: '删除', onClick: () => removePosition(position) }),
+          ),
+        ),
+        el('div', { class: 'dossier-section' },
+          el('div', { class: 'dossier-label', text: '岗位描述（JD）' }),
+          el('p', { class: 'dossier-text', text: position.jd }),
+        ),
+        el('div', { class: 'dossier-section' },
+          el('div', { class: 'dossier-label', text: '评估维度' }),
+          el('div', { class: 'tag-row' }, position.evaluation_dimensions.map((d) => dimTag(d))),
+        ),
+      );
+    }
+
+    function paint() {
+      const hasAny = positions.length > 0;
+      split.hidden = !hasAny;
+      emptyPanel.hidden = hasAny;
+      if (!hasAny) {
+        clear(emptyPanel);
+        emptyPanel.append(
+          emptyState('还没有岗位', '先建一个岗位，AI 才知道该按什么方向出题。',
+            el('button', { class: 'btn btn--primary', text: '创建岗位', onClick: create })),
+        );
+        return;
+      }
+      paintList();
+      paintDossier();
+    }
+
+    mount(
+      main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: '岗位' }),
+          el('p', { class: 'page-lede' }, '岗位决定了 AI 出题的方向，也决定了评估报告按哪些维度打分。'),
+        ),
+        el('div', { class: 'page-head-actions' },
+          el('button', { class: 'btn btn--primary', text: '创建岗位', onClick: create })),
+      ),
+      bodyHost,
+    );
+
+    // 搜索框只在有条目时才存在（空态下没什么可搜的）
+    if (positions.length) split.querySelector('.split-list').prepend(el('div', { class: 'split-list-head' }, searchInput));
+    paint();
+  }
+
+  exports.render = render;
+};
+
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -2007,6 +2589,7 @@ __modules['./main.js'] = function (exports, __require) {
 
   registerPages({
     login: __require('./pages/login.js'),
+    positions: __require('./pages/positions.js'),
     users: __require('./pages/users.js'),
     placeholder: __require('./pages/placeholder.js'),
   });
