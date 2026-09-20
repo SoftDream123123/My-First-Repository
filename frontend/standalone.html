@@ -1364,6 +1364,121 @@ a:hover { text-decoration: underline; }
 .prep-edit-label { margin-bottom: var(--s1); font-size: var(--t-xs); color: var(--muted); }
 .prep-edit-add { margin-top: var(--s2); }
 
+/* ==========================================================================
+   候选人端
+   与 HR 侧共用同一套令牌与组件，只补它没有的三样：练习的筛选与进度、
+   作答结果的就地反馈、以及「对 / 错 / 未判分」这三态的表达。
+   ========================================================================== */
+
+/* ---- 候选人登录 / 激活卡片上的小件 ---- */
+.login-form .seg { margin-bottom: var(--s5); }
+.login-alt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+/* ---- 筛选栏里的实时计数 ---- */
+.practice-count { font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
+.practice-count.is-none { color: var(--watch); }
+
+/* ---- 练习进度：页面级的，因此比列表里的细条宽 ---- */
+.practice-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding: var(--s4) var(--s5);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+}
+.practice-progress-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.practice-progress-fill { height: 100%; background: var(--brand); }
+.practice-progress-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
+
+/* ---- 单选题的作答控件 ---- */
+.choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  font-size: 14px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.choice-option:last-child { margin-bottom: 0; }
+.choice-option:hover { background: #f7fafc; }
+.choice-option input { flex: none; margin-top: 3px; }
+.choice-option.is-picked { border-color: var(--brand); background: var(--brand-wash); }
+.choice-option:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* 单选复盘：候选人**自己选错**的那一项也要标出来 —— 只标正确答案不够 */
+.option-item.is-mine-wrong { background: var(--danger-wash); }
+.option-item.is-mine-wrong .option-key { color: var(--danger); }
+.option-flag.is-danger { color: var(--danger); }
+
+/* ---- 逐题作答 ---- */
+.practice-item { padding: var(--s5); border-top: 1px solid var(--line-soft); }
+.practice-item:first-child { border-top: none; }
+.practice-item-head { display: flex; align-items: center; gap: var(--s3); }
+.practice-item-question { margin-top: var(--s3); font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+.practice-answer { margin-top: var(--s4); max-width: 48em; }
+.practice-item .textarea { min-height: 96px; }
+.practice-actions { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
+
+/* ---- 判分结果：对 / 错 / 未判分 ---- */
+.verdict {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-control);
+  background: #f7fafc;
+  max-width: 48em;
+}
+.verdict.is-correct { background: var(--pass-wash); border-color: #c6e0d5; }
+.verdict.is-wrong { background: var(--danger-wash); border-color: var(--danger-line); }
+.verdict-head { display: flex; align-items: baseline; gap: var(--s3); }
+.verdict-label { font-size: var(--t-sm); font-weight: 600; color: var(--muted); }
+.verdict.is-correct .verdict-label { color: var(--pass); }
+.verdict.is-wrong .verdict-label { color: var(--danger); }
+.verdict-score {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 700;
+}
+.verdict-note { margin-top: var(--s2); font-size: var(--t-sm); line-height: 1.75; color: var(--ink-soft); }
+
+/* ---- 练习小结 ---- */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: var(--s4); }
+.summary-cell { padding: var(--s4); border: 1px solid var(--line-soft); border-radius: var(--r-control); }
+.summary-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.summary-label { margin-top: var(--s2); font-size: var(--t-sm); color: var(--muted); }
+.summary-bars { margin-top: var(--s6); display: flex; flex-direction: column; gap: var(--s4); }
+.summary-bar-top { display: flex; align-items: baseline; gap: var(--s2); font-size: 14px; }
+.summary-bar-value {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 700;
+}
+.summary-bar-track { margin-top: var(--s2); height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.summary-bar-fill { height: 100%; background: var(--brand); }
+
 /* ---- 未实现的模块占位（原型建设期用） ---- */
 .placeholder {
   padding: var(--s9) var(--s6);
@@ -1746,10 +1861,26 @@ __modules['./auth.js'] = function (exports, __require) {
   exports.getUser = session.getUser;
   exports.isLoggedIn = () => Boolean(session.getToken());
   exports.isAdmin = () => session.getUser()?.role === 'admin';
+  exports.isCandidate = () => session.getUser()?.role === 'candidate';
+
+  /**
+   * 某一端是否已登录 —— **不依赖当前活动端**。
+   * 两端登录态分开存且可能同时存在（PRD §9），因此「进来该去哪」这种决策
+   * 必须能同时问两端。实现上借活动端切换一问一答，再还原，避免 session
+   * 把「按端读」的口子开到模块外。
+   */
+  exports.isLoggedInOn = function (side) {
+    const previous = session.getSide();
+    session.setSide(side);
+    const logged = Boolean(session.getToken());
+    session.setSide(previous);
+    return logged;
+  };
 
   exports.logout = function () {
+    const side = session.getSide();
     session.clear();
-    location.hash = '#/login';
+    location.hash = side === 'candidate' ? '#/candidate/login' : '#/login';
   };
 
   /** 刷新用户信息，保证角色是最新的（管理员改角色后立即生效）。 */
@@ -1973,9 +2104,12 @@ __modules['./mock.js'] = function (exports, __require) {
       { id: 4, interview_id: 2, code: 'Yd9Uk3Gh6Nm1Pz5Rw8Qc4V', status: 'revoked', candidate_user_id: null,
         expires_at: '2100-01-01T00:00:00', accepted_at: null, created_at: '2026-09-16T10:45:00', created_by: 1 },
     ],
+    // 刷题的会话与作答。作答不建表之外的派生视图（错题本、统计）全部从这里算
+    practiceSessions: [],
+    practiceItems: [],
   };
 
-  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 5 };
+  const seq = { user: 7, position: 5, question: 15, interview: 6, invitation: 5, practice: 1, practiceItem: 1 };
   const sessions = new Map(); // token → user id
 
   /* ---- 响应助手 ---- */
@@ -3491,6 +3625,702 @@ __modules['./mock.js'] = function (exports, __require) {
     preps.set(interview.id, buildPrep(interview, position, null));
   })();
 
+  /* ==========================================================================
+     候选人侧：自助注册、邀请码激活、刷题
+
+     判分与后端 practice.service._grade 的四条分支逐条同构：
+       空作答        → 0 分，且不调 AI
+       单选          → 本地比对，10 / 0，解析取题库的 explanation
+       简答无参考答案 → 标**未判分**（is_correct = null），不是判错
+       简答有参考答案 → 按 MockProvider.grade_practice_answer：字符二元组
+                        Jaccard × 10，阈值同为 6.5
+     这样原型里判出的分数与真实运行是同一件事，而不是「看着像」。
+     ========================================================================== */
+
+  const PASS_THRESHOLD = 6.5;
+  const PRACTICE_DEFAULT_SIZE = 5;
+  const PRACTICE_MAX_SIZE = 20;
+  const SESSION_LIST_LIMIT = 20;
+  const PRACTICE_ANSWER_MAX = 10000;
+  const SELF_REGISTER_OFF_MESSAGE = '候选人自助注册已关闭，请使用邀请码激活';
+
+  /** 原型开关：关掉自助注册，用来走查「注册关闭」这条分支。?reg=off */
+  function selfRegisterOff() {
+    if (/[?&]reg=off(&|$)/.test(location.search)) return true;
+    try { return localStorage.getItem('prototype.selfRegisterOff') === '1'; } catch { return false; }
+  }
+  exports.setSelfRegisterOff = function (on) {
+    try {
+      if (on) localStorage.setItem('prototype.selfRegisterOff', '1');
+      else localStorage.removeItem('prototype.selfRegisterOff');
+    } catch { /* 忽略 */ }
+  };
+
+  /** 字符二元组 Jaccard 相似度 = |A ∩ B| / |A ∪ B|（与 MockProvider._similarity 同构）。 */
+  function jaccard(left, right) {
+    const a = bigrams(left);
+    const b = bigrams(right);
+    const union = new Set([...a, ...b]);
+    if (!union.size) return 0;
+    let hit = 0;
+    for (const gram of a) if (b.has(gram)) hit += 1;
+    return hit / union.size;
+  }
+
+  function practiceExplanation(score) {
+    if (score >= 8) return '回答与参考答案高度吻合，要点覆盖完整。';
+    if (score >= PASS_THRESHOLD) return '回答覆盖了主要要点，个别细节仍可补充。';
+    if (score > 0) return '回答与参考答案的要点重合较少，建议对照参考答案补充关键内容。';
+    return '回答与参考答案没有重合，建议重新作答。';
+  }
+
+  /** 建候选人账号：同名 candidate 复用、同名 admin/hr 硬拒绝（与 auth service 同构）。 */
+  function createCandidateAccount(username, password) {
+    const existing = state.users.find((u) => u.username === username);
+    if (existing) {
+      // 复用已存在的 candidate，不校验密码 —— 否则「凭邀请码重置他人密码」
+      // 会成为一条越权路径（auth.schemas 的同一决定）
+      if (existing.role === 'candidate') return { row: existing };
+      return { error: fail(409, 'BUSINESS_ERROR', '用户名已被占用') };
+    }
+    const row = {
+      id: seq.user++,
+      username,
+      password,
+      role: 'candidate',
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    state.users.push(row);
+    return { row };
+  }
+
+  function validateCredentials(body) {
+    const fields = [];
+    const username = String(body?.username ?? '').trim();
+    const password = String(body?.password ?? '');
+    if (!username || username.length > 50) {
+      fields.push({ field: 'username', message: '用户名长度需在 1–50 位之间' });
+    }
+    if (password.length < 8 || password.length > 128) {
+      fields.push({ field: 'password', message: '密码长度需在 8–128 位之间' });
+    }
+    return { fields, username, password };
+  }
+
+  on('POST', '/auth/register', ({ body }) => {
+    const { fields, username, password } = validateCredentials(body);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    if (selfRegisterOff()) {
+      // detail.reason 与后端一致：前端据此把「去激活」那条路摆出来（module-15 §4.1）
+      return fail(409, 'BUSINESS_ERROR', SELF_REGISTER_OFF_MESSAGE, { reason: 'self_register_disabled' });
+    }
+
+    const built = createCandidateAccount(username, password);
+    if (built.error) return built.error;
+    return created(publicUser(built.row));
+  });
+
+  /** 候选人看到的面试（不含 HR 评语与评分明细）。F9 的列表与详情共用。 */
+  function candidateInterviewView(interview) {
+    const position = state.positions.find((p) => p.id === interview.position_id);
+    const questions = interview.questions || [];
+    return {
+      id: interview.id,
+      position_name: position?.name ?? '—',
+      status: interview.status,
+      question_count: questions.length,
+      answered_count: questions.filter((q) => q.answer != null).length,
+      submitted: candidateSubmittedAt(interview) != null,
+      created_at: interview.created_at,
+    };
+  }
+
+  /** 交卷事实落在作答上（answer.submitted_at），不是面试状态上（PRD §5.1）。 */
+  function candidateSubmittedAt(interview) {
+    const stamps = (interview.questions || []).map((q) => q.submitted_at).filter(Boolean);
+    return stamps.length ? stamps.sort()[stamps.length - 1] : null;
+  }
+
+  on('POST', '/candidate/invitations/:code/accept', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const invitation = state.invitations.find((i) => i.code === params.code);
+    // 码不存在 / 已撤销 / 已接受 / 已过期 → **同一文案**，且响应里不出现任何面试
+    // 信息。否则这个端点就成了邀请码探测接口（module-12 §5.3 的同一处理）。
+    if (!invitation || deriveInvitationStatus(invitation) !== 'pending') {
+      return fail(409, 'BUSINESS_ERROR', '邀请码无效或已失效');
+    }
+
+    const { fields, username, password } = validateCredentials(body);
+    if (fields.length) return fail(400, 'VALIDATION_ERROR', '请求参数不合法', { fields });
+
+    const built = createCandidateAccount(username, password);
+    if (built.error) return built.error;
+    const candidate = built.row;
+
+    if (state.invitations.some((i) => i.interview_id === invitation.interview_id
+      && i.candidate_user_id === candidate.id && i.status === 'accepted')) {
+      return fail(409, 'BUSINESS_ERROR', '你已接受过该面试的邀请');
+    }
+
+    invitation.status = 'accepted';
+    invitation.candidate_user_id = candidate.id;
+    invitation.accepted_at = new Date().toISOString();
+
+    const interview = state.interviews.find((i) => i.id === invitation.interview_id);
+    return ok({ interview_id: interview.id, interview: candidateInterviewView(interview) });
+  });
+
+  /* ---- 刷题：筛选项、取题、会话、判分 ---- */
+
+  function practiceFilterFrom(query) {
+    return {
+      position_id: query.position_id ? Number(query.position_id) : null,
+      category: query.category || null,
+      dimension: query.dimension || null,
+      difficulty: query.difficulty || null,
+      question_type: query.question_type || null,
+    };
+  }
+
+  /**
+   * 取题池是**全库**，不按 created_by 过滤 —— 必须与 /candidate/positions 同口径，
+   * 否则会出现「下拉里有的岗位，选了却取不到题」。
+   */
+  function practiceCandidates(filters) {
+    return state.questions.filter((q) => {
+      if (filters.position_id != null && q.position_id !== filters.position_id) return false;
+      if (filters.category && q.category !== filters.category) return false;
+      if (filters.dimension && q.dimension !== filters.dimension) return false;
+      if (filters.difficulty && q.difficulty !== filters.difficulty) return false;
+      if (filters.question_type && q.question_type !== filters.question_type) return false;
+      return true;
+    }).sort((a, b) => a.id - b.id);
+  }
+
+  /** 与 PracticeQuestionOut 一致：**不含** reference_answer / explanation。 */
+  function practiceQuestionView(question) {
+    return {
+      id: question.id,
+      position_id: question.position_id,
+      category: question.category,
+      dimension: question.dimension,
+      difficulty: question.difficulty,
+      content: question.content,
+      question_type: question.question_type,
+      options: question.options || [],
+      tags: question.tags || [],
+    };
+  }
+
+  function practiceItemsOf(sessionId) {
+    return state.practiceItems.filter((i) => i.session_id === sessionId).sort((a, b) => a.seq - b.seq);
+  }
+
+  /** 与 practice.service._accuracy 一致：分母是**已判分**数，无已判分时为 null。 */
+  function accuracyOf(correct, scored) {
+    return scored > 0 ? Math.round((correct / scored) * 1000) / 1000 : null;
+  }
+
+  function practiceCounters(session) {
+    const items = practiceItemsOf(session.id);
+    const answered = items.filter((i) => i.user_answer != null);
+    return {
+      total: items.length,
+      answered_count: answered.length,
+      correct_count: answered.filter((i) => i.is_correct === true).length,
+    };
+  }
+
+  function sessionView(session) {
+    const counters = practiceCounters(session);
+    return {
+      id: session.id,
+      status: session.status,
+      position_id: session.position_id,
+      category: session.category,
+      dimension: session.dimension,
+      difficulty: session.difficulty,
+      question_type: session.question_type,
+      ...counters,
+      started_at: session.started_at,
+      finished_at: session.finished_at,
+    };
+  }
+
+  function sessionListItem(session) {
+    const position = state.positions.find((p) => p.id === session.position_id);
+    return {
+      session_id: session.id,
+      status: session.status,
+      position_name: position?.name ?? null,
+      category: session.category,
+      dimension: session.dimension,
+      difficulty: session.difficulty,
+      question_type: session.question_type,
+      ...practiceCounters(session),
+      started_at: session.started_at,
+      finished_at: session.finished_at,
+    };
+  }
+
+  /** 与 PracticeItemOut 一致：未提交就不下发解析与参考答案（不下发 ≠ 前端不显示）。 */
+  function practiceItemView(item) {
+    const question = state.questions.find((q) => q.id === item.question_id);
+    const submitted = item.user_answer != null;
+    return {
+      item_id: item.id,
+      seq: item.seq,
+      question: {
+        id: item.question_id,
+        position_id: question ? question.position_id : 0,
+        category: question ? question.category : '',
+        dimension: item.dimension_snapshot,
+        difficulty: question ? question.difficulty : '',
+        content: item.content_snapshot,
+        question_type: item.question_type,
+        options: item.options_snapshot || [],
+        tags: question ? (question.tags || []) : [],
+      },
+      user_answer: item.user_answer,
+      is_correct: item.is_correct,
+      score: item.score,
+      explanation: submitted ? item.explanation : null,
+      reference_answer: submitted ? item.reference_answer_snapshot : null,
+    };
+  }
+
+  function sessionDetailView(session) {
+    return {
+      session: sessionView(session),
+      items: practiceItemsOf(session.id).map(practiceItemView),
+      resume_id: session.resume_id ?? null,
+      resume_match_applied: false,
+    };
+  }
+
+  /**
+   * 简答题的 Mock 判分。
+   *
+   * **刻意不复用后端的纯 Jaccard**：后端 MockProvider 用二元组 Jaccard，实际效果
+   * 是「不把参考答案抄一遍就接近 0 分」—— 一段认真写的 60 字回答通常只有
+   * 0.1 量级的相似度，折成 1 分。那在原型里会造出「认真作答却全错」的画面，
+   * 把 UI 本身要看的东西盖掉。
+   *
+   * 页面契约只关心 is_correct / score / explanation 三个字段，绝对值口径不影响
+   * 页面代码；且接真实后端时（?live=1）这段判分整体被后端替换。因此这里选一个
+   * 能产出分数梯度的规则：篇幅（答没答够）+ 与参考答案的重合度（贴不贴题）。
+   */
+  function practiceScore(reference, text) {
+    const depth = Math.min(1, text.length / Math.max(40, reference.length));
+    const overlap = Math.min(1, jaccard(reference, text) * 3);
+    return Math.round(Math.min(10, 10 * (0.45 * depth + 0.9 * overlap)) * 10) / 10;
+  }
+
+  /** 与 practice.service._grade 的四条分支同构，返回 { is_correct, score, explanation }。 */
+  function gradePracticeItem(item, userAnswer) {
+    const text = String(userAnswer ?? '').trim();
+    if (!text) return { is_correct: false, score: 0, explanation: '未作答' };
+
+    const reference = String(item.reference_answer_snapshot ?? '').trim();
+    if (item.question_type === 'single_choice') {
+      // 单选不消耗 AI，因此解析只能取题库的 explanation（可能为 null）
+      const question = state.questions.find((q) => q.id === item.question_id);
+      const correct = text === reference;
+      return {
+        is_correct: correct,
+        score: correct ? 10 : 0,
+        explanation: question ? question.explanation : null,
+      };
+    }
+    if (!reference) {
+      return { is_correct: null, score: null, explanation: '该题暂无参考答案，本次不判分' };
+    }
+    // PRD §7：AI 判分失败**不阻塞作答**，标记为未判分、可稍后重判
+    if (aiFails()) {
+      return { is_correct: null, score: null, explanation: 'AI 判分暂时不可用，本题稍后可重判' };
+    }
+    const score = practiceScore(reference, text);
+    return { is_correct: score >= PASS_THRESHOLD, score, explanation: practiceExplanation(score) };
+  }
+
+  function applyGrade(item, grade) {
+    item.is_correct = grade.is_correct;
+    item.score = grade.score;
+    item.explanation = grade.explanation;
+  }
+
+  function itemResultView(item, session) {
+    return {
+      item_id: item.id,
+      seq: item.seq,
+      user_answer: item.user_answer,
+      is_correct: item.is_correct,
+      score: item.score,
+      // 正确答案只在单选题有意义（前端据此标出正确选项）
+      correct_answer: item.question_type === 'single_choice' ? item.reference_answer_snapshot : null,
+      reference_answer: item.reference_answer_snapshot,
+      explanation: item.explanation,
+      progress: practiceCounters(session),
+    };
+  }
+
+  function locateSession(user, id) {
+    const row = state.practiceSessions.find((s) => s.id === Number(id));
+    if (!row) return { error: fail(404, 'NOT_FOUND', '练习不存在') };
+    if (row.candidate_user_id !== user.id) return { error: fail(403, 'FORBIDDEN', '无权访问该练习') };
+    return { row };
+  }
+
+  on('GET', '/candidate/positions', ({ user }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    // 只给「至少有一道题的岗位」：候选人拿不到岗位接口，且取题取全库，
+    // 两个口径必须一致，否则 UI 表达不出接口真正支持的筛选范围（PRD §4.7）
+    return ok(state.positions
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        question_count: state.questions.filter((q) => q.position_id === p.id).length,
+      }))
+      .filter((p) => p.question_count > 0)
+      .sort((a, b) => a.id - b.id));
+  });
+
+  on('GET', '/practice/questions', ({ user, query }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    let rows = practiceCandidates(practiceFilterFrom(query));
+    if (query.limit) rows = rows.slice(0, Number(query.limit));
+    return ok(rows.map(practiceQuestionView));
+  });
+
+  on('GET', '/practice/sessions', ({ user, query }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    let rows = state.practiceSessions.filter((s) => s.candidate_user_id === user.id);
+    if (query.status) rows = rows.filter((s) => s.status === query.status);
+    const limit = Number(query.limit) || SESSION_LIST_LIMIT;
+    return ok(rows
+      .slice()
+      .sort((a, b) => (a.started_at < b.started_at ? 1 : -1)) // 新的在前
+      .slice(0, limit)
+      .map(sessionListItem));
+  });
+
+  on('POST', '/practice/sessions', ({ user, body }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const filters = {
+      position_id: body?.position_id != null ? Number(body.position_id) : null,
+      category: body?.category || null,
+      dimension: body?.dimension || null,
+      difficulty: body?.difficulty || null,
+      question_type: body?.question_type || null,
+    };
+    const size = Math.min(PRACTICE_MAX_SIZE, Math.max(1, Number(body?.size) || PRACTICE_DEFAULT_SIZE));
+    const picked = practiceCandidates(filters).slice(0, size);
+
+    // 取不到题**不创建会话** —— 留一个空会话只会让「继续练习」指向一片空白
+    if (!picked.length) {
+      return fail(409, 'BUSINESS_ERROR', '没有符合条件的题目，请调整筛选条件');
+    }
+
+    const now = new Date().toISOString();
+    const session = {
+      id: seq.practice++,
+      candidate_user_id: user.id,
+      position_id: filters.position_id,
+      category: filters.category,
+      dimension: filters.dimension,
+      difficulty: filters.difficulty,
+      question_type: filters.question_type,
+      resume_id: body?.resume_id ?? null,
+      status: 'ongoing',
+      started_at: now,
+      finished_at: null,
+    };
+    state.practiceSessions.push(session);
+
+    picked.forEach((question, index) => {
+      state.practiceItems.push({
+        id: seq.practiceItem++,
+        session_id: session.id,
+        seq: index + 1,
+        question_id: question.id,
+        // 写题目快照：题库删改不影响进行中与历史练习的复看（PRD §5.2）
+        content_snapshot: question.content,
+        options_snapshot: (question.options || []).slice(),
+        reference_answer_snapshot: question.reference_answer,
+        dimension_snapshot: question.dimension,
+        question_type: question.question_type,
+        user_answer: null,
+        is_correct: null,
+        score: null,
+        explanation: null,
+        answered_at: null,
+      });
+    });
+
+    return created(sessionDetailView(session));
+  });
+
+  on('GET', '/practice/sessions/:id', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateSession(user, params.id);
+    return located.error || ok(sessionDetailView(located.row));
+  });
+
+  on('POST', '/practice/sessions/:id/items', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateSession(user, params.id);
+    if (located.error) return located.error;
+
+    // 结束后不可继续作答（与 practice.service 同一句文案）
+    if (located.row.status !== 'ongoing') {
+      return fail(409, 'BUSINESS_ERROR', '本次练习已结束，不可继续作答');
+    }
+
+    const item = state.practiceItems.find((i) => i.id === Number(body?.item_id) && i.session_id === located.row.id);
+    if (!item) return fail(404, 'NOT_FOUND', '题目不属于该练习');
+    if (String(body?.user_answer ?? '').length > PRACTICE_ANSWER_MAX) {
+      return fail(400, 'VALIDATION_ERROR', `作答不能超过 ${PRACTICE_ANSWER_MAX} 个字符`);
+    }
+
+    item.user_answer = String(body?.user_answer ?? '');
+    item.answered_at = new Date().toISOString();
+    applyGrade(item, gradePracticeItem(item, item.user_answer));
+    return ok(itemResultView(item, located.row));
+  });
+
+  on('POST', '/practice/items/:itemId/rescore', ({ user, body, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const item = state.practiceItems.find((i) => i.id === Number(params.itemId));
+    if (!item) return fail(404, 'NOT_FOUND', '作答不存在');
+    const session = state.practiceSessions.find((s) => s.id === item.session_id);
+    if (!session || session.candidate_user_id !== user.id) return fail(403, 'FORBIDDEN', '无权访问该练习');
+
+    if (item.user_answer == null) {
+      return fail(409, 'BUSINESS_ERROR', '该题尚未提交作答，无法重判');
+    }
+    // 只对**未判分**的重判：已判分的重判等于让候选人刷分
+    if (item.is_correct !== null) {
+      return fail(409, 'BUSINESS_ERROR', '该题已判分，无需重判');
+    }
+    applyGrade(item, gradePracticeItem(item, item.user_answer));
+    return ok(itemResultView(item, session));
+  });
+
+  on('POST', '/practice/sessions/:id/finish', ({ user, params }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+    const located = locateSession(user, params.id);
+    if (located.error) return located.error;
+
+    const session = located.row;
+    if (session.status !== 'finished') {
+      session.status = 'finished';
+      session.finished_at = new Date().toISOString();
+    }
+
+    const items = practiceItemsOf(session.id);
+    const answered = items.filter((i) => i.user_answer != null);
+    const scored = answered.filter((i) => i.is_correct !== null);
+    const counters = practiceCounters(session);
+
+    const byDimension = new Map();
+    for (const item of answered) {
+      const key = item.dimension_snapshot;
+      if (!byDimension.has(key)) byDimension.set(key, { answered: 0, correct: 0, scored: 0 });
+      const bucket = byDimension.get(key);
+      bucket.answered += 1;
+      if (item.is_correct !== null) {
+        bucket.scored += 1;
+        if (item.is_correct) bucket.correct += 1;
+      }
+    }
+
+    return ok({
+      session_id: session.id,
+      status: session.status,
+      ...counters,
+      unscored_count: answered.length - scored.length,
+      accuracy: accuracyOf(counters.correct_count, scored.length),
+      by_dimension: [...byDimension.entries()].map(([dimension, bucket]) => ({
+        dimension,
+        answered: bucket.answered,
+        correct: bucket.correct,
+        accuracy: accuracyOf(bucket.correct, bucket.scored),
+      })),
+    });
+  });
+
+  on('GET', '/practice/wrong-book', ({ user, query }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const mine = new Set(state.practiceSessions
+      .filter((s) => s.candidate_user_id === user.id)
+      .map((s) => s.id));
+    const wrong = state.practiceItems.filter((i) => mine.has(i.session_id) && i.is_correct === false);
+
+    // 错题本**不建表**：由判错的作答派生，同一道题错两次就计两次（PRD §4.7）
+    const grouped = new Map();
+    for (const item of wrong) {
+      const key = item.question_id;
+      if (!grouped.has(key)) {
+        const question = state.questions.find((q) => q.id === key);
+        grouped.set(key, {
+          question_id: key,
+          content: item.content_snapshot,
+          options: item.options_snapshot || [],
+          reference_answer: item.reference_answer_snapshot,
+          explanation: item.explanation ?? (question ? question.explanation : null),
+          dimension: item.dimension_snapshot,
+          question_type: item.question_type,
+          my_wrong_answer: item.user_answer ?? '',
+          wrong_count: 0,
+          last_wrong_at: null,
+        });
+      }
+      const row = grouped.get(key);
+      row.wrong_count += 1;
+      if (!row.last_wrong_at || item.answered_at > row.last_wrong_at) {
+        row.last_wrong_at = item.answered_at;
+        row.my_wrong_answer = item.user_answer ?? '';
+      }
+    }
+
+    let rows = [...grouped.values()];
+    if (query.dimension) rows = rows.filter((r) => r.dimension === query.dimension);
+    if (query.question_type) rows = rows.filter((r) => r.question_type === query.question_type);
+    rows.sort((a, b) => (a.last_wrong_at < b.last_wrong_at ? 1 : -1));
+    if (query.limit) rows = rows.slice(0, Number(query.limit));
+    return ok(rows);
+  });
+
+  on('GET', '/practice/stats', ({ user }) => {
+    const denied = requireLogin(user);
+    if (denied) return denied;
+
+    const mine = new Set(state.practiceSessions
+      .filter((s) => s.candidate_user_id === user.id)
+      .map((s) => s.id));
+    const items = state.practiceItems.filter((i) => mine.has(i.session_id));
+    const answered = items.filter((i) => i.user_answer != null);
+    const scored = answered.filter((i) => i.is_correct !== null);
+    const correct = scored.filter((i) => i.is_correct).length;
+
+    const bucket = (keyOf) => {
+      const map = new Map();
+      for (const item of answered) {
+        const key = keyOf(item);
+        if (!map.has(key)) map.set(key, { answered: 0, scored: 0, correct: 0 });
+        const row = map.get(key);
+        row.answered += 1;
+        if (item.is_correct !== null) {
+          row.scored += 1;
+          if (item.is_correct) row.correct += 1;
+        }
+      }
+      return map;
+    };
+
+    return ok({
+      total_answered: answered.length,
+      scored_count: scored.length,
+      unscored_count: answered.length - scored.length,
+      correct_count: correct,
+      // 分母是**已判分**数：未判分的题与水平无关，放进分母会系统性低估
+      accuracy: accuracyOf(correct, scored.length),
+      session_count: mine.size,
+      by_dimension: [...bucket((i) => i.dimension_snapshot).entries()]
+        .map(([dimension, row]) => ({ dimension, ...row, accuracy: accuracyOf(row.correct, row.scored) }))
+        .sort((a, b) => a.dimension.localeCompare(b.dimension, 'zh')),
+      by_type: [...bucket((i) => i.question_type).entries()]
+        .map(([question_type, row]) => ({ question_type, ...row, accuracy: accuracyOf(row.correct, row.scored) }))
+        .sort((a, b) => a.question_type.localeCompare(b.question_type)),
+    });
+  });
+
+  /* 刷题的种子数据：一次已结束、一次进行中。四类结果（对 / 错 / 未判分 /
+     错两次）都出现在里面，「继续练习 · 历史记录 · 错题本 · 统计」一进来就有真数据。 */
+  function seedPractice() {
+    const CANDIDATE = 5; // li.yun：既有简历，也是候选人端的演示账号
+    const specs = [
+      // 6 题全答完：q3/q4 没有参考答案 → 未判分；q2 与 q11 答得不好 → 判错
+      { positionId: 1, size: 6, status: 'finished', answered: 6, weakSeqs: [5], startedAt: '2026-09-16T20:10:00', finishedAt: '2026-09-16T20:34:00' },
+      // 3 题答了 2 题：留一条「继续练习」的入口，且 q2 再错一次以演示 wrong_count
+      { positionId: 1, size: 3, status: 'ongoing', answered: 2, weakSeqs: [], startedAt: '2026-09-18T21:05:00', finishedAt: null },
+    ];
+
+    for (const spec of specs) {
+      const picked = practiceCandidates({ position_id: spec.positionId }).slice(0, spec.size);
+      const session = {
+        id: seq.practice++,
+        candidate_user_id: CANDIDATE,
+        position_id: spec.positionId,
+        category: null,
+        dimension: null,
+        difficulty: null,
+        question_type: null,
+        resume_id: null,
+        status: spec.status,
+        started_at: spec.startedAt,
+        finished_at: spec.finishedAt,
+      };
+      state.practiceSessions.push(session);
+
+      picked.forEach((question, index) => {
+        const item = {
+          id: seq.practiceItem++,
+          session_id: session.id,
+          seq: index + 1,
+          question_id: question.id,
+          content_snapshot: question.content,
+          options_snapshot: (question.options || []).slice(),
+          reference_answer_snapshot: question.reference_answer,
+          dimension_snapshot: question.dimension,
+          question_type: question.question_type,
+          user_answer: null,
+          is_correct: null,
+          score: null,
+          explanation: null,
+          answered_at: null,
+        };
+
+        if (index < spec.answered) {
+          const options = question.options || [];
+          if (question.question_type === 'single_choice') {
+            // 单选题的作答取自题库的真实正确答案；第二场故意选错一项
+            item.user_answer = index === 1
+              ? options.find((o) => o !== question.reference_answer) ?? ''
+              : question.reference_answer ?? '';
+          } else {
+            // 简答题用题库里现成的作答素材（与 HR 侧面试记录同一批）；
+            // weakSeqs 指定的那几题换成一段敷衍的作答，让判分自然落进低分带 ——
+            // 分数始终由判分规则算出来，不写死
+            item.user_answer = spec.weakSeqs.includes(index + 1)
+              ? '这块我平时接触得少，一般是跟着团队的规范走，具体细节记不太清了。'
+              : BANK_ANSWERS[question.id] ?? DIMENSION_ANSWERS[question.dimension] ?? '';
+          }
+          item.answered_at = spec.startedAt;
+          applyGrade(item, gradePracticeItem(item, item.user_answer));
+        }
+        state.practiceItems.push(item);
+      });
+    }
+  }
+  seedPractice();
+
   /* ---- fetch 拦截 ---- */
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -3537,6 +4367,19 @@ __modules['./mock.js'] = function (exports, __require) {
     const userId = sessions.get(token);
     const user = state.users.find((u) => u.id === userId && u.is_active) || null;
 
+    /*
+     * 权限守卫（PRD §4.1「权限守卫收紧」）。
+     * 放在分发这一处，而不是让每个 handler 自己判 —— 二十多个 handler 各写一次
+     * 必然漏掉一个，而漏掉的正是「候选人 token 调 HR 接口」这一类。
+     * 未登录（user 为 null）不在这里拦：那是 401，由各 handler 的 requireLogin 给出，
+     * 与 403 是两件事。
+     */
+    if (user && !path.startsWith('/auth/')) {
+      const candidateOnly = path.startsWith('/candidate') || path.startsWith('/practice');
+      const rejected = candidateOnly ? user.role !== 'candidate' : user.role === 'candidate';
+      if (rejected) return toResponse(fail(403, 'FORBIDDEN', '当前角色无权访问该接口'));
+    }
+
     // signal 透传给处理函数：SSE 端点要接住客户端的断开（见 eventStream）
     return toResponse(matched.handler({
       body, params: matched.params, query, user, token, signal: options.signal,
@@ -3567,13 +4410,19 @@ __modules['./router.js'] = function (exports, __require) {
 
   /**
    * 路由表。
+   *   side    属于哪一端（hr / candidate）。导航与默认页都按端过滤
    *   nav     出现在侧栏导航上的名字（无 nav 即不进导航，但地址仍可直接访问）
    *   label   占位页上显示的名字
+   *   isPublic 未登录可达
+   *   open    **登录与否都可达、且不做重定向** —— 激活页要这样：
+   *           没账号时凭码建号，已有账号时凭码绑定（PRD §4.1）。
+   *           只标 isPublic 会让已登录的人被弹走，只标登录可达则新人进不来。
    *   pending 本模块尚未在本原型中实现 → 落到占位页。
    *           默认「已实现」而非「未实现」：漏写标记时应当**报错**，
    *           而不是安静地显示一个占位页把问题藏起来。
    */
   const routes = [
+    // ---- HR / 面试官端 ----
     { path: '/login',                     key: 'login',           side: 'hr', isPublic: true,  label: '登录' },
     { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试' },
     { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情' },
@@ -3582,24 +4431,58 @@ __modules['./router.js'] = function (exports, __require) {
     { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
     { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库' },
     { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', label: '用户管理', adminOnly: true },
+
+    // ---- 候选人端 ----
+    // 「我的面试」按 plan 排在首位且优先级最高：候选人最关心的永远是「有没有待答的面试」，
+    // 刷题是次一级的自主行为（module-15 §3.1）。因此它一旦实现，就是候选人端的默认页。
+    { path: '/candidate/login',                    key: 'candidateLogin',    side: 'candidate', isPublic: true, label: '登录' },
+    { path: '/candidate/activate',                 key: 'candidateActivate', side: 'candidate', isPublic: true, open: true, label: '激活' },
+    { path: '/candidate/interviews',               key: 'candidateInterviews', side: 'candidate', nav: '我的面试', label: '我的面试', pending: true },
+    { path: '/candidate/interviews/:id',           key: 'candidateInterviewDetail', side: 'candidate', label: '在线作答', pending: true },
+    { path: '/candidate/interviews/:id/feedback',  key: 'candidateFeedback', side: 'candidate', label: '面试反馈', pending: true },
+    { path: '/candidate/practice',                 key: 'candidatePractice', side: 'candidate', nav: '刷题',     label: '刷题' },
+    { path: '/candidate/practice/:id',             key: 'practiceSession',   side: 'candidate', label: '练习' },
+    { path: '/candidate/wrong-book',               key: 'wrongBook',         side: 'candidate', nav: '错题本',   label: '错题本', pending: true },
+    { path: '/candidate/stats',                    key: 'practiceStats',     side: 'candidate', nav: '练习统计', label: '练习统计', pending: true },
+    { path: '/candidate/resumes',                  key: 'candidateResumes',  side: 'candidate', nav: '我的简历', label: '我的简历', pending: true },
   ];
+
+  const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };
 
   let pages = {};
   function registerPages(map) { pages = map; }
 
   /**
-   * 默认落地页：第一个已实现、且当前用户进得去的顶层页。
-   * 原型建设期只有登录页可用时返回 '/login'，调用方据此避免把用户
-   * 重定向到自己身上（那会造成「既不渲染也不跳转」的空白页）。
+   * 默认落地页：某一端里第一个已实现、且当前用户进得去的顶层页。
+   * 不传 side 时按 [hr, candidate] 顺序找。
+   * 该端一个都没有时返回它的登录页，调用方据此避免把用户重定向到自己身上
+   * （同 hash 不触发 hashchange，页面会空着不渲染）。
    */
-  function defaultRoute() {
+  function defaultRoute(side) {
     const usable = (route, topOnly) =>
       !route.isPublic && !route.pending && (!topOnly || route.nav) &&
-      !(route.adminOnly && !auth.isAdmin());
+      !(route.adminOnly && !auth.isAdmin()) &&
+      (!side || route.side === side);
 
     for (const route of routes) if (usable(route, true)) return route.path;
     for (const route of routes) if (usable(route, false)) return route.path;
-    return '/login';
+    return LOGIN_BY_SIDE[side] ?? '/login';
+  }
+
+  /**
+   * 裸入口（`#/`、未知 hash）该去哪。
+   *
+   * 单机约束下两端登录态分开存、可能同时存在（PRD §9），因此「谁登录了去谁那端」。
+   * 两端都登录时**优先候选人**：HR 侧的入口永远在脊上摆着，而候选人一旦被弹到
+   * HR 界面，就只能自己记得住地址。这个 tie-break 只在同浏览器演示两端时才会走到。
+   *
+   * 未知 hash 还要**先看前缀**：`#/candidate/xxx` 不能把候选人弹到 HR 登录页 ——
+   * 那是候选人输错地址后最费解的一种表现（module-15 §3.1）。
+   */
+  function entryRoute() {
+    const hash = location.hash.replace(/^#/, '');
+    if (hash.startsWith('/candidate') || auth.isLoggedInOn('candidate')) return defaultRoute('candidate');
+    return defaultRoute('hr');
   }
 
   function resolve() {
@@ -3623,9 +4506,10 @@ __modules['./router.js'] = function (exports, __require) {
     session.setSide(route.side);
 
     if (route.isPublic) {
-      // 已登录还去登录页 → 送回默认页。默认页就是登录页时不能重定向到
-      // 自己身上（同 hash 不触发 hashchange，页面会空着不渲染）。
-      const target = defaultRoute();
+      // 登录与否都可达的页面（激活页）不做重定向
+      if (route.open) return true;
+      // 已登录还去登录页 → 送回**本端**的默认页
+      const target = defaultRoute(route.side);
       if (auth.isLoggedIn() && target !== route.path) {
         location.replace(`#${target}`);
         return false;
@@ -3634,13 +4518,13 @@ __modules['./router.js'] = function (exports, __require) {
     }
 
     if (!auth.isLoggedIn()) {
-      location.replace('#/login');
+      location.replace(`#${LOGIN_BY_SIDE[route.side] ?? '/login'}`);
       return false;
     }
 
     if (route.adminOnly && !auth.isAdmin()) {
       toast.error('无权限访问该页面');
-      const target = defaultRoute();
+      const target = defaultRoute('hr');
       if (target === '/login') { auth.logout(); return false; }
       location.replace(`#${target}`);
       return false;
@@ -3655,7 +4539,7 @@ __modules['./router.js'] = function (exports, __require) {
   async function render() {
     const resolved = resolve();
     if (!resolved) {
-      location.replace(`#${defaultRoute()}`);
+      location.replace(`#${entryRoute()}`);
       return;
     }
     if (!guard(resolved.route)) return;
@@ -3689,7 +4573,7 @@ __modules['./router.js'] = function (exports, __require) {
   function start(mountPoint) {
     container = mountPoint;
     window.addEventListener('hashchange', render);
-    if (!location.hash) location.replace(`#${defaultRoute()}`);
+    if (!location.hash) location.replace(`#${entryRoute()}`);
     render();
   }
 
@@ -3859,10 +4743,14 @@ __modules['./components/shell.js'] = function (exports, __require) {
   const { el } = __require('./dom.js');
   const auth = __require('./auth.js');
   const router = __require('./router.js');
+  const session = __require('./session.js');
   const { navigate } = router;
 
-  /** 导航项从路由表派生 —— 两份清单分开维护必然漂移。 */
-  const navItems = () => router.routes.filter((route) => route.nav);
+  /**
+   * 导航项从路由表派生 —— 两份清单分开维护必然漂移。
+   * 再按端过滤：路由表是全局的，候选人脊上不该出现 HR 的入口，反之亦然。
+   */
+  const navItems = () => router.routes.filter((route) => route.nav && route.side === session.getSide());
 
   function activeRoot() {
     const hash = location.hash.replace(/^#/, '');
@@ -3872,7 +4760,17 @@ __modules['./components/shell.js'] = function (exports, __require) {
       .sort((a, b) => b.path.length - a.path.length)[0]?.path;
   }
 
+  /* 两端共用一副骨架，只换品牌文案与导航 —— 同一个产品的两个人格。
+     module-15 §4.10 为了不碰 HR 已稳定的代码，主张另起一个外壳函数；
+     但这里导航本就由路由表派生（必须按端过滤），再复制一份 200 行的布局
+     代码，收益只是「HR 那几行不动」，代价是两处布局从此各改各的。 */
+  const BRANDS = {
+    hr: { sub: 'HR 工作台', role: () => (auth.isAdmin() ? '管理员' : 'HR') },
+    candidate: { sub: '候选人端', role: () => '候选人' },
+  };
+
   function buildSpine() {
+    const brand = BRANDS[session.getSide()] ?? BRANDS.hr;
     const user = auth.getUser();
     const current = activeRoot();
 
@@ -3898,7 +4796,7 @@ __modules['./components/shell.js'] = function (exports, __require) {
         'div',
         { class: 'spine-head' },
         el('div', { class: 'spine-mark', text: '面试助手' }),
-        el('div', { class: 'spine-sub', text: 'HR 工作台' }),
+        el('div', { class: 'spine-sub', text: brand.sub }),
       ),
       nav,
       el(
@@ -3908,7 +4806,7 @@ __modules['./components/shell.js'] = function (exports, __require) {
           'div',
           { class: 'spine-user' },
           el('span', { class: 'spine-username', text: user?.username ?? '' }),
-          el('span', { class: 'spine-role', text: auth.isAdmin() ? '管理员' : 'HR' }),
+          el('span', { class: 'spine-role', text: brand.role() }),
         ),
         el('button', {
           class: 'btn btn--onspine btn--wide',
@@ -3945,6 +4843,11 @@ __modules['./components/shell.js'] = function (exports, __require) {
       el('span', { class: 'topbar-title', text }),
       note ? el('span', { class: 'meta', text: note }) : null,
     ];
+  }
+
+  /** 浏览器标签的兜底标题 —— 按端区分：候选人不该在自己的标签页上看到「HR 工作台」。 */
+  function baseTitle() {
+    return session.getSide() === 'candidate' ? '面试助手 · 候选人端' : '面试助手 · HR 工作台';
   }
 
   /* ---- 状态轨：面试的真实流程 ---- */
@@ -4059,6 +4962,7 @@ __modules['./components/shell.js'] = function (exports, __require) {
 
   exports.createShell = createShell;
   exports.contextTitle = contextTitle;
+  exports.baseTitle = baseTitle;
   exports.statusRail = statusRail;
   exports.statusTag = statusTag;
   exports.sourceTag = sourceTag;
@@ -4158,7 +5062,7 @@ __modules['./pages/login.js'] = function (exports, __require) {
               password: password.value,
             });
             auth.saveToken(result.token, result.user);
-            navigate(defaultRoute());
+            navigate(defaultRoute('hr'));
           } catch (error) {
             // 400 落到字段；「用户名或密码错误」这类业务错误用后端文案提示
             if (!errors.fromServer(error)) toast.error(error.message);
@@ -6252,11 +7156,9 @@ __modules['./pages/evaluation.js'] = function (exports, __require) {
   const { toast } = __require('./components/toast.js');
   const { confirmModal } = __require('./components/modal.js');
   const {
-    contextTitle, createShell, emptyState, dimTag, formatDateTime, loadingBlock,
+    baseTitle, contextTitle, createShell, emptyState, dimTag, formatDateTime, loadingBlock,
     navigate, panelHead, scoreClass, statusRail,
   } = __require('./components/shell.js');
-
-  const DEFAULT_TITLE = '面试助手 · HR 工作台';
 
   /* 画布尺寸按「4 个汉字 + 两侧留白」定：常用的 3–6 维都不会把标签挤出画布 */
   const RADAR = { width: 320, height: 290, cx: 160, cy: 142, r: 86, labelR: 108 };
@@ -6415,7 +7317,7 @@ __modules['./pages/evaluation.js'] = function (exports, __require) {
 
   exports.destroy = function () {
     if (activeAbort) { activeAbort(); activeAbort = null; }
-    document.title = DEFAULT_TITLE;
+    document.title = baseTitle();
   };
 
   async function render(container, params) {
@@ -6780,14 +7682,13 @@ __modules['./pages/interview-prep.js'] = function (exports, __require) {
   const { toast } = __require('./components/toast.js');
   const { confirmModal } = __require('./components/modal.js');
   const {
-    contextTitle, createShell, dimTag, emptyState, formatDateTime, loadingBlock,
+    baseTitle, contextTitle, createShell, dimTag, emptyState, formatDateTime, loadingBlock,
     navigate, panelHead,
   } = __require('./components/shell.js');
 
-  const DEFAULT_TITLE = '面试助手 · HR 工作台';
   const FROZEN_HINT = '面试已完成，准备提纲随之定稿；如需修改，请先回退到进行中。';
 
-  exports.destroy = function () { document.title = DEFAULT_TITLE; };
+  exports.destroy = function () { document.title = baseTitle(); };
 
   /** 把「每行一条」的文本域读成数组 —— 比让人维护一个嵌套列表现实得多。 */
   const linesOf = (value) => String(value ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
@@ -7202,6 +8103,901 @@ __modules['./pages/interview-prep.js'] = function (exports, __require) {
 };
 
 /* ==========================================================================
+   pages/candidate-login.js —— 候选人登录 / 注册
+   登录与注册是同一张卡片的两个模式，不新增路由（module-15 §4.1）。
+   左栏换成本人视角的闭环：HR 那条「出题 → 记录 → 评估 → 报告」对候选人
+   毫无意义 —— 他在这里做的事只有一件：把题练到答得出来。
+   ========================================================================== */
+__modules['./pages/candidate-login.js'] = function (exports, __require) {
+  const { el, clear, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const auth = __require('./auth.js');
+  const { toast } = __require('./components/toast.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const { navigate, defaultRoute } = __require('./router.js');
+
+  const FLOW = [
+    { label: '取题', text: '按岗位、难度、题型筛一套题；没做完的练习随时可以接着做。' },
+    { label: '作答', text: '单选与简答两类题型，逐题提交，答案提交即保存。' },
+    { label: '判分', text: '单选当场判分；简答给出得分、参考答案与解析，看得出分扣在哪。' },
+    { label: '复看', text: '答错的题自动进错题本，正确率按维度统计，知道该补哪一块。' },
+  ];
+
+  function buildAside() {
+    return el(
+      'section',
+      { class: 'login-aside' },
+      el('div', { class: 'login-mark', text: '面试助手' }),
+      el('div', { class: 'login-mark-sub', text: '候选人端' }),
+      el('h1', { class: 'login-claim' },
+        el('span', { text: '面试之前，' }),
+        el('span', { text: '先练到答得出来。' })),
+      el('ol', { class: 'login-flow' }, FLOW.map((item, index) =>
+        el('li', { class: 'login-flow-item' },
+          el('span', { class: 'login-flow-index', text: String(index + 1) }),
+          el('div', {},
+            el('div', { class: 'login-flow-label', text: item.label }),
+            el('p', { class: 'login-flow-text', text: item.text }))))),
+      el('p', { class: 'login-aside-foot', text: '数据与模型调用都留在本机，不经过外部服务。' }),
+    );
+  }
+
+  function buildCard() {
+    let mode = 'login';
+    let registerClosed = false;
+
+    const username = el('input', {
+      class: 'input', id: 'cand-username', maxlength: '50', autocomplete: 'username',
+    });
+    const usernameError = fieldError();
+    const password = el('input', {
+      class: 'input', id: 'cand-password', type: 'password', maxlength: '128',
+      autocomplete: 'current-password',
+    });
+    const passwordError = fieldError();
+    const passwordNote = el('p', { class: 'field-note' });
+    const errors = fieldErrors({ username: usernameError, password: passwordError });
+
+    const title = el('h2', {});
+    const lede = el('p', { class: 'login-card-lede' });
+    const switcher = el('div', { class: 'seg' });
+    const submit = el('button', { class: 'btn btn--primary btn--wide', type: 'submit' });
+    const note = el('div', {});
+
+    function paint() {
+      const isLogin = mode === 'login';
+      title.textContent = isLogin ? '登录' : '注册';
+      lede.textContent = isLogin
+        ? '用你的候选人账号登录。'
+        : '注册一个账号就能开始刷题；收到邀请码的话，注册完再去激活面试。';
+      submit.textContent = isLogin ? '登录' : '注册并登录';
+      passwordNote.textContent = isLogin ? '' : '密码至少 8 位';
+
+      clear(switcher);
+      [['login', '登录'], ['register', '注册']].forEach(([key, label]) => {
+        switcher.append(el('button', {
+          class: `seg-btn${mode === key ? ' is-on' : ''}`,
+          type: 'button',
+          text: label,
+          onClick: () => { mode = key; errors.clear(); paint(); },
+        }));
+      });
+
+      clear(note);
+      // 「注册关闭」时不是给一句报错，而是把另一条路直接指出来
+      if (registerClosed) {
+        note.append(
+          el('p', { class: 'note-box' }, '自助注册已关闭。拿到邀请码的话，凭邀请码就能进。'),
+          el('div', { class: 'login-alt-row' },
+            el('button', {
+              class: 'btn btn--primary btn--sm',
+              type: 'button',
+              text: '凭邀请码进入',
+              onClick: () => navigate('/candidate/activate'),
+            })),
+        );
+        return;
+      }
+      note.append(
+        el('p', { class: 'note-box', text: '演示账号：li.yun / candidate123' }),
+        el('div', { class: 'login-alt-row' },
+          el('span', { text: '拿到邀请码了？' }),
+          el('button', {
+            class: 'btn btn--quiet btn--sm',
+            type: 'button',
+            text: '去激活',
+            onClick: () => navigate('/candidate/activate'),
+          })),
+      );
+    }
+
+    const form = el(
+      'form',
+      { class: 'login-form' },
+      title,
+      lede,
+      switcher,
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'cand-username', text: '用户名' }),
+        username,
+        usernameError),
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'cand-password', text: '密码' }),
+        password,
+        passwordNote,
+        passwordError),
+      submit,
+      note,
+    );
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errors.clear();
+
+      const name = username.value.trim();
+      if (!name) { errors.show('username', '请填写用户名'); username.focus(); return; }
+      if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
+      if (mode === 'register' && (password.value.length < 8 || password.value.length > 128)) {
+        errors.show('password', '密码长度需在 8–128 位之间');
+        password.focus();
+        return;
+      }
+
+      submit.disabled = true;
+      const original = submit.textContent;
+      submit.textContent = mode === 'login' ? '登录中…' : '注册中…';
+      try {
+        // 注册**不签发 token**，因此注册成功后要再登录一次；两步都成功才算完成
+        if (mode === 'register') {
+          await api.post('/auth/register', { username: name, password: password.value });
+        }
+        const result = await api.post('/auth/login', { username: name, password: password.value });
+        auth.saveToken(result.token, result.user);
+        navigate(defaultRoute('candidate'));
+      } catch (error) {
+        if (error.detail?.reason === 'self_register_disabled') {
+          registerClosed = true;
+          errors.clear();
+          paint();
+        } else if (!errors.fromServer(error)) {
+          toast.error(error.message);
+        }
+      } finally {
+        submit.disabled = false;
+        submit.textContent = original;
+      }
+    });
+
+    paint();
+    return form;
+  }
+
+  function render(container) {
+    mount(container, el('div', { class: 'login' },
+      buildAside(),
+      el('section', { class: 'login-main' }, el('div', { class: 'login-card' }, buildCard()))));
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/candidate-activate.js —— 凭邀请码激活并绑定面试
+   这一页**登录与否都要能进**（router 里标 open）：
+     · 没账号 → 先用请求体里的用户名密码建一个候选人账号，再绑定
+     · 有账号 → 复用该账号绑定（后端在账号已存在时忽略密码）
+   恰好对上后端的 create_candidate_account：账号由请求体决定，与调用者无关。
+   ========================================================================== */
+__modules['./pages/candidate-activate.js'] = function (exports, __require) {
+  const { el, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const auth = __require('./auth.js');
+  const { toast } = __require('./components/toast.js');
+  const { fieldError, fieldErrors } = __require('./components/form.js');
+  const { navigate } = __require('./router.js');
+
+  function buildCard() {
+    const user = auth.getUser();
+    const signedIn = auth.isLoggedIn() && auth.isCandidate();
+
+    const code = el('input', {
+      class: 'input', id: 'activate-code', maxlength: '64', autocomplete: 'off',
+      placeholder: '例如 Kq3n8XvT2mLpRa7BwYc9dA',
+    });
+    const codeError = fieldError();
+
+    const username = el('input', {
+      class: 'input', id: 'activate-username', maxlength: '50', autocomplete: 'username',
+      value: signedIn ? (user?.username ?? '') : '',
+      readOnly: signedIn,
+    });
+    const usernameError = fieldError();
+
+    const password = el('input', {
+      class: 'input', id: 'activate-password', type: 'password', maxlength: '128',
+      autocomplete: 'current-password',
+    });
+    const passwordError = fieldError();
+
+    const errors = fieldErrors({
+      code: codeError, username: usernameError, password: passwordError,
+    });
+
+    const submit = el('button', {
+      class: 'btn btn--primary btn--wide', type: 'submit', text: '激活并进入面试',
+    });
+
+    const form = el(
+      'form',
+      { class: 'login-form' },
+      el('h2', { text: '凭邀请码激活' }),
+      el('p', { class: 'login-card-lede' },
+        signedIn
+          ? `激活后会绑定到当前账号 ${user?.username ?? ''}。`
+          : '填邀请码与你要用的账号，激活后就能进入这场面试。'),
+
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'activate-code', text: '邀请码' }),
+        code,
+        el('p', { class: 'field-note', text: 'HR 发给你的那串字符，7 天内有效、只能用一次。' }),
+        codeError),
+
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'activate-username', text: '用户名' }),
+        username,
+        signedIn
+          ? el('p', { class: 'field-note', text: '已登录，固定为当前账号。' })
+          : el('p', { class: 'field-note', text: '已经注册过就填原来的用户名，会直接复用那个账号。' }),
+        usernameError),
+
+      el('div', { class: 'field' },
+        el('label', { class: 'field-label', for: 'activate-password', text: '密码' }),
+        password,
+        el('p', { class: 'field-note', text: '账号已存在时这个密码会被忽略；新建账号时用它作密码。' }),
+        passwordError),
+
+      submit,
+      el('p', { class: 'login-alt-row' },
+        el('button', {
+          class: 'btn btn--quiet btn--sm',
+          type: 'button',
+          text: '返回登录',
+          onClick: () => navigate('/candidate/login'),
+        })),
+    );
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errors.clear();
+
+      const codeValue = code.value.trim();
+      const name = username.value.trim();
+      if (!codeValue) { errors.show('code', '请填写邀请码'); code.focus(); return; }
+      if (!name) { errors.show('username', '请填写用户名'); username.focus(); return; }
+      if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
+
+      submit.disabled = true;
+      submit.textContent = '激活中…';
+      try {
+        // 没登录时先把账号立起来：先当已有账号登录，不行再当新账号注册 ——
+        // 两种失败里，「用户名或密码错误」比「用户名已被占用」对当事人有用
+        if (!(auth.isLoggedIn() && auth.isCandidate())) {
+          try {
+            const existing = await api.post('/auth/login', { username: name, password: password.value });
+            auth.saveToken(existing.token, existing.user);
+          } catch (loginError) {
+            try {
+              await api.post('/auth/register', { username: name, password: password.value });
+            } catch {
+              throw loginError;
+            }
+            const fresh = await api.post('/auth/login', { username: name, password: password.value });
+            auth.saveToken(fresh.token, fresh.user);
+          }
+        }
+
+        const result = await api.post(
+          `/candidate/invitations/${encodeURIComponent(codeValue)}/accept`,
+          { username: name, password: password.value },
+        );
+        toast.success(`已绑定面试：${result.interview?.position_name ?? ''}`);
+        navigate(`/candidate/interviews/${result.interview_id}`);
+      } catch (error) {
+        // 邀请码失效的四种原因后端只给同一句文案，前端不替它推断（module-12 §5.3）
+        if (!errors.fromServer(error)) toast.error(error.message);
+        submit.disabled = false;
+        submit.textContent = '激活并进入面试';
+      }
+    });
+
+    return form;
+  }
+
+  function render(container) {
+    mount(container, el('div', { class: 'login' },
+      el('section', { class: 'login-aside' },
+        el('div', { class: 'login-mark', text: '面试助手' }),
+        el('div', { class: 'login-mark-sub', text: '候选人端' }),
+        el('h1', { class: 'login-claim' },
+          el('span', { text: '一张邀请码，' }),
+          el('span', { text: '换一场在线面试。' })),
+        el('p', { class: 'login-aside-foot', text: '数据与模型调用都留在本机，不经过外部服务。' })),
+      el('section', { class: 'login-main' }, el('div', { class: 'login-card' }, buildCard()))));
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/candidate-practice.js —— 刷题（取题 + 我的练习）
+   两处判断：
+
+   1. **筛选栏与取题同口径。** 岗位下拉来自 GET /candidate/positions（只含有题的
+      岗位），分类与维度从 `GET /practice/questions` 的实际题池里派生 —— 否则
+      会出现「下拉里有它，选了却取不到题」。筛选改动时打一次取题接口把
+      「符合条件 N 题」实时报出来，候选人不必先点了开始才知道是空的。
+   2. **进行中的练习必须出现在这里。** 它是候选人中途离开后唯一的返回入口
+      （module-15 §4.3），因此不塞进「历史记录」里，单独给一块。
+   ========================================================================== */
+__modules['./pages/candidate-practice.js'] = function (exports, __require) {
+  const { el, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const {
+    contextTitle, createShell, emptyState, formatDateTime, loadingBlock, navigate, panelHead,
+  } = __require('./components/shell.js');
+
+  const DIFFICULTIES = [['easy', '简单'], ['medium', '中等'], ['hard', '困难']];
+  const TYPES = [['single_choice', '单选'], ['short_answer', '简答']];
+  const SIZES = [5, 10, 15, 20];
+  const DIFFICULTY_LABELS = Object.fromEntries(DIFFICULTIES);
+  const TYPE_LABELS = Object.fromEntries(TYPES);
+
+  /** 首项固定为「不限」，因此 value === '' 表示不过滤。 */
+  function makeSelect(placeholder, pairs) {
+    return el('select', { class: 'select' },
+      el('option', { value: '', text: placeholder }),
+      pairs.map(([value, label]) => el('option', { value: String(value), text: label })));
+  }
+
+  function distinct(values) {
+    return [...new Set(values.filter((v) => v != null && v !== ''))].sort((a, b) => a.localeCompare(b, 'zh'));
+  }
+
+  function filterSummary(session) {
+    const parts = [];
+    if (session.category) parts.push(session.category);
+    if (session.dimension) parts.push(session.dimension);
+    if (session.difficulty) parts.push(DIFFICULTY_LABELS[session.difficulty] ?? session.difficulty);
+    if (session.question_type) parts.push(TYPE_LABELS[session.question_type] ?? session.question_type);
+    return parts.length ? parts.join(' · ') : '全部题目';
+  }
+
+  function progressCell(session) {
+    const total = session.total || 0;
+    const done = session.answered_count || 0;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    return el('div', { class: 'progress' },
+      el('div', { class: 'progress-track' }, el('div', { class: 'progress-fill', style: `width:${percent}%` })),
+      el('span', { class: 'progress-value', text: `${done} / ${total}` }));
+  }
+
+  async function render(container) {
+    const { root, main } = createShell(contextTitle('刷题'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载题库与练习记录…'));
+
+    let positions = [];
+    let sessions = [];
+    let pool = [];
+    try {
+      const loaded = await Promise.all([
+        api.get('/candidate/positions'),
+        api.get('/practice/sessions'),
+        api.get('/practice/questions'),
+      ]);
+      [positions, sessions, pool] = loaded;
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container) }))));
+      return;
+    }
+
+    /* ---------------------------- 筛选栏 ---------------------------- */
+
+    const controls = {
+      position_id: makeSelect('不限岗位', positions.map((p) => [p.id, `${p.name}（${p.question_count} 题）`])),
+      category: makeSelect('不限分类', distinct(pool.map((q) => q.category)).map((v) => [v, v])),
+      dimension: makeSelect('不限维度', distinct(pool.map((q) => q.dimension)).map((v) => [v, v])),
+      difficulty: makeSelect('不限难度', DIFFICULTIES),
+      question_type: makeSelect('不限题型', TYPES),
+    };
+    const size = makeSelect('题量', SIZES.map((n) => [n, `${n} 题`]));
+    size.value = String(SIZES[0]);
+
+    const count = el('span', { class: 'practice-count' });
+    const start = el('button', { class: 'btn btn--primary', text: '开始练习' });
+
+    function currentFilters() {
+      const out = {};
+      for (const [key, node] of Object.entries(controls)) {
+        if (!node.value) continue;
+        out[key] = key === 'position_id' ? Number(node.value) : node.value;
+      }
+      return out;
+    }
+
+    // 候选条件变化时会连打几次取题接口，晚到的旧响应不能覆盖新结果
+    let countToken = 0;
+    async function refreshCount() {
+      const token = (countToken += 1);
+      const filters = currentFilters();
+      const query = Object.entries(filters)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+        .join('&');
+      try {
+        const rows = await api.get(`/practice/questions${query ? `?${query}` : ''}`);
+        if (token !== countToken) return;
+        count.textContent = rows.length
+          ? `符合条件 ${rows.length} 题`
+          : '没有符合条件的题目，换一组筛选条件';
+        count.className = `practice-count${rows.length ? '' : ' is-none'}`;
+        start.disabled = rows.length === 0;
+      } catch (error) {
+        if (token !== countToken) return;
+        count.textContent = '';
+        start.disabled = true;
+      }
+    }
+    for (const node of Object.values(controls)) node.addEventListener('change', refreshCount);
+
+    start.addEventListener('click', async () => {
+      start.disabled = true;
+      start.textContent = '正在取题…';
+      try {
+        const detail = await api.post('/practice/sessions', {
+          ...currentFilters(),
+          size: Number(size.value) || SIZES[0],
+        });
+        navigate(`/candidate/practice/${detail.session.id}`);
+      } catch (error) {
+        // 409 = 没有符合条件的题目。**保留筛选条件不重置** —— 让人看到自己选的是什么
+        toast.error(error.message);
+        start.disabled = false;
+        start.textContent = '开始练习';
+      }
+    });
+
+    const filterBar = el('div', { class: 'filterbar' },
+      Object.values(controls),
+      size,
+      el('span', { class: 'filterbar-grow' }),
+      count,
+      start);
+
+    /* -------------------------- 我的练习 -------------------------- */
+
+    const ongoing = sessions.filter((s) => s.status === 'ongoing');
+    const history = sessions.filter((s) => s.status !== 'ongoing');
+
+    function sessionTable(rows, actionLabel, pathOf) {
+      return el('table', { class: 'table' },
+        el('thead', {}, el('tr', {},
+          el('th', { text: '岗位' }),
+          el('th', { text: '进度' }),
+          el('th', { text: '答对' }),
+          el('th', { text: '开始时间' }),
+          el('th', {}))),
+        el('tbody', {}, rows.map((session) => el('tr', {},
+          el('td', {},
+            el('strong', { text: session.position_name ?? '—' }),
+            el('div', { class: 'meta', text: filterSummary(session) })),
+          el('td', {}, progressCell(session)),
+          el('td', { class: 'cell-num', text: String(session.correct_count ?? 0) }),
+          el('td', { class: 'meta', text: formatDateTime(session.started_at) }),
+          el('td', { class: 'cell-actions' },
+            el('button', {
+              class: 'btn btn--quiet btn--sm',
+              text: actionLabel,
+              onClick: () => navigate(pathOf(session)),
+            }))))));
+    }
+
+    mount(main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: '刷题' }),
+          el('p', { class: 'page-lede' },
+            '选好条件开始一次练习。题目提交即判分，答错的会自动进错题本。'))),
+
+      el('div', { class: 'panel' }, filterBar),
+
+      ongoing.length
+        ? el('div', { class: 'panel' },
+            panelHead('继续练习', '没做完的都在这里'),
+            sessionTable(ongoing, '继续', (s) => `/candidate/practice/${s.session_id}`))
+        : null,
+
+      el('div', { class: 'panel' },
+        panelHead('历史记录', history.length ? `${history.length} 次` : null),
+        history.length
+          ? sessionTable(history, '查看', (s) => `/candidate/practice/${s.session_id}`)
+          : emptyState('还没有练习记录',
+              '选好上面的条件，开始第一次练习。',
+              el('button', {
+                class: 'btn btn--primary',
+                text: '开始练习',
+                // 空态里的按钮与筛选栏里那颗是同一个动作，直接复用，不另写一份取题逻辑
+                onClick: () => start.click(),
+              }))),
+    );
+
+    refreshCount();
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
+   pages/practice-session.js —— 练习作答（逐题提交、就地判分）
+   与 HR 详情页刻意不同：那边是「题目导航 + 单题编辑」（真人面试一题一题走），
+   这边**整卷铺开** —— 刷题是自己跟自己较劲，可以来回跳、可以先挑没做的那几题。
+
+   一处必须小心的实现细节：提交只重画**被提交的那一道**。整卷重画会把其他题里
+   已经写好、还没提交的作答一起清掉。
+   ========================================================================== */
+__modules['./pages/practice-session.js'] = function (exports, __require) {
+  const { el, clear, mount } = __require('./dom.js');
+  const api = __require('./api.js');
+  const { toast } = __require('./components/toast.js');
+  const { confirmModal } = __require('./components/modal.js');
+  const {
+    baseTitle, contextTitle, createShell, dimTag, emptyState, formatDateTime, loadingBlock,
+    navigate, panelHead,
+  } = __require('./components/shell.js');
+
+  const LETTERS = 'ABCDEFGHIJ';
+  const DIFFICULTY_LABELS = { easy: '简单', medium: '中等', hard: '困难' };
+  const TYPE_LABELS = { single_choice: '单选', short_answer: '简答' };
+
+  const pct = (value) => (value == null ? '—' : `${Math.round(value * 100)}%`);
+
+  function filterSummary(session) {
+    const parts = [];
+    if (session.category) parts.push(session.category);
+    if (session.dimension) parts.push(session.dimension);
+    if (session.difficulty) parts.push(DIFFICULTY_LABELS[session.difficulty] ?? session.difficulty);
+    if (session.question_type) parts.push(TYPE_LABELS[session.question_type] ?? session.question_type);
+    return parts.length ? parts.join(' · ') : '全部题目';
+  }
+
+  /* ---------------------------- 复盘（已提交） ---------------------------- */
+
+  /** 判分三态：答对 / 答错 / **未判分**。未判分不是答错，颜色与文案都不能混。 */
+  function verdictBlock(item) {
+    const graded = item.is_correct !== null;
+    const cls = !graded ? '' : item.is_correct ? 'is-correct' : 'is-wrong';
+    const label = !graded ? '未判分' : item.is_correct ? '答对' : '答错';
+    return el('div', { class: `verdict ${cls}` },
+      el('div', { class: 'verdict-head' },
+        el('span', { class: 'verdict-label', text: label }),
+        typeof item.score === 'number'
+          ? el('span', { class: 'verdict-score', text: `${item.score} / 10` })
+          : null),
+      el('p', { class: 'verdict-note', text: item.explanation ?? '' }));
+  }
+
+  /** 单选复盘：正确答案与「我选的」都要标出来 —— 只标正确答案不够。 */
+  function choiceRecap(item) {
+    const options = item.question.options || [];
+    return el('div', { class: 'option-list' }, options.map((text, index) => {
+      const isCorrect = text === item.reference_answer;
+      const mine = text === item.user_answer;
+      const flag = mine && isCorrect ? '你选对了'
+        : mine ? '你选的'
+        : isCorrect ? '正确答案'
+        : null;
+      return el('div', {
+        class: ['option-item',
+          isCorrect ? 'is-correct' : '',
+          mine && !isCorrect ? 'is-mine-wrong' : ''].filter(Boolean).join(' '),
+      },
+        el('span', { class: 'option-key', text: LETTERS[index] ?? '' }),
+        el('span', { text }),
+        flag ? el('span', { class: `option-flag${mine && !isCorrect ? ' is-danger' : ''}`, text: flag }) : null);
+    }));
+  }
+
+  function writtenRecap(item) {
+    return el('div', {},
+      el('div', { class: 'practice-answer' },
+        el('div', { class: 'dossier-label', text: '我的作答' }),
+        el('p', { class: 'answer-quote', text: item.user_answer ?? '' })),
+      item.reference_answer
+        ? el('div', { class: 'practice-answer' },
+            el('div', { class: 'dossier-label', text: '参考答案' }),
+            el('p', { class: 'answer-quote', text: item.reference_answer }))
+        : null);
+  }
+
+  /* --------------------------- 作答控件（未提交） --------------------------- */
+
+  function answerControl(item, onSubmit) {
+    const single = item.question.question_type === 'single_choice';
+
+    if (!single) {
+      const textarea = el('textarea', {
+        class: 'textarea', maxlength: '10000',
+        placeholder: '写下你的回答。提交后会给出得分、参考答案与解析。',
+      });
+      const submit = el('button', { class: 'btn btn--primary btn--sm', text: '提交' });
+      submit.addEventListener('click', () => {
+        if (!textarea.value.trim()) { toast.error('请先写下回答'); textarea.focus(); return; }
+        onSubmit(textarea.value);
+      });
+      return el('div', { class: 'practice-answer' }, textarea,
+        el('div', { class: 'practice-actions' }, submit));
+    }
+
+    let picked = '';
+    const submit = el('button', { class: 'btn btn--primary btn--sm', text: '提交', disabled: true });
+    const list = el('div', {});
+    (item.question.options || []).forEach((text, index) => {
+      list.append(el('label', { class: 'choice-option' },
+        el('input', { type: 'radio', name: `practice-${item.item_id}`, value: text }),
+        el('span', { class: 'option-key', text: LETTERS[index] ?? '' }),
+        el('span', { text })));
+    });
+    list.addEventListener('change', (event) => {
+      picked = event.target.value;
+      submit.disabled = false;
+      for (const node of list.querySelectorAll('.choice-option')) {
+        node.classList.toggle('is-picked', node.contains(event.target));
+      }
+    });
+    submit.addEventListener('click', () => { if (picked) onSubmit(picked); });
+
+    return el('div', { class: 'practice-answer' }, list,
+      el('div', { class: 'practice-actions' }, submit));
+  }
+
+  /* -------------------------------- 页面 -------------------------------- */
+
+  let activeTitle = null;
+  exports.destroy = function () { if (activeTitle) document.title = activeTitle; };
+
+  async function render(container, params) {
+    const sessionId = params.id;
+    const { root, main } = createShell(contextTitle('刷题', '练习'));
+    mount(container, root);
+    mount(main, loadingBlock('正在加载练习…'));
+
+    let detail;
+    let positionName = null;
+    try {
+      detail = await api.get(`/practice/sessions/${sessionId}`);
+      // PracticeSessionOut 里只有 position_id（与后端 schema 一致，没有岗位名），
+      // 因此岗位名要向候选人侧的岗位接口换一次 —— 那是他有权访问的那一个
+      if (detail.session.position_id != null) {
+        const positions = await api.get('/candidate/positions');
+        positionName = positions.find((p) => p.id === detail.session.position_id)?.name ?? null;
+      }
+    } catch (error) {
+      mount(main, el('div', { class: 'panel' }, emptyState('练习加载失败', error.message,
+        el('button', { class: 'btn btn--primary', text: '返回刷题', onClick: () => navigate('/candidate/practice') }))));
+      return;
+    }
+
+    const session = detail.session;
+    const items = detail.items;
+    const title = positionName ?? '练习';
+    // 本地结束后要立刻锁住作答，因此这是变量不是常量
+    let finished = session.status !== 'ongoing';
+    let summary = null;
+    let finishedLocally = false;
+
+    activeTitle = baseTitle();
+    document.title = `${title} · 刷题`;
+
+    const progressHolder = el('div', { class: 'practice-progress' });
+    const summaryHolder = el('div', {});
+    const listHolder = el('div', { class: 'panel' });
+    const actionsHolder = el('div', { class: 'page-head-actions' });
+
+    function counters() {
+      const answered = items.filter((i) => i.user_answer != null);
+      const scored = answered.filter((i) => i.is_correct !== null);
+      return {
+        answered: answered.length,
+        scored: scored.length,
+        correct: scored.filter((i) => i.is_correct).length,
+        total: items.length,
+      };
+    }
+
+    function paintProgress() {
+      const c = counters();
+      const percent = c.total ? Math.round((c.answered / c.total) * 100) : 0;
+      clear(progressHolder);
+      progressHolder.append(
+        el('span', { class: 'practice-progress-text', text: `已答 ${c.answered} / ${c.total}` }),
+        el('div', { class: 'practice-progress-track' },
+          el('div', { class: 'practice-progress-fill', style: `width:${percent}%` })),
+        el('span', { class: 'practice-progress-text', text: `答对 ${c.correct}` }),
+      );
+    }
+
+    /** 提交一道题。成功后**只重画这一道**，别把别的题里写了一半的作答清掉。 */
+    async function submitItem(item, holder, userAnswer) {
+      try {
+        const result = await api.post(`/practice/sessions/${sessionId}/items`, {
+          item_id: item.item_id,
+          user_answer: userAnswer,
+        });
+        item.user_answer = result.user_answer;
+        item.is_correct = result.is_correct;
+        item.score = result.score;
+        item.explanation = result.explanation;
+        item.reference_answer = result.reference_answer;
+        paintItem(holder, item);
+        paintProgress();
+      } catch (error) {
+        toast.error(error.message);
+      }
+    }
+
+    async function rescore(item, holder) {
+      try {
+        const result = await api.post(`/practice/items/${item.item_id}/rescore`, {});
+        item.is_correct = result.is_correct;
+        item.score = result.score;
+        item.explanation = result.explanation;
+        paintItem(holder, item);
+        paintProgress();
+      } catch (error) {
+        toast.error(error.message);
+      }
+    }
+
+    function paintItem(holder, item) {
+      clear(holder);
+      const answered = item.user_answer != null;
+      holder.append(
+        el('div', { class: 'practice-item-head' },
+          el('span', { class: 'score-seq', text: String(item.seq) }),
+          dimTag(item.question.dimension),
+          // 题型用中性灰标签，与维度标签区分开
+          el('span', { class: 'tag tag--off', text: TYPE_LABELS[item.question.question_type] ?? '' })),
+        el('p', { class: 'practice-item-question', text: item.question.content }),
+      );
+
+      if (!answered) {
+        // 已结束的练习不再接受作答（后端同样拒绝），因此这里只呈现「未作答」
+        holder.append(finished
+          ? el('p', { class: 'hint', style: 'margin-top:var(--s4)', text: '未作答（本次练习已结束）' })
+          : answerControl(item, (value) => submitItem(item, holder, value)));
+        return;
+      }
+
+      holder.append(verdictBlock(item));
+      holder.append(item.question.question_type === 'single_choice'
+        // 选项列表也要收在同一条阅读宽度里，否则它会横到面板最右边
+        ? el('div', { class: 'practice-answer' }, choiceRecap(item))
+        : writtenRecap(item));
+
+      // 未判分给一条重判的路（AI 不可用时后端就是这么标的，不是判错）
+      if (item.is_correct === null && !finished) {
+        holder.append(el('div', { class: 'practice-actions' },
+          el('button', {
+            class: 'btn btn--ghost btn--sm', text: '重判',
+            onClick: () => rescore(item, holder),
+          })));
+      }
+    }
+
+    function summaryBlock(data) {
+      const cells = [
+        [String(data.total), '题目'],
+        [String(data.answered_count), '已作答'],
+        [String(data.correct_count), '答对'],
+        [pct(data.accuracy), '正确率'],
+      ];
+      return el('div', { class: 'panel' },
+        panelHead('练习小结', finishedLocally ? '本次练习已结束' : null),
+        el('div', { class: 'panel-body' },
+          el('div', { class: 'summary-grid' }, cells.map(([value, label]) =>
+            el('div', { class: 'summary-cell' },
+              el('div', { class: 'summary-value', text: value }),
+              el('div', { class: 'summary-label', text: label })))),
+          // 未判分的题必须单独说清楚，否则会被读成答错
+          data.unscored_count
+            ? el('p', { class: 'hint', style: 'margin-top:var(--s4)',
+                text: `有 ${data.unscored_count} 题未判分，不计入正确率。` })
+            : null,
+          data.by_dimension?.length
+            ? el('div', { class: 'summary-bars' }, data.by_dimension.map((row) =>
+                el('div', {},
+                  el('div', { class: 'summary-bar-top' },
+                    el('span', { text: row.dimension }),
+                    // 只报正确率，不报「对 / 答」—— DimensionAccuracy 里没有已判分数，
+                    // 用已答数当分母会和上面的正确率对不上（未判分的题被算进了分母）
+                    el('span', { class: 'summary-bar-value', text: row.accuracy == null ? '未判分' : pct(row.accuracy) })),
+                  el('div', { class: 'summary-bar-track' },
+                    el('div', { class: 'summary-bar-fill', style: `width:${row.accuracy == null ? 0 : Math.round(row.accuracy * 100)}%` })))))
+            : null));
+    }
+
+    function paintActions() {
+      clear(actionsHolder);
+      actionsHolder.append(el('button', {
+        class: 'btn btn--ghost', text: '返回刷题', onClick: () => navigate('/candidate/practice'),
+      }));
+      if (finished) return;
+      actionsHolder.append(el('button', {
+        class: 'btn btn--primary',
+        text: '结束练习',
+        onClick: async () => {
+          const c = counters();
+          const ok = await confirmModal({
+            title: '结束这次练习？',
+            message: c.answered < c.total
+              ? `还有 ${c.total - c.answered} 题没有作答。结束后本次练习不能再作答，小结会按已回答的部分给出。`
+              : '结束后本次练习不能再作答，会给出这次的小结。',
+            confirmLabel: '结束练习',
+            danger: false,
+          });
+          if (!ok) return;
+          try {
+            const result = await api.post(`/practice/sessions/${sessionId}/finish`);
+            summary = result;
+            finishedLocally = true;
+            finished = true;
+            session.status = 'finished';
+            mount(summaryHolder, summaryBlock(summary));
+            paintProgress();
+            paintActions();
+            repaintItems();
+          } catch (error) {
+            toast.error(error.message);
+          }
+        },
+      }));
+    }
+
+    function repaintItems() {
+      clear(listHolder);
+      listHolder.append(
+        panelHead('题目', `${items.length} 题`),
+        el('div', {}, items.map((item) => {
+          const holder = el('div', { class: 'practice-item' });
+          paintItem(holder, item);
+          return holder;
+        })));
+    }
+
+    mount(main,
+      el('div', { class: 'page-head' },
+        el('div', {},
+          el('h1', { text: title }),
+          el('p', { class: 'page-lede', text: filterSummary(session) }),
+          el('p', { class: 'meta', text: finished
+            ? `开始于 ${formatDateTime(session.started_at)}，已结束`
+            : '提交即判分，可以随时离开，回来接着做。' })),
+        actionsHolder),
+      progressHolder,
+      summaryHolder,
+      el('div', { style: 'margin-top:var(--s5)' }, listHolder),
+    );
+
+    paintActions();
+    paintProgress();
+    repaintItems();
+  }
+
+  exports.render = render;
+};
+
+/* ==========================================================================
    pages/placeholder.js —— 未实现的模块占位
    原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
    占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
@@ -7256,6 +9052,11 @@ __modules['./main.js'] = function (exports, __require) {
     positions: __require('./pages/positions.js'),
     questions: __require('./pages/questions.js'),
     users: __require('./pages/users.js'),
+    // ---- 候选人端 ----
+    candidateLogin: __require('./pages/candidate-login.js'),
+    candidateActivate: __require('./pages/candidate-activate.js'),
+    candidatePractice: __require('./pages/candidate-practice.js'),
+    practiceSession: __require('./pages/practice-session.js'),
     placeholder: __require('./pages/placeholder.js'),
   });
 
