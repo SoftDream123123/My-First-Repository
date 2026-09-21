@@ -169,6 +169,41 @@ export function dimTag(dimension) {
   return el('span', { class: 'tag tag--dim', text: dimension });
 }
 
+/* ---- 候选人看到的「我的面试」状态 ----
+   候选人关心的是**他自己接下来要做什么**，不是 HR 的面试状态机
+   （draft / ongoing / completed / evaluating / evaluated）。后端下发的是 HR 的
+   `status`（CandidateInterviewItem 是白名单模型，没有额外字段），翻译在这一层
+   做一次 —— 否则列表页与详情页会各译一套说法。 */
+
+const CANDIDATE_STATE_LABELS = {
+  await: '待作答',
+  submitted: '已交卷',
+  feedback: '有反馈',
+  closed: '已结束',
+};
+
+/**
+ * 纯函数：把后端的两字段（`status` + `submitted`）译成候选人的四态。
+ *
+ *   evaluated            → feedback  —— 评估完成就一定有反馈可看，与交没交过卷无关
+ *   submitted            → submitted
+ *   ongoing 且未交卷      → await
+ *   其余（completed / evaluating，未交卷）→ closed
+ *
+ * 最后一档是必要的：HR 可以不等候选人交卷就手工标记完成。那一场对当事人而言
+ * **不是「待作答」**（他已经答不了了），说成待作答是句假话。
+ */
+export function candidateState(item) {
+  if (item.status === 'evaluated') return 'feedback';
+  if (item.submitted) return 'submitted';
+  return item.status === 'ongoing' ? 'await' : 'closed';
+}
+
+export function candidateStateTag(item) {
+  const state = candidateState(item);
+  return el('span', { class: `tag tag--${state}`, text: CANDIDATE_STATE_LABELS[state] });
+}
+
 /**
  * 题目来源。**三个分支都要有** —— `resume_match` 是 MVP-3 新增的来源，
  * 漏掉它会把英文枚举值（`resume_match`）直接显示给用户，并给出错误或空的提示。

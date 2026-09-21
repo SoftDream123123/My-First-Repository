@@ -88,11 +88,12 @@ function buildForm() {
             password: password.value,
           });
 
-          // 候选人账号在 HR 登录页登录：本页只发 HR 工作台的入口。
-          // 这里**不保存登录态** —— 候选人端页面尚未落地，存下来也无处可去，
-          // 反而会让人以为自己已经进了某个界面。
+          // 登录端点是**三个角色共用**的（API 文档 §5.1），因此这里要按返回的
+          // `role` 分流，不能默认来者都是 HR。候选人的登录态写进 `candidate.*`：
+          // 两端登录态分开存，同一个浏览器可以同时开着两个端（PRD §9）。
           if (result.user?.role === 'candidate') {
-            toast.error('这是 HR 工作台。候选人端尚未上线，暂时无法进入。');
+            auth.saveTokenOn(result.token, result.user, 'candidate');
+            navigate(defaultRoute('candidate'));
             return;
           }
 
@@ -125,6 +126,19 @@ function buildForm() {
     ),
     submit,
     el('p', { class: 'note-box' }, '演示账号：admin / admin12345'),
+    // 候选人本来也有账号，但这一页是 HR 工作台。与其让他登进来再被弹走，
+    // 不如在入口处就把路指对（候选人账号在这一页登录也仍会被送到候选人端）。
+    el(
+      'div',
+      { class: 'login-alt-row' },
+      el('span', { text: '你是候选人？' }),
+      el('button', {
+        class: 'btn btn--quiet btn--sm',
+        type: 'button',
+        text: '去候选人端',
+        onClick: () => navigate('/candidate/login'),
+      }),
+    ),
   );
 }
 

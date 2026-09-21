@@ -19,6 +19,9 @@ describe('matchRoute', () => {
     expect(matchRoute('/interviews')?.route.key).toBe('interviews');
     expect(matchRoute('/positions')?.route.key).toBe('positions');
     expect(matchRoute('/users')?.route.key).toBe('users');
+    expect(matchRoute('/candidate/login')?.route.key).toBe('candidateLogin');
+    expect(matchRoute('/candidate/activate')?.route.key).toBe('candidateActivate');
+    expect(matchRoute('/candidate/interviews')?.route.key).toBe('candidateInterviews');
   });
 
   it('带不带 # 前缀都一样', () => {
@@ -29,12 +32,22 @@ describe('matchRoute', () => {
   it('`:id` 段被提取成 params，而不是当成字面量', () => {
     expect(matchRoute('/interviews/7')?.route.key).toBe('interviewDetail');
     expect(matchRoute('/interviews/7')?.params).toEqual({ id: '7' });
+    expect(matchRoute('/candidate/interviews/3')?.route.key).toBe('candidateInterviewDetail');
+    expect(matchRoute('/candidate/interviews/3')?.params).toEqual({ id: '3' });
+    expect(matchRoute('/candidate/interviews/3/feedback')?.route.key).toBe('candidateFeedback');
+  });
+
+  it('候选人端两个前缀相同的路由不会互相吃掉', () => {
+    // `/candidate/interviews/:id` 与 `/candidate/interviews/:id/feedback` 段数不同，
+    // 前者不能把后者截走一部分
+    expect(matchRoute('/candidate/interviews/3/feedback')?.route.key).not.toBe('candidateInterviewDetail');
   });
 
   it('未注册的路径返回 null，而不是模糊匹配到别处', () => {
     // 这几个是后续模块才落地的页面 —— 现在必须**明确不匹配**，
     // 否则会渲染出「页面未注册」的错误，而不是被送去一个能用的地方。
-    expect(matchRoute('/candidate/interviews')).toBeNull();
+    expect(matchRoute('/candidate/practice')).toBeNull();
+    expect(matchRoute('/candidate/resumes')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });
 
@@ -45,12 +58,9 @@ describe('matchRoute', () => {
 });
 
 describe('loginPath', () => {
-  it('HR 端有登录页就用它', () => {
+  it('按端给出各自的登录页', () => {
     expect(loginPath('hr')).toBe('/login');
-  });
-
-  it('候选人端登录页还没落地时退回 HR 登录页（而不是返回一个不存在的路径）', () => {
-    expect(loginPath('candidate')).toBe('/login');
+    expect(loginPath('candidate')).toBe('/candidate/login');
   });
 });
 
@@ -58,6 +68,11 @@ describe('defaultRoute', () => {
   it('取本端第一个带导航的路由', () => {
     expect(defaultRoute('hr', false)).toBe('/interviews');
     expect(defaultRoute('hr', true)).toBe('/interviews');
+  });
+
+  it('候选人端的默认页是「我的面试」，不是刷题也不是登录页', () => {
+    // 候选人最关心的永远是「有没有待答的面试」，刷题是次一级的自主行为
+    expect(defaultRoute('candidate', false)).toBe('/candidate/interviews');
   });
 
   it('adminOnly 的路由不会成为非管理员的落地页（哪怕它排在最前）', () => {
@@ -71,7 +86,14 @@ describe('defaultRoute', () => {
   });
 
   it('某端一条可达路由都没有时，退回该端的登录页', () => {
-    expect(defaultRoute('candidate', false)).toBe('/login');
+    // 这是防御性分支：`loginPath` 本身也要保证不回一个不存在的路径，
+    // 否则用户会被送去一个匹配不上任何路由的地方
+    const removed = routes.splice(0, routes.length, ...routes.filter((r) => r.side === 'candidate'));
+    try {
+      expect(defaultRoute('hr', false)).toBe('/login');
+    } finally {
+      routes.splice(0, routes.length, ...removed);
+    }
   });
 });
 
@@ -95,11 +117,18 @@ describe('decide —— 公开页', () => {
   });
 
   it('open 的路由登录与否都放行（激活页要这样）', () => {
-    const activate = { path: '/candidate/activate', side: 'candidate', isPublic: true, open: true };
+    const activate = routes.find((r) => r.path === '/candidate/activate');
+    expect(activate.open).toBe(true);
     expect(decide(activate, { loggedIn: true, isAdmin: true, target: '/positions' }))
       .toEqual({ action: 'allow' });
-    expect(decide(activate, { loggedIn: false, isAdmin: false, target: '/login' }))
+    expect(decide(activate, { loggedIn: false, isAdmin: false, target: '/candidate/login' }))
       .toEqual({ action: 'allow' });
+  });
+
+  it('候选人登录页已登录 → 送回候选人默认页（不是 HR 默认页）', () => {
+    const route = routes.find((r) => r.path === '/candidate/login');
+    expect(decide(route, { loggedIn: true, isAdmin: false, target: '/candidate/interviews' }))
+      .toEqual({ action: 'redirect', to: '/candidate/interviews' });
   });
 });
 
@@ -132,12 +161,35 @@ describe('decide —— 受保护页', () => {
     expect(verdict.to).toBeNull();
   });
 
-  it('端由 side 决定：HR 的登录态不算候选人端的登录态', () => {
+  it('候选人页面未登录 → 去**候选人**登录页，不是 HR 登录页', () => {
     // 调用方在取值前会 `session.setSide(route.side)`，因此这里传进来的
     // loggedIn 已经是**候选人端**的。候选人端没登录 → 去候选人端登录页。
-    const candidatePage = { path: '/candidate/practice', key: 'candidatePractice', side: 'candidate' };
-    expect(decide(candidatePage, { loggedIn: false, isAdmin: false, target: '/positions' }))
-      .toEqual({ action: 'redirect', to: '/login' }); // 候选人端登录页尚未落地，退回 /login
+    for (const path of ['/candidate/interviews', '/candidate/interviews/:id', '/candidate/interviews/:id/feedback']) {
+      const route = routes.find((r) => r.path === path);
+      expect(decide(route, { loggedIn: false, isAdmin: false, target: '/candidate/interviews' }))
+        .toEqual({ action: 'redirect', to: '/candidate/login' });
+    }
+  });
+
+  it('候选人已登录 → 放行候选人页面', () => {
+    const route = routes.find((r) => r.path === '/candidate/interviews');
+    expect(decide(route, { loggedIn: true, isAdmin: false, target: '/candidate/interviews' }))
+      .toEqual({ action: 'allow' });
+  });
+
+  it('跨端串号：守卫按端的 token 判定，不会放行后再让人吃一屏 403', () => {
+    // 按端分 key 存储的直接后果：一端登录时另一端的 token 是 null。
+    // 调用方据此传进来的 loggedIn 是「本条路由所属那一端」的状态，
+    // 因此两个方向都应当在这一步就被送回本端登录页。
+    const hrRoute = routes.find((r) => r.path === '/positions');
+    const candidateRoute = routes.find((r) => r.path === '/candidate/interviews');
+
+    // HR 登录、候选人端未登录 → 候选人页面被送回候选人登录页
+    expect(decide(candidateRoute, { loggedIn: false, isAdmin: false, target: '/candidate/interviews' }))
+      .toEqual({ action: 'redirect', to: '/candidate/login' });
+    // 候选人登录、HR 端未登录 → HR 页面被送回 HR 登录页
+    expect(decide(hrRoute, { loggedIn: false, isAdmin: false, target: '/interviews' }))
+      .toEqual({ action: 'redirect', to: '/login' });
   });
 });
 
@@ -153,8 +205,8 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
 
   it('未知 hash 先看前缀：`#/candidate/xxx` 不能把人弹到 HR 侧', () => {
     const out = entryRoute({ hash: '#/candidate/nowhere', sides: nobody });
-    expect(out.startsWith('/candidate')).toBe(false);
-    expect(out).toBe('/login'); // 候选人端页面尚未落地时的过渡结果
+    expect(out.startsWith('/candidate')).toBe(true);
+    expect(out).toBe('/candidate/interviews');
   });
 
   it('已登录的 HR 去未知 hash → 回到自己的默认页', () => {
@@ -162,11 +214,9 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
     expect(entryRoute({ hash: '#/nope', sides })).toBe('/interviews');
   });
 
-  it('只登录了候选人时优先候选人端（候选人端落地后应改为候选人默认页）', () => {
+  it('只登录了候选人时优先候选人端', () => {
     const sides = { ...nobody, candidate: { loggedIn: true, isAdmin: false } };
-    // 过渡态：候选人端一条路由都没有，因此只能落到登录页。
-    // 候选人模块落地后这条断言应当改成 '/candidate/interviews'。
-    expect(entryRoute({ hash: '', sides })).toBe('/login');
+    expect(entryRoute({ hash: '', sides })).toBe('/candidate/interviews');
   });
 
   it('两端都登录 → 优先候选人', () => {
@@ -174,7 +224,6 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
       hr: { loggedIn: true, isAdmin: true },
       candidate: { loggedIn: true, isAdmin: false },
     };
-    const out = entryRoute({ hash: '', sides });
-    expect(out).not.toBe('/interviews');
+    expect(entryRoute({ hash: '', sides })).toBe('/candidate/interviews');
   });
 });

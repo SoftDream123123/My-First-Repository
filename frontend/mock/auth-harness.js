@@ -40,6 +40,7 @@ function handlers() {
     'GET /interviews': () => ({ status: 200, body: [] }),
     'GET /positions': () => ({ status: 200, body: [] }),
     'GET /users': () => ({ status: 200, body: [ADMIN] }),
+    'GET /candidate/interviews': () => ({ status: 200, body: [] }),
   };
 }
 
@@ -121,7 +122,7 @@ report.run(async () => {
   check('密码错 → 不写登录态', tokenIn('hr') === null, String(tokenIn('hr')));
   check('密码错 → 不跳转，仍停在登录页', hash() === '#/login', hash());
 
-  /* ---------- 4. 候选人账号在 HR 登录页登录 → 拒绝并说明 ---------- */
+  /* ---------- 4. 候选人账号在 HR 登录页登录 → 送到候选人端 ---------- */
   clearToasts();
   backend.reset();
   page().querySelector('#login-username').value = 'li.yun';
@@ -129,10 +130,20 @@ report.run(async () => {
   buttonIn(page(), '登录').click();
   await settle();
   await settle();
+  await settle();
 
-  check('候选人账号在 HR 登录页 → 明确拒绝', toasts().some((t) => t.includes('这是 HR 工作台')), toasts().join(' | '));
-  check('候选人账号 → 不写 HR 登录态（存下来也无处可去）', tokenIn('hr') === null, String(tokenIn('hr')));
-  check('候选人账号 → 仍停在 HR 登录页', hash() === '#/login', hash());
+  check('候选人账号在 HR 登录页 → 落到候选人默认页', hash() === '#/candidate/interviews', hash());
+  check('候选人账号 → 登录态写进 candidate.*，不是 hr.*',
+    tokenIn('candidate') === 'cand-token' && tokenIn('hr') === null,
+    `${tokenIn('hr')} / ${tokenIn('candidate')}`);
+  check('候选人账号 → 脊上是「候选人端」，不是「HR 工作台」',
+    page().querySelector('.spine-sub')?.textContent === '候选人端',
+    page().querySelector('.spine-sub')?.textContent);
+
+  // 回到 HR 登录页继续后面的用例（此时 HR 端仍未登录，守卫会放行）
+  await go('#/login');
+  check('回到 HR 登录页仍然可达（候选人登录态不该把 HR 页挡住）',
+    has('.login-form') && hash() === '#/login', `${hash()} / ${has('.login-form')}`);
 
   /* ---------- 5. admin 登录成功 → 外壳 + 默认页 ---------- */
   clearToasts();
@@ -146,7 +157,9 @@ report.run(async () => {
 
   check('admin 登录成功 → 跳到本端默认页 #/interviews', hash() === '#/interviews', hash());
   check('admin 登录成功 → token 存在 hr.* 下', tokenIn('hr') === 'hr-token', String(tokenIn('hr')));
-  check('登录态没有串到候选人端', tokenIn('candidate') === null, String(tokenIn('candidate')));
+  // 候选人端此刻已经登录着（用例 4 留下的）—— HR 端登录**只写自己那一格**。
+  // 这条比「候选人端是空的」更有意义：它测的是两端互不干扰，而不是「谁都没写」。
+  check('HR 端登录不覆盖候选人端已有的登录态', tokenIn('candidate') === 'cand-token', String(tokenIn('candidate')));
   check('外壳渲染了脊', has('.spine'));
   check('脊上显示用户名', page().querySelector('.spine-username')?.textContent === 'admin');
   check('脊上显示角色为「管理员」', page().querySelector('.spine-role')?.textContent === '管理员');

@@ -277,6 +277,14 @@
 .tag--dim        { background: #f2f6fa; border-color: #e0e8f0; color: var(--ink-soft); }
 .tag--off        { background: #eef2f6; border-color: #dde5ec; color: var(--muted); }
 
+/* 候选人看到的「我的面试」四态。只有**要你动手**的两态上色（待作答 / 有反馈），
+   其余一律灰。`--pass` / `--watch` 在这四个里一次都不出现：候选人不看分数，
+   分数色带也就不该出现 —— 颜色是数据的函数，不是装饰。 */
+.tag--await,
+.tag--feedback   { background: var(--brand-wash); border-color: var(--brand-line); color: var(--brand-deep); }
+.tag--submitted,
+.tag--closed     { background: #eef2f6; border-color: #dde5ec; color: var(--muted); }
+
 .mine-badge { margin-left: var(--s1); font-size: var(--t-xs); color: var(--faint); }
 
 /* ---- 列表 + 案卷：左列选条目，右列看全文 ----
@@ -496,6 +504,27 @@
   color: var(--ink-soft);
   white-space: nowrap;
 }
+
+/* ---- 交卷条：另一条细条 + 数字 + 尾部一个动作 ----
+   与上面的 `.progress` 是同一种构件，区别在**位置与权重**：`.progress` 是表格
+   单元格里的一粒读数，这一条横在正文上方，是整页的进度与唯一的收口动作。 */
+.submit-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding: var(--s4) var(--s5);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+}
+.submit-bar-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.submit-bar-fill { height: 100%; background: var(--brand); }
+.submit-bar-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
+.submit-bar .btn { flex: none; }
+/* 已交卷 / 通道关闭后，这条不再表示「还差多少」，而是一个既成事实 */
+.submit-bar.is-frozen { background: #fafcfe; }
+.submit-bar.is-frozen .submit-bar-text { flex: 1; }
 
 /* ---- 状态轨：面试的真实流程，不是装饰性步骤条 ---- */
 .rail {

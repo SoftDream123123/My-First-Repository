@@ -43,6 +43,21 @@ export function isAdminOn(side) {
   return admin;
 }
 
+/**
+ * 在**指定端**上保存登录态，且**不改变当前活动端**。
+ *
+ * 存在的理由只有一个：HR 登录页收到一个 `candidate` 账号时，要把它存进
+ * `candidate.*` 而不是 `hr.*`（API 文档 §5.1 —— 登录端点是三个角色共用的，
+ * 页面按返回的 `role` 决定去哪一个端）。存完之后活动端由 router 在下一次
+ * 渲染时按路由设定，这里不该顺手改它。
+ */
+export function saveTokenOn(token, user, side) {
+  const previous = session.getSide();
+  session.setSide(side);
+  session.save(token, user);
+  session.setSide(previous);
+}
+
 /** 退出**当前端**，并回到该端的登录页。两端可以同时登录，因此不能两端一起清。 */
 export function logout() {
   const side = session.getSide();

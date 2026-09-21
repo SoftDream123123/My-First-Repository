@@ -76,6 +76,20 @@
 .login-card > h2 { font-size: var(--t-xl); }
 .login-card-lede { margin: var(--s2) 0 var(--s7); font-size: 14px; color: var(--muted); }
 
+/* 登录 / 注册切换（候选人端）。分段控件自带上下留白为零，这里补一段 ——
+   它与下面的表单不是一个字段，贴太近会被读成第一个输入框的标签。 */
+.login-form .seg { margin-bottom: var(--s5); }
+/* 「拿到邀请码了？去激活」这类**旁路**。主操作永远是上面那颗提交按钮，
+   因此它只占一行小字，不跟主按钮抢注意力。 */
+.login-alt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
 /* ---- 提示条：说明「接下来会发生什么」，既不是错误也不是警告 ---- */
 .note-box {
   padding: var(--s3) var(--s4);
@@ -375,6 +389,20 @@
 .prep-edit-tag { flex: none; font-size: var(--t-xs); color: var(--muted); }
 .prep-edit-label { margin-bottom: var(--s1); font-size: var(--t-xs); color: var(--muted); }
 .prep-edit-add { margin-top: var(--s2); }
+
+/* ---- 面试反馈：一份文书，不是一块看板 ----
+   宽度收在 1000px（与准备助手同一种读法），内容是**顺着读**的：
+   结论 → 优点 → 待改进。HR 报告那套是「左右对照」，候选人这边不需要对照。 */
+.feedback-page { max-width: 1000px; }
+/* 提示条与下面的面板左右对齐。`.note-box` 自带的 46em 上限是给窄卡片里那一句用的，
+   放在整页宽的文书里会让右边缘参差不齐 */
+.feedback-page .note-box { max-width: none; }
+.feedback-lede { font-size: 17px; line-height: 1.85; max-width: 34em; }
+/* full 档才出现的那一行总分：`.score-value` 自带 margin-left:auto，
+   那是给逐题行右对齐用的，这里要取消 */
+.feedback-total { display: flex; align-items: baseline; gap: var(--s3); margin-top: var(--s3); }
+.feedback-total .score-value { margin-left: 0; font-size: var(--t-2xl); }
+.feedback-total-label { font-size: var(--t-sm); color: var(--muted); }
 
 /* ==========================================================================
    打印 —— 「导出 PDF」走浏览器打印（PRD §4.12）。

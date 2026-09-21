@@ -99,16 +99,29 @@ python scripts/seed_admin.py
 | HR | `#/positions` | 岗位：列表 + 案卷 + 维度编辑器 | ✅ |
 | HR | `#/questions` | 题库：六项筛选 + 题型/选项/参考答案表单 + AI 生成参考答案 | ✅ |
 | HR | `#/users` | 用户管理（仅 admin） | ✅ |
+| 候选人 | `#/candidate/login` | 登录 / 注册（同页切换，注册成功自动登录） | ✅ |
+| 候选人 | `#/candidate/activate` | 凭邀请码激活并绑定面试（**本端唯一的 open 路由**） | ✅ |
+| 候选人 | `#/candidate/interviews` | 我的面试（待你作答 / 我的记录两块）**← 候选人默认落地页** | ✅ |
+| 候选人 | `#/candidate/interviews/:id` | 在线作答（逐题 + 自动保存 + 交卷） | ✅ |
+| 候选人 | `#/candidate/interviews/:id/feedback` | 脱敏反馈（结论 / 优点 / 待改进） | ✅ |
 
-**HR 端已全部搬完。** 尚未搬进来的是**候选人端整体**（登录/注册/邀请激活/刷题/我的面试/
-在线答题/脱敏反馈/错题本/练习统计/我的简历）。
+**HR 端与候选人的「面试链路」都已落地。** 尚未搬进来的是候选人的**自主练习**一侧：
+刷题（取题 + 会话）、错题本、练习统计、我的简历（含关联到面试）。
 
 未落地的页面**没有被写进 `src/router.js` 的路由表**，因此 nav 上不会出现、
 地址栏直接输也进不去（会被送去本端默认页）。这是刻意的：路由表里放一行
 点进去就报错的路由，比缺一个入口更难查。
 
-> 候选人端在 `src/` 里整体不存在，但在 `standalone.html` 原型里是**全量覆盖**的。
+> 候选人端在 `src/` 里只落了面试链路，但在 `standalone.html` 原型里是**全量覆盖**的。
 > 两边的差集就是待搬的清单。
+
+### 两端如何共存
+
+同一个浏览器里**两个端可以同时登录**（`hr.*` / `candidate.*` 分开存，PRD §9）。
+登录端点是三个角色共用的，因此**HR 登录页收到候选人账号会把他送到候选人端**，
+反之候选人登录页收到 HR 账号会明确拒绝。
+
+> 候选人端**没有**激活入口在导航上：激活是一次性动作，入口放在登录页与「我的面试」的空态里。
 
 ---
 
@@ -128,11 +141,13 @@ frontend/
     session.js                登录态存储（按端分 key：hr.* / candidate.*）
     auth.js                   登录态语义（isAdmin / logout / refreshUser）
     dom.js                    DOM 助手 —— 把 XSS 约束结构化
-    components/               shell（脊 + 顶栏 + 展示件 + 状态轨）· radar · modal · toast · form
+    components/               shell（脊 + 顶栏 + 展示件 + 状态轨 + 候选人状态翻译）· radar · modal · toast · form
     pages/                    login · interviews · interview-detail · evaluation · interview-prep
                               · positions · questions · users
+                              · candidate-login · candidate-activate · candidate-interviews
+                              · candidate-interview-detail · candidate-feedback
     styles/                   tokens / base / components / pages（含打印样式）
-    __tests__/                router.test.js · sse.test.js · radar.test.js
+    __tests__/                router.test.js · sse.test.js · radar.test.js · candidate-state.test.js
   standalone.html             原型单文件快照（手工维护，见下）
   mock/                       Mock 联调测试（浏览器端，见「单测」一节）
   .screenshots/               设计记录（25 张：HR 侧 12 + 候选人侧 13）
@@ -188,6 +203,7 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | `src/__tests__/router.test.js` | 路由匹配（含段数不等不吃掉子路径）、默认落地页（adminOnly 不成为非管理员的落地页）、守卫决策（公开页 / 未登录 / 角色不符 / 改道到自己时的空转）、裸入口与未知 hash 的按端分流 |
 | `src/__tests__/sse.test.js` | 分帧（`LF LF` 与 `CRLF CRLF` 两种）、**跨块缓冲**（含逐字节喂入）、多行 data、**心跳注释必须静默丢弃**、畸形 JSON 不让流崩掉 |
 | `src/__tests__/radar.test.js` | 首顶点在正上方、相邻维度均分整圈、半径与分数成正比、0 分落圆心、越界夹取、**缺维度不封口**、标签按方位对齐、6.5 阈值是 `>=` |
+| `src/__tests__/candidate-state.test.js` | 候选人四态翻译：进行中→待作答、已交卷→已交卷、**已评估优先于已交卷**（否则交过卷又被评估的场次拿不到反馈入口）、**未交卷但已被 HR 收口 → 已结束而不是待作答**（那是句假话）、四态取值封闭 |
 
 **守卫决策抽成纯函数**是刻意的：它的错法都很安静 —— 少一次重定向就是白屏，
 多一次就是「点了没反应」，而在浏览器里要靠手工构造登录态才能复现。
@@ -206,6 +222,7 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | `mock/prep-harness.html` | 68 | **字段名契约**（假后端按 Pydantic 的行为校验请求体：缺字段就 400 并点名，而不是来什么收什么）、`seq` 在 PUT 里重编不留空洞、分钟刻度累计、`notes` 是字符串而非数组、增删条目、本地校验拦住必然 400 的提交、重新生成的二次确认与整体覆盖、AI 失败不动旧内容、完成后冻结但阅读不受影响、导出走 `window.print()` |
 | `mock/evaluation-harness.html` | 61 | **事件契约**（`question` / `dimension` / `report` / `done` / `error`，刻意把报文切到 5 字节一块以逼出跨块缓冲）、心跳注释被丢弃、**重连重放不翻倍**（按 id 覆盖而非追加）、缺维度不封口、断流不被说成失败、状态机失败后回到可重试态、导出 DOCX 的中文文件名（RFC 5987）与「改用 PDF」提示、`window.print()` |
 | `mock/questions-harness.html` | 83 | 六项筛选的参数名与 AND 关系、**分类下拉在首次加载后就有值**、三种来源标签（含 `resume_match`）、题型切换改表单结构、维度跟随岗位、单选的选项/答案约束逐条、`source` 不由客户端提交、**简答必须传 `options: []` 而不是省略**、AI 生成的成功/502/409 与「失败不改动题目」、删除保护 |
+| `mock/candidate-harness.html` | 94 | 候选人面试链路全量：**未登录进候选人页跳的是候选人登录页**（不是 `#/login`）、HR 账号走错入口被拒且不写候选人登录态、注册走两步（register→login）、**自助注册被关闭时翻成「凭邀请码进入」那一版**而不是弹报错、邀请激活（**未登录可进**；已登录时不重复登录）、**密码不符的 401 落在密码字段上**、激活 409 三种原因原样展示、我的面试的两块分组与状态标签、**交卷前先 flush 未保存内容且保存失败就中止交卷**、已交卷/已收口时输入框只读且不说「会自动保存」、反馈 summary 无总分而 full 有、**任何档位都没有雷达图/逐题分**、未评估 409 用空态而非报错样式、**先开 HR 页再切候选人页时请求带的是候选人 token**（时序）、退出登录只清本端 |
 
 每个测试台拦截 `window.fetch` 当假后端，然后**驱动 `src/` 里的真实页面代码**，
 把结果渲染到右上角面板并写进 `document.title`（`MOCK-ALL-PASS n` / `MOCK-FAIL n/m`），
@@ -219,7 +236,7 @@ msedge --headless=new --virtual-time-budget=30000 \
 `mock/` 不参与 `npm run build`，不会进入 `dist/`。
 
 **每个模块都做过变异检查**（沿用后端测试报告 §6.2 的手法）：把缺陷植回去，
-断言必须失败。至今十二次：
+断言必须失败。至今十七次：
 
 | 模块 | 植入的缺陷 | 结果 |
 |---|---|---|
@@ -235,8 +252,13 @@ msedge --headless=new --virtual-time-budget=30000 \
 | 评估 | 维度没到齐也把雷达封口 | 单测 1 条红 + `evaluation-harness` 1 条红 ✅ |
 | 准备 | **PUT 提交体退回原型的字段名**（`minutes`/`points`/`focus`/`followups`） | `prep-harness` 7 条红 ✅ |
 | 准备 | 只读视图也按原型的字段名读 | `prep-harness` 4 条红 ✅ |
+| 候选人 | 状态翻译把「已交卷」判在「已评估」之前 | 单测 1 条红 + `candidate-harness` 2 条红 ✅ |
+| 候选人 | 激活页不再标 `open`（未登录就进不去） | `candidate-harness` 3 条红 ✅ |
+| 候选人 | HR 登录页把候选人账号存进 `hr.*` | `auth-harness` 4 条红 ✅ |
+| 候选人 | 交卷前不再 flush 未保存的内容 | `candidate-harness` 3 条红 ✅ |
+| 候选人 | 作答通道不再按状态锁定（已交卷也能改） | `candidate-harness` 6 条红 ✅ |
 
-> 这套测试至今抓到**五个真 bug**，另有两处**原型与真实契约对不上**：
+> 这套测试至今抓到**五个真 bug**，另有三处**原型与真实契约对不上**：
 >
 > 1. **岗位搜索搜到 0 条时，搜索框会跟着空态一起消失** —— 用户既看不到「为什么是空的」，
 >    也没有地方把词改回去。已改成「有搜索词就保留左栏」。
@@ -257,29 +279,42 @@ msedge --headless=new --virtual-time-budget=30000 \
 > ⚠️ 第 3、4 两个 bug **原型 `standalone.html` 里同样存在**，尚未修（它是设计快照）。
 > 搬后续页面时留意同类写法：`questions.js` 已在搬入 `src/` 时一并修掉。
 >
-> **另外两处不是「bug」而是「原型的 mock 与真实后端对不上」** —— 原型当年是照
+> **另外三处不是「bug」而是「原型的 mock 与真实后端对不上」** —— 原型当年是照
 > 自己写的内存 mock 开发的，两边一起错所以自洽，但照搬进 `src/` 会直接不工作：
->
-> | 位置 | 原型写的 | 真实契约 | 照搬的后果 |
-> |---|---|---|---|
-> | 评估页的 SSE 事件名 | `stage` / `question_score` / `dimension_score` | `question` / `dimension` / `report` / `done` / `error`（API 文档 §9.2） | 一条进度都收不到，界面只表现为「一直转圈」 |
-> | 准备提纲的字段 | `minutes` / `points[]` / `focus` / `followups`，且 PUT 不带 `seq` | `duration_min` / `notes`（字符串）/ `point` / `follow_ups` / `seq` 必填（`app/interview/schemas.py`） | **保存必然 400，读取全是空白** |
->
-> 这两处都已经按真实契约写，并在测试台里钉死（评估那份把报文切到 5 字节一块、
-> 准备那份让假后端按 Pydantic 的行为校验请求体）。
-> **搬候选人端时先核对契约，不要直接抄原型的字段名。**
+
+| 位置 | 原型写的 | 真实契约 | 照搬的后果 |
+|---|---|---|---|
+| 评估页的 SSE 事件名 | `stage` / `question_score` / `dimension_score` | `question` / `dimension` / `report` / `done` / `error`（API 文档 §9.2） | 一条进度都收不到，界面只表现为「一直转圈」 |
+| 准备提纲的字段 | `minutes` / `points[]` / `focus` / `followups`，且 PUT 不带 `seq` | `duration_min` / `notes`（字符串）/ `point` / `follow_ups` / `seq` 必填（`app/interview/schemas.py`） | **保存必然 400，读取全是空白** |
+| 激活页的流程与文案 | 先 `login` → 失败再 `register` → 再 `login`，然后才 `accept`；字段说明写「账号已存在时这个密码会被忽略」 | `accept` 是**公开端点**，账号由请求体决定，**已存在的候选账号必须密码对得上**（2026-09-21 修正，API 文档 §10.2） | ① 邀请码无效时那个先建出来的账号**会留下**（孤儿账号）；② 界面告诉用户「密码不会被校验」，而实际会——把人引向一个必然失败的提交 |
+
+> 这三处都已经按真实契约写，并在测试台里钉死（评估那份把报文切到 5 字节一块、
+> 准备那份让假后端按 Pydantic 的行为校验请求体、候选人那份**断言页面里不再出现
+> 「会被忽略」这句话**）。
+> **搬剩下的候选人页面（刷题 / 简历）时先核对契约，不要直接抄原型的字段名。**
+
+### 一条测试方法上的教训（与后端报告 §6.3 同一类）
+
+候选人登录页上有**两个**写着「登录」的按钮：模式切换的分段控件，和表单的提交按钮。
+测试台一开始用 `buttonIn(page(), '登录')` 取按钮 —— 它返回的是**文档顺序靠前**的
+那个，也就是分段控件。于是「点一下登录」实际只是又切了一次模式，而紧跟着的
+「不发请求」断言**也因为确实没发请求而通过**。两条断言全绿，但什么都没测到。
+
+改成按 `button[type="submit"]` 取之后，同一段代码立刻开始真的提交。
+现在这个取值方式被封在 `submitBtn()` 一个助手里，并写明了原因 ——
+**取元素的方式本身要能被审查，否则「绿」只是「没测」的另一种说法。**
 
 ---
 
 ## 已知限制
 
 - **仅 PC**：按 1280px+ 设计，不写媒体查询（PRD §2）
-- **`src/` 尚缺**：候选人端整体（见「当前进度」）。HR 端已全部落地。
+- **`src/` 尚缺**：候选人的**自主练习**一侧 —— 刷题、错题本、练习统计、我的简历
+  （含把简历关联到面试）。面试链路（登录/注册/激活/我的面试/作答/反馈）已落地。
 - **评估必须单 worker 部署**：运行注册表是进程内的，多 worker 会让
   `POST /evaluate` 与 `GET /evaluation/stream` 落在不同进程（API 文档 §2.1）。
-- **候选人账号不能在 HR 登录页登录**：会明确告知「这是 HR 工作台」并拒绝，
-  不写登录态 —— 候选人端页面尚未落地，存下 token 也无处可去。
-  候选人端搬进来时这一条要改成跳 `#/candidate/*`。
+- **候选人端的导航目前只有「我的面试」一项**：刷题等页面还没搬进来，路由表里
+  也就没有它们 —— 导航从路由表派生，所以它不会挂出一堆点进去报错的入口。
 - `standalone.html` 与 `src/` 是**两套东西**：前者是手工维护的设计交付物
   （覆盖两端全量），后者是真实应用（正在按模块重建）。原型里已落地、`src/` 里
-  还没搬的页面，**以原型为准**。
+  还没搬的页面，**以原型为准**；但字段名与流程**以接口文档为准**（见上一节）。

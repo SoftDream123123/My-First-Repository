@@ -42,6 +42,20 @@ export const routes = [
   { path: '/positions',        key: 'positions',       side: 'hr', nav: '岗位' },
   { path: '/questions',        key: 'questions',       side: 'hr', nav: '题库' },
   { path: '/users',            key: 'users',           side: 'hr', nav: '用户管理', adminOnly: true },
+
+  // ---- 候选人端 ----
+  // 「我的面试」排在最前：候选人最关心的永远是「有没有待答的面试」，刷题是次一级的
+  // 自主行为。因此它就是候选人端的默认落地页。
+  //
+  // 尚未落地的候选人页面（刷题 / 错题本 / 练习统计 / 我的简历）同样先不写进来 ——
+  // 理由与开头那段一样：路由表里放一行点进去报错的路由，比缺一个入口更难查。
+  { path: '/candidate/login',      key: 'candidateLogin',     side: 'candidate', isPublic: true },
+  // 激活页**登录与否都要能进**（`open`）：没账号时凭码建号，已有账号时凭码绑定。
+  // 只标 isPublic 会让已登录的人被弹走，只标登录可达则新人根本进不来（API 文档 §10.2）。
+  { path: '/candidate/activate',   key: 'candidateActivate',  side: 'candidate', isPublic: true, open: true },
+  { path: '/candidate/interviews', key: 'candidateInterviews', side: 'candidate', nav: '我的面试' },
+  { path: '/candidate/interviews/:id',          key: 'candidateInterviewDetail', side: 'candidate' },
+  { path: '/candidate/interviews/:id/feedback', key: 'candidateFeedback',        side: 'candidate' },
 ];
 
 const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1280">
+  <title>候选人端 Mock 测试</title>
+
+  <link rel="stylesheet" href="/src/styles/tokens.css">
+  <link rel="stylesheet" href="/src/styles/base.css">
+  <link rel="stylesheet" href="/src/styles/components.css">
+  <link rel="stylesheet" href="/src/styles/pages.css">
+  <link rel="stylesheet" href="./harness.css">
+</head>
+<body>
+  <!-- 真实应用的挂载点：测试台跑的是 src/ 里的真代码，不是替身 -->
+  <div id="app"></div>
+  <div id="results">运行中…</div>
+  <script type="module" src="./candidate-harness.js"></script>
+</body>
+</html>

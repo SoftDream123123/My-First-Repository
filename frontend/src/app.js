@@ -23,6 +23,11 @@ import * as interviewPrep from './pages/interview-prep.js';
 import * as positions from './pages/positions.js';
 import * as questions from './pages/questions.js';
 import * as users from './pages/users.js';
+import * as candidateLogin from './pages/candidate-login.js';
+import * as candidateActivate from './pages/candidate-activate.js';
+import * as candidateInterviews from './pages/candidate-interviews.js';
+import * as candidateInterviewDetail from './pages/candidate-interview-detail.js';
+import * as candidateFeedback from './pages/candidate-feedback.js';
 
 export const PAGES = {
   login,
@@ -33,6 +38,11 @@ export const PAGES = {
   positions,
   questions,
   users,
+  candidateLogin,
+  candidateActivate,
+  candidateInterviews,
+  candidateInterviewDetail,
+  candidateFeedback,
 };
 
 /**
