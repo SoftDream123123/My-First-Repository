@@ -1569,30 +1569,6 @@ a:hover { text-decoration: underline; }
 }
 .char-count.is-over { color: var(--danger); font-weight: 600; }
 
-/* ---- 未实现的模块占位（原型建设期用） ---- */
-.placeholder {
-  padding: var(--s9) var(--s6);
-  text-align: center;
-  background: var(--paper);
-  border: 1px dashed var(--line);
-  border-radius: var(--r-surface);
-}
-.placeholder-standalone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: var(--s8);
-  background: var(--paper);
-}
-.placeholder-standalone .placeholder { max-width: 560px; }
-.placeholder-title { font-size: var(--t-lg); font-weight: 700; }
-.placeholder-text {
-  margin-top: var(--s3);
-  font-size: 14px;
-  color: var(--muted);
-}
-
 /* ==========================================================================
    打印 —— 「导出 PDF」走浏览器打印（PRD §4.12）。
    后端不生成 PDF，所以这份样式要负责把屏幕上的东西整理成一份能直接交出去的
@@ -4937,39 +4913,39 @@ __modules['./router.js'] = function (exports, __require) {
    * 路由表。
    *   side    属于哪一端（hr / candidate）。导航与默认页都按端过滤
    *   nav     出现在侧栏导航上的名字（无 nav 即不进导航，但地址仍可直接访问）
-   *   label   占位页上显示的名字
    *   isPublic 未登录可达
    *   open    **登录与否都可达、且不做重定向** —— 激活页要这样：
    *           没账号时凭码建号，已有账号时凭码绑定（PRD §4.1）。
    *           只标 isPublic 会让已登录的人被弹走，只标登录可达则新人进不来。
-   *   pending 本模块尚未在本原型中实现 → 落到占位页。
-   *           默认「已实现」而非「未实现」：漏写标记时应当**报错**，
-   *           而不是安静地显示一个占位页把问题藏起来。
+   *
+   * 每个路由都必须有对应页面：漏注册的表现是**报错**，不安静地落到别的页面
+   * 把问题藏起来。（分段建设期的 `pending` 标记与占位页，在 F1–F10 全部
+   * 落地后已删除。）
    */
   const routes = [
     // ---- HR / 面试官端 ----
-    { path: '/login',                     key: 'login',           side: 'hr', isPublic: true,  label: '登录' },
-    { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试',     label: '面试' },
-    { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr',                  label: '面试详情' },
-    { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr',                  label: '评估报告' },
-    { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr',                  label: '面试准备' },
-    { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位',     label: '岗位' },
-    { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库',     label: '题库' },
-    { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', label: '用户管理', adminOnly: true },
+    { path: '/login',                     key: 'login',           side: 'hr', isPublic: true },
+    { path: '/interviews',                key: 'interviews',      side: 'hr', nav: '面试' },
+    { path: '/interviews/:id',            key: 'interviewDetail', side: 'hr' },
+    { path: '/interviews/:id/evaluation', key: 'evaluation',      side: 'hr' },
+    { path: '/interviews/:id/prep',       key: 'interviewPrep',   side: 'hr' },
+    { path: '/positions',                 key: 'positions',       side: 'hr', nav: '岗位' },
+    { path: '/questions',                 key: 'questions',       side: 'hr', nav: '题库' },
+    { path: '/users',                     key: 'users',           side: 'hr', nav: '用户管理', adminOnly: true },
 
     // ---- 候选人端 ----
-    // 「我的面试」按 plan 排在首位且优先级最高：候选人最关心的永远是「有没有待答的面试」，
-    // 刷题是次一级的自主行为（module-15 §3.1）。因此它一旦实现，就是候选人端的默认页。
-    { path: '/candidate/login',                    key: 'candidateLogin',    side: 'candidate', isPublic: true, label: '登录' },
-    { path: '/candidate/activate',                 key: 'candidateActivate', side: 'candidate', isPublic: true, open: true, label: '激活' },
-    { path: '/candidate/interviews',               key: 'candidateInterviews', side: 'candidate', nav: '我的面试', label: '我的面试' },
-    { path: '/candidate/interviews/:id',           key: 'candidateInterviewDetail', side: 'candidate', label: '在线作答' },
-    { path: '/candidate/interviews/:id/feedback',  key: 'candidateFeedback', side: 'candidate', label: '面试反馈' },
-    { path: '/candidate/practice',                 key: 'candidatePractice', side: 'candidate', nav: '刷题',     label: '刷题' },
-    { path: '/candidate/practice/:id',             key: 'practiceSession',   side: 'candidate', label: '练习' },
-    { path: '/candidate/wrong-book',               key: 'wrongBook',         side: 'candidate', nav: '错题本',   label: '错题本' },
-    { path: '/candidate/stats',                    key: 'practiceStats',     side: 'candidate', nav: '练习统计', label: '练习统计' },
-    { path: '/candidate/resumes',                  key: 'candidateResumes',  side: 'candidate', nav: '我的简历', label: '我的简历' },
+    // 「我的面试」排在首位且优先级最高：候选人最关心的永远是「有没有待答的面试」，
+    // 刷题是次一级的自主行为（module-15 §3.1）。因此它就是候选人端的默认页。
+    { path: '/candidate/login',                   key: 'candidateLogin',           side: 'candidate', isPublic: true },
+    { path: '/candidate/activate',                key: 'candidateActivate',        side: 'candidate', isPublic: true, open: true },
+    { path: '/candidate/interviews',              key: 'candidateInterviews',      side: 'candidate', nav: '我的面试' },
+    { path: '/candidate/interviews/:id',          key: 'candidateInterviewDetail', side: 'candidate' },
+    { path: '/candidate/interviews/:id/feedback', key: 'candidateFeedback',        side: 'candidate' },
+    { path: '/candidate/practice',                key: 'candidatePractice',        side: 'candidate', nav: '刷题' },
+    { path: '/candidate/practice/:id',            key: 'practiceSession',          side: 'candidate' },
+    { path: '/candidate/wrong-book',              key: 'wrongBook',                side: 'candidate', nav: '错题本' },
+    { path: '/candidate/stats',                   key: 'practiceStats',            side: 'candidate', nav: '练习统计' },
+    { path: '/candidate/resumes',                 key: 'candidateResumes',         side: 'candidate', nav: '我的简历' },
   ];
 
   const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };
@@ -4978,14 +4954,14 @@ __modules['./router.js'] = function (exports, __require) {
   function registerPages(map) { pages = map; }
 
   /**
-   * 默认落地页：某一端里第一个已实现、且当前用户进得去的顶层页。
+   * 默认落地页：某一端里第一个顶层页（无顶层页时放宽到第一个可达页）。
    * 不传 side 时按 [hr, candidate] 顺序找。
    * 该端一个都没有时返回它的登录页，调用方据此避免把用户重定向到自己身上
    * （同 hash 不触发 hashchange，页面会空着不渲染）。
    */
   function defaultRoute(side) {
     const usable = (route, topOnly) =>
-      !route.isPublic && !route.pending && (!topOnly || route.nav) &&
+      !route.isPublic && (!topOnly || route.nav) &&
       !(route.adminOnly && !auth.isAdmin()) &&
       (!side || route.side === side);
 
@@ -5075,18 +5051,16 @@ __modules['./router.js'] = function (exports, __require) {
     }
     currentPage = null;
 
-    // pending 的路由落到占位页；其余必须有对应页面，否则是真错误
-    const pending = Boolean(resolved.route.pending);
-    const page = pending ? null : pages[resolved.route.key];
-    if (!page && !pending) {
+    // 每个路由都必须有对应页面 —— 没有就是真错误，不静默降级
+    const page = pages[resolved.route.key];
+    if (!page) {
       console.error(`页面未注册：${resolved.route.key}`);
       toast.error('页面加载失败，请刷新重试');
       return;
     }
 
-    const target = page || pages.placeholder;
-    currentPage = target;
-    await target.render(container, { ...resolved.params, __route: resolved.route });
+    currentPage = page;
+    await page.render(container, resolved.params);
   }
 
   function navigate(path) {
@@ -10730,40 +10704,6 @@ __modules['./pages/candidate-resumes.js'] = function (exports, __require) {
 };
 
 /* ==========================================================================
-   pages/placeholder.js —— 未实现的模块占位
-   原型是分批建设的：信息架构（导航）一次给全，页面一块一块补。
-   占位页明说「本模块尚未实现」，避免让人误以为功能坏了。
-   ========================================================================== */
-__modules['./pages/placeholder.js'] = function (exports, __require) {
-  const { el, mount } = __require('./dom.js');
-  const { contextTitle, createShell } = __require('./components/shell.js');
-
-  function render(container, params) {
-    const route = params?.__route;
-    const label = route?.label || route?.key || '该页面';
-
-    const notice = el(
-      'div',
-      { class: 'placeholder' },
-      el('p', { class: 'placeholder-title', text: `${label}尚未接入本原型` }),
-      el('p', { class: 'placeholder-text', text: '导航一次给全，页面按模块分批补齐。这一块排在后面的模块里。' }),
-    );
-
-    // 公开路由（登录页）本来就不套外壳，占位时也不该套
-    if (route?.isPublic) {
-      mount(container, el('div', { class: 'placeholder-standalone' }, notice));
-      return;
-    }
-
-    const { root, main } = createShell(contextTitle(label, '建设中'));
-    mount(container, root);
-    mount(main, notice);
-  }
-
-  exports.render = render;
-};
-
-/* ==========================================================================
    main.js —— 启动
    ========================================================================== */
 __modules['./main.js'] = function (exports, __require) {
@@ -10795,7 +10735,6 @@ __modules['./main.js'] = function (exports, __require) {
     wrongBook: __require('./pages/candidate-wrong-book.js'),
     practiceStats: __require('./pages/candidate-stats.js'),
     candidateResumes: __require('./pages/candidate-resumes.js'),
-    placeholder: __require('./pages/placeholder.js'),
   });
 
   // 统一 401 处理：清 token + 跳登录。页面不必各自处理。
