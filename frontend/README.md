@@ -92,11 +92,13 @@ python scripts/seed_admin.py
 | 端 | 路由 | 页面 | 状态 |
 |---|---|---|---|
 | HR | `#/login` | 登录（三角色同一入口，按 `role` 分流） | ✅ |
+| HR | `#/interviews` | 面试列表（表格 + 状态/进度 + 创建并同步出题）**← HR 默认落地页** | ✅ |
+| HR | `#/interviews/:id` | 面试详情（题目导航 + 单题编辑 + 自动保存 + 状态机 + 邀请 + 简历只读 + 补题） | ✅ |
 | HR | `#/positions` | 岗位：列表 + 案卷 + 维度编辑器 | ✅ |
 | HR | `#/questions` | 题库：六项筛选 + 题型/选项/参考答案表单 + AI 生成参考答案 | ✅ |
 | HR | `#/users` | 用户管理（仅 admin） | ✅ |
 
-**尚未搬进来**：面试列表、面试详情、评估报告、准备助手；
+**尚未搬进来**：评估报告、面试前准备助手；
 候选人端整体（登录/激活/刷题/我的面试/在线答题/反馈/错题本/统计/简历）。
 
 未落地的页面**没有被写进 `src/router.js` 的路由表**，因此 nav 上不会出现、
@@ -124,7 +126,7 @@ frontend/
     auth.js                   登录态语义（isAdmin / logout / refreshUser）
     dom.js                    DOM 助手 —— 把 XSS 约束结构化
     components/               shell（脊 + 顶栏 + 展示件）· modal · toast · form（字段级报错）
-    pages/                    login · positions · questions · users
+    pages/                    login · interviews · interview-detail · positions · questions · users
     styles/                   tokens / base / components / pages
     __tests__/router.test.js  路由守卫纯函数单测
   standalone.html             原型单文件快照（手工维护，见下）
@@ -190,7 +192,8 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | `mock/auth-harness.html` | 44 | 登录分流（三角色）、会话失效 vs 凭据不符的区分、按端分 key、退出只清本端、守卫真的执行了、统一 401、注册表与路由表一一对应 |
 | `mock/users-harness.html` | 47 | 列表、自身行保护、字段级校验、400/409、二次确认、加载失败 |
 | `mock/positions-harness.html` | 48 | 列表 + 案卷、**模糊搜索走服务端 `keyword`**、搜到 0 条时搜索框仍在、维度编辑器校验、`PUT` 全量替换而非追加、删除保护 |
-| `mock/questions-harness.html` | 82 | 六项筛选的参数名与 AND 关系、**分类下拉在首次加载后就有值**、三种来源标签（含 `resume_match`）、题型切换改表单结构、维度跟随岗位、单选的选项/答案约束逐条、`source` 不由客户端提交、**简答必须传 `options: []` 而不是省略**、AI 生成的成功/502/409 与「失败不改动题目」、删除保护 |
+| `mock/interviews-harness.html` | 98 | **启动真实路由**，所以「点一行 → 进详情页」是真的走了一遍守卫与切页。列表：状态标签与进度、主操作按状态命名；详情：状态轨、题目导航（已答/待答、打开时定位到第一道未答）、失焦自动保存（**没改就不发请求**、提交的是 `interview_question_id`）、只读锁定、状态机给哪几个按钮、简历未关联是 404 而非报错、补题的三种结果（0 条 / 有新增 / 502）、邀请的生成与撤销 |
+| `mock/questions-harness.html` | 83 | 六项筛选的参数名与 AND 关系、**分类下拉在首次加载后就有值**、三种来源标签（含 `resume_match`）、题型切换改表单结构、维度跟随岗位、单选的选项/答案约束逐条、`source` 不由客户端提交、**简答必须传 `options: []` 而不是省略**、AI 生成的成功/502/409 与「失败不改动题目」、删除保护 |
 
 每个测试台拦截 `window.fetch` 当假后端，然后**驱动 `src/` 里的真实页面代码**，
 把结果渲染到右上角面板并写进 `document.title`（`MOCK-ALL-PASS n` / `MOCK-FAIL n/m`），
@@ -204,7 +207,7 @@ msedge --headless=new --virtual-time-budget=30000 \
 `mock/` 不参与 `npm run build`，不会进入 `dist/`。
 
 **每个模块都做过变异检查**（沿用后端测试报告 §6.2 的手法）：把缺陷植回去，
-断言必须失败。至今五次：
+断言必须失败。至今八次：
 
 | 模块 | 植入的缺陷 | 结果 |
 |---|---|---|
@@ -214,6 +217,8 @@ msedge --headless=new --virtual-time-budget=30000 \
 | 题库 | 分类下拉只在渲染开始时算一次 | `questions-harness` 1 条红（正是那一条）✅ |
 | 题库 | 简答题的 `options` 传 `undefined` 而不是 `[]` | `questions-harness` 1 条红（正是那一条）✅ |
 | 题库 | 条件分区改回原生 `append`（把 `null` 拼进 DOM） | `questions-harness` 1 条红（正是那一条）✅ |
+| 面试 | 打开详情时不再定位到第一道未答的题 | `interviews-harness` 4 条红 ✅ |
+| 面试 | 回答不再按状态锁定（已完成也能改） | `interviews-harness` 4 条红 ✅ |
 
 > 这套测试至今抓到**四个真 bug**：
 >
@@ -237,7 +242,8 @@ msedge --headless=new --virtual-time-budget=30000 \
 ## 已知限制
 
 - **仅 PC**：按 1280px+ 设计，不写媒体查询（PRD §2）
-- **`src/` 尚缺**：面试 / 评估 / 准备助手 / 候选人端整体（见「当前进度」）
+- **`src/` 尚缺**：评估 / 准备助手 / 候选人端整体（见「当前进度」）
+- **面试详情页暂不给评估与准备入口**：`去评估 / 查看进度 / 查看报告` 与 `面试准备` 按钮**尚未渲染**，因为 `/interviews/:id/evaluation` 与 `/interviews/:id/prep` 还没落地。列表里各行主操作的**文案**已按状态分叉，但目的地暂时都指向详情页 —— 评估页搬进来时一并改指过去。
 - **候选人账号不能在 HR 登录页登录**：会明确告知「这是 HR 工作台」并拒绝，
   不写登录态 —— 候选人端页面尚未落地，存下 token 也无处可去。
   候选人端搬进来时这一条要改成跳 `#/candidate/*`。

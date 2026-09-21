@@ -37,6 +37,7 @@ function handlers() {
       return { status: 401, body: { code: 'UNAUTHORIZED', message: '用户名或密码错误', detail: null } };
     },
     'GET /auth/me': () => ({ status: 200, body: ADMIN }),
+    'GET /interviews': () => ({ status: 200, body: [] }),
     'GET /positions': () => ({ status: 200, body: [] }),
     'GET /users': () => ({ status: 200, body: [ADMIN] }),
   };
@@ -143,7 +144,7 @@ report.run(async () => {
   await settle();
   await settle();
 
-  check('admin 登录成功 → 跳到本端默认页 #/positions', hash() === '#/positions', hash());
+  check('admin 登录成功 → 跳到本端默认页 #/interviews', hash() === '#/interviews', hash());
   check('admin 登录成功 → token 存在 hr.* 下', tokenIn('hr') === 'hr-token', String(tokenIn('hr')));
   check('登录态没有串到候选人端', tokenIn('candidate') === null, String(tokenIn('candidate')));
   check('外壳渲染了脊', has('.spine'));
@@ -160,8 +161,8 @@ report.run(async () => {
     navTexts.join(',') === expectedNav(true).join(','),
     `${navTexts.join(',')} vs ${expectedNav(true).join(',')}`);
   check('导航项确实有多于一项（否则上面那条会因为两边都空而恒真）', navTexts.length >= 2, String(navTexts.length));
-  check('当前项高亮在「岗位」上', page().querySelector('.nav-item.is-active')?.textContent.trim() === '岗位');
-  check('业务请求带上了 JWT', backend.calls.some((c) => c.path === '/positions' && c.auth === 'Bearer hr-token'),
+  check('当前项高亮在「面试」上（默认落地页）', page().querySelector('.nav-item.is-active')?.textContent.trim() === '面试', page().querySelector('.nav-item.is-active')?.textContent.trim());
+  check('业务请求带上了 JWT', backend.calls.some((c) => c.path === '/interviews' && c.auth === 'Bearer hr-token'),
     backend.calls.map((c) => `${c.path}:${c.auth}`).join(' '));
 
   /* ---------- 6. 守卫：HR 角色访问 adminOnly 页面 ---------- */
@@ -178,7 +179,7 @@ report.run(async () => {
   clearToasts();
   await go('#/users');
   check('HR 角色进 #/users → 被拦下并提示', toasts().includes('无权限访问该页面'), toasts().join(' | '));
-  check('HR 角色进 #/users → 改道到本端默认页', hash() === '#/positions', hash());
+  check('HR 角色进 #/users → 改道到本端默认页', hash() === '#/interviews', hash());
   check('被拦下时没有真的去请求用户列表', !backend.calls.some((c) => c.path === '/users'));
 
   /* ---------- 7. 按端分 key：两端可以同时保持登录 ---------- */

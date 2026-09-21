@@ -28,14 +28,18 @@ import { toast } from './components/toast.js';
  * 而不是先摆一行点进去报错的路由。
  *
  * ⚠️ **顺序即默认落地页的优先级**：`defaultRoute()` 取本端第一个带 nav 的路由。
- * `/positions` 因此排在 `/users` 前面 —— `/users` 是 adminOnly，
- * 排在前面会让 HR 角色登录后无页可去。
+ * 因此 `/interviews` 排在最前（HR 的日常入口），而 adminOnly 的 `/users` 排在最后 ——
+ * 它排在前面会让 HR 角色登录后无页可去。
  */
 export const routes = [
-  { path: '/login',     key: 'login',     side: 'hr', isPublic: true },
-  { path: '/positions', key: 'positions', side: 'hr', nav: '岗位' },
-  { path: '/questions', key: 'questions', side: 'hr', nav: '题库' },
-  { path: '/users',     key: 'users',     side: 'hr', nav: '用户管理', adminOnly: true },
+  { path: '/login',            key: 'login',           side: 'hr', isPublic: true },
+  // 「面试」排在首位：它是 HR 每天打开应用要看的那一屏（「这场该我做什么」），
+  // 也是本端的默认落地页。岗位与题库是备料，不是日常入口。
+  { path: '/interviews',       key: 'interviews',      side: 'hr', nav: '面试' },
+  { path: '/interviews/:id',   key: 'interviewDetail', side: 'hr' },
+  { path: '/positions',        key: 'positions',       side: 'hr', nav: '岗位' },
+  { path: '/questions',        key: 'questions',       side: 'hr', nav: '题库' },
+  { path: '/users',            key: 'users',           side: 'hr', nav: '用户管理', adminOnly: true },
 ];
 
 const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };

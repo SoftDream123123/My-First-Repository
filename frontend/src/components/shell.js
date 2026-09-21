@@ -101,8 +101,58 @@ export function contextTitle(text, note) {
   ];
 }
 
-/** 面板标题行：标题 + 可选注解 + 可选操作按钮。 */
-export function panelHead(title, note, actions) {
+/** 面试状态标签。状态文案与状态机一一对应（API 文档 §8.1）。 */
+const STATUS_LABELS = {
+  draft: '草稿',
+  ongoing: '进行中',
+  completed: '已完成',
+  evaluating: '评估中',
+  evaluated: '已评估',
+};
+
+export function statusTag(status) {
+  return el('span', { class: `tag tag--${status}`, text: STATUS_LABELS[status] || status });
+}
+
+/* ---- 状态轨：面试的真实流程 ---- */
+
+const RAIL_STAGES = [
+  { key: 'ongoing', label: '进行中' },
+  { key: 'completed', label: '已完成' },
+  { key: 'evaluating', label: '评估中' },
+  { key: 'evaluated', label: '已评估' },
+];
+const RAIL_ORDER = ['draft', 'ongoing', 'completed', 'evaluating', 'evaluated'];
+
+/**
+ * `draft` 是事务内的瞬态、从不落库，因此只呈现 4 段。
+ * 未知状态（后端加了新状态而前端还没跟上）按最靠前的 `ongoing` 处理，
+ * 而不是让整条轨塌掉。
+ */
+export function statusRail(status) {
+  const currentIndex = Math.max(RAIL_ORDER.indexOf(status), RAIL_ORDER.indexOf('ongoing'));
+  return el(
+    'ol',
+    { class: 'rail', 'aria-label': '面试进度' },
+    RAIL_STAGES.map((stage) => {
+      const index = RAIL_ORDER.indexOf(stage.key);
+      const isCurrent = index === currentIndex;
+      const isDone = index < currentIndex;
+      return el(
+        'li',
+        {
+          class: `rail-step${isDone ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}`,
+          'aria-current': isCurrent ? 'step' : null,
+        },
+        el('span', { class: 'rail-index', text: String(index) }),
+        el('span', { class: 'rail-label', text: stage.label }),
+        el('span', { class: 'rail-bar' }),
+      );
+    }),
+  );
+}
+
+/** 面板标题行：标题 + 可选注解 + 可选操作按钮。 */export function panelHead(title, note, actions) {
   return el('div', { class: 'panel-head' },
     el('div', {},
       el('span', { class: 'panel-title', text: title }),

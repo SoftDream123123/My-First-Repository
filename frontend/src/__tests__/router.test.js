@@ -16,6 +16,7 @@ import { decide, defaultRoute, entryRoute, loginPath, matchRoute, routes } from 
 describe('matchRoute', () => {
   it('匹配到已注册的路由，并给出 key', () => {
     expect(matchRoute('/login')?.route.key).toBe('login');
+    expect(matchRoute('/interviews')?.route.key).toBe('interviews');
     expect(matchRoute('/positions')?.route.key).toBe('positions');
     expect(matchRoute('/users')?.route.key).toBe('users');
   });
@@ -25,16 +26,21 @@ describe('matchRoute', () => {
     expect(matchRoute('/positions')?.route.key).toBe('positions');
   });
 
+  it('`:id` 段被提取成 params，而不是当成字面量', () => {
+    expect(matchRoute('/interviews/7')?.route.key).toBe('interviewDetail');
+    expect(matchRoute('/interviews/7')?.params).toEqual({ id: '7' });
+  });
+
   it('未注册的路径返回 null，而不是模糊匹配到别处', () => {
     // 这几个是后续模块才落地的页面 —— 现在必须**明确不匹配**，
     // 否则会渲染出「页面未注册」的错误，而不是被送去一个能用的地方。
-    expect(matchRoute('/interviews')).toBeNull();
     expect(matchRoute('/candidate/interviews')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });
 
   it('段数不同不算匹配（防止把子路径吃掉一部分）', () => {
     expect(matchRoute('/users/1')).toBeNull();
+    expect(matchRoute('/interviews/1/2')).toBeNull();
   });
 });
 
@@ -50,14 +56,14 @@ describe('loginPath', () => {
 
 describe('defaultRoute', () => {
   it('取本端第一个带导航的路由', () => {
-    expect(defaultRoute('hr', false)).toBe('/positions');
-    expect(defaultRoute('hr', true)).toBe('/positions');
+    expect(defaultRoute('hr', false)).toBe('/interviews');
+    expect(defaultRoute('hr', true)).toBe('/interviews');
   });
 
   it('adminOnly 的路由不会成为非管理员的落地页（哪怕它排在最前）', () => {
     routes.unshift({ path: '/admin-only', key: 'adminOnly', side: 'hr', nav: '仅管理员', adminOnly: true });
     try {
-      expect(defaultRoute('hr', false)).toBe('/positions');
+      expect(defaultRoute('hr', false)).toBe('/interviews');
       expect(defaultRoute('hr', true)).toBe('/admin-only');
     } finally {
       routes.shift();
@@ -142,7 +148,7 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
   };
 
   it('没登录的人进空 hash → HR 默认页', () => {
-    expect(entryRoute({ hash: '', sides: nobody })).toBe('/positions');
+    expect(entryRoute({ hash: '', sides: nobody })).toBe('/interviews');
   });
 
   it('未知 hash 先看前缀：`#/candidate/xxx` 不能把人弹到 HR 侧', () => {
@@ -153,7 +159,7 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
 
   it('已登录的 HR 去未知 hash → 回到自己的默认页', () => {
     const sides = { ...nobody, hr: { loggedIn: true, isAdmin: true } };
-    expect(entryRoute({ hash: '#/nope', sides })).toBe('/positions');
+    expect(entryRoute({ hash: '#/nope', sides })).toBe('/interviews');
   });
 
   it('只登录了候选人时优先候选人端（候选人端落地后应改为候选人默认页）', () => {
@@ -169,6 +175,6 @@ describe('entryRoute —— 裸入口与未知 hash', () => {
       candidate: { loggedIn: true, isAdmin: false },
     };
     const out = entryRoute({ hash: '', sides });
-    expect(out).not.toBe('/positions');
+    expect(out).not.toBe('/interviews');
   });
 });

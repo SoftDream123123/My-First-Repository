@@ -478,6 +478,244 @@
   color: var(--muted);
 }
 
+/* ---- 答题进度：一条细条 + 数字。比单纯一个「3 / 8」更能一眼看出有没有答完 ---- */
+.progress { display: flex; align-items: center; gap: var(--s2); }
+.progress-track {
+  flex: none;
+  width: 52px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e4eaf1;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--brand); }
+.progress-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ---- 状态轨：面试的真实流程，不是装饰性步骤条 ---- */
+.rail {
+  display: flex;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+}
+.rail-step {
+  position: relative;
+  flex: 1;
+  padding: var(--s3) var(--s5) var(--s4);
+  border-left: 1px solid var(--line-soft);
+}
+.rail-step:first-child { border-left: none; }
+.rail-index {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--faint);
+  margin-right: var(--s2);
+}
+.rail-label { font-size: 14px; color: var(--faint); }
+.rail-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: var(--line-soft);
+}
+.rail-step.is-done .rail-label { color: var(--ink-soft); }
+.rail-step.is-done .rail-index { color: var(--muted); }
+.rail-step.is-done .rail-bar { background: var(--brand); }
+.rail-step.is-current { background: var(--brand-wash); }
+.rail-step.is-current .rail-label { color: var(--brand-deep); font-weight: 700; }
+.rail-step.is-current .rail-index { color: var(--brand); }
+.rail-step.is-current .rail-bar { background: var(--brand); }
+
+/* ---- 面试详情：题目导航 + 单题编辑 ----
+   真实面试是一题一题走的，长滚动列表是错的：HR 要随时知道「问到第几题了」。 */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 268px 1fr;
+  gap: var(--s5);
+  align-items: start;
+  margin-top: var(--s5);
+}
+
+.qnav {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+}
+.qnav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.qnav-count {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 400;
+  color: var(--muted);
+}
+.qnav-list { max-height: 60vh; overflow-y: auto; }
+
+.qnav-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--line-soft);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.qnav-item:last-child { border-bottom: none; }
+.qnav-item:hover { background: #f7fafc; }
+.qnav-item.is-current { background: var(--brand-wash); border-left-color: var(--brand); }
+.qnav-num {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--faint);
+}
+.qnav-item.is-current .qnav-num { color: var(--brand); }
+.qnav-dim {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qnav-mark { font-size: var(--t-xs); color: var(--faint); }
+.qnav-item.is-answered .qnav-mark { color: var(--pass); font-weight: 600; }
+
+.editor {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  padding: var(--s5);
+}
+.editor-head { display: flex; align-items: center; gap: var(--s2); }
+.editor-seq {
+  min-width: 32px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--brand);
+}
+.editor-question {
+  margin-top: var(--s3);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.65;
+  max-width: 46em;
+}
+.editor-answer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s6) 0 var(--s2);
+}
+.editor .textarea { min-height: 180px; }
+.textarea[readonly] { resize: none; background: #fafcfe; color: var(--ink-soft); }
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.editor-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.save-state { font-size: var(--t-xs); color: var(--faint); }
+.save-state.is-saving { color: var(--muted); }
+.save-state.is-saved { color: var(--pass); }
+.save-state.is-failed { color: var(--danger); font-weight: 600; }
+
+/* ---- 面试详情的参考区：候选人简历 + 作答邀请 ----
+   放在作答区下方而不是第三栏：三栏在 1280 宽下会把编辑区挤到 370px。 */
+.detail-extras {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 344px;
+  gap: var(--s5);
+  align-items: start;
+  margin-top: var(--s5);
+}
+
+.code {
+  font-family: var(--font-code);
+  font-size: var(--t-sm);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.invite-item {
+  padding: var(--s3) var(--s5) var(--s4);
+  border-bottom: 1px solid var(--line-soft);
+}
+.invite-item:last-child { border-bottom: none; }
+.invite-top { display: flex; align-items: center; gap: var(--s2); }
+.invite-top .code { flex: 1; min-width: 0; }
+.invite-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+.invite-actions { display: flex; gap: var(--s1); flex: none; }
+.panel-head-actions { display: flex; gap: var(--s2); flex: none; }
+
+.resume-body {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--s5);
+  font-size: 14px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+/* 匹配理由：这是 HR 的评估思路，做成引文样式与题干区分开 */
+.match-reason {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--brand-line);
+  background: var(--brand-wash);
+  border-radius: 0 var(--r-control) var(--r-control) 0;
+  font-size: var(--t-sm);
+  line-height: 1.75;
+  color: var(--brand-deep);
+  max-width: 46em;
+}
+.match-reason b { font-weight: 600; }
+
 /* ---- 维度编辑器 ---- */
 .dim-editor-row {
   display: flex;
