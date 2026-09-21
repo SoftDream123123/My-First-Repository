@@ -38,6 +38,7 @@ export const routes = [
   { path: '/interviews',       key: 'interviews',      side: 'hr', nav: '面试' },
   { path: '/interviews/:id',   key: 'interviewDetail', side: 'hr' },
   { path: '/interviews/:id/evaluation', key: 'evaluation', side: 'hr' },
+  { path: '/interviews/:id/prep',       key: 'interviewPrep', side: 'hr' },
   { path: '/positions',        key: 'positions',       side: 'hr', nav: '岗位' },
   { path: '/questions',        key: 'questions',       side: 'hr', nav: '题库' },
   { path: '/users',            key: 'users',           side: 'hr', nav: '用户管理', adminOnly: true },

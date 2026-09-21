@@ -198,9 +198,12 @@
 .score-comment { margin-top: var(--s3); font-size: 14px; line-height: 1.8; max-width: 44em; }
 
 /* 回答与评估意见各自成块：两块长得像，靠标题分开，不靠猜 */
-.score-block { margin-top: var(--s4); }
-.score-block .dossier-label { margin-bottom: var(--s2); }
-.score-block .answer-quote { margin-top: 0; }
+.score-block,
+.prep-field { margin-top: var(--s4); }
+.score-block .dossier-label,
+.prep-field .dossier-label { margin-bottom: var(--s2); }
+.score-block .answer-quote,
+.prep-field .score-comment { margin-top: 0; }
 
 .answer-quote {
   margin-top: var(--s2);
@@ -296,6 +299,82 @@
 .dim-bar-fill { height: 100%; }
 .dim-bar-fill.is-pass { background: var(--pass); }
 .dim-bar-fill.is-watch { background: var(--watch); }
+
+/* ---- 面试准备助手 ----
+   提纲是一份要读的东西，不是一块看板：整页内容收在 1000px 内，
+   免得面板横跨 1176px 而正文只占左半边。 */
+.prep-page { max-width: 1000px; }
+
+.prep-note {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-top: var(--s5);
+  padding: var(--s3) var(--s5);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+/* 阶段按分钟刻度排：提纲的价值有一半在「这段该花多久」 */
+.prep-stage {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line-soft);
+}
+.prep-stage:first-child { border-top: none; }
+.prep-time {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-sm);
+  color: var(--brand);
+  white-space: nowrap;
+}
+.prep-phase { font-size: var(--t-base); font-weight: 600; }
+.prep-points { margin-top: var(--s2); display: flex; flex-direction: column; gap: var(--s1); }
+.prep-points li { position: relative; padding-left: var(--s4); font-size: 14px; line-height: 1.75; color: var(--ink-soft); }
+.prep-points li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 11px;
+  width: 6px;
+  height: 1px;
+  background: var(--faint);
+}
+
+.prep-focus { padding: var(--s4) var(--s5); border-top: 1px solid var(--line-soft); }
+.prep-focus:first-child { border-top: none; }
+.prep-focus-text { margin-top: var(--s2); font-size: 14px; line-height: 1.8; max-width: 46em; }
+.prep-focus-why { margin-top: var(--s2); font-size: var(--t-sm); line-height: 1.75; color: var(--muted); max-width: 46em; }
+
+.prep-question { padding: var(--s4) var(--s5); border-top: 1px solid var(--line-soft); }
+.prep-question:first-child { border-top: none; }
+.prep-question-head { display: grid; grid-template-columns: 26px 1fr; gap: var(--s3); }
+.prep-question-text { font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+.prep-question-body { margin-top: var(--s3); padding-left: 38px; }
+.prep-field + .prep-field { margin-top: var(--s3); }
+
+/* 编辑态：一段一块，可增可删 —— 与维度编辑器同一种手势 */
+.prep-edit-block {
+  margin-bottom: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+.prep-edit-head { display: flex; align-items: center; gap: var(--s2); }
+.prep-edit-head .input { flex: 1; min-width: 0; }
+.prep-edit-head .select { width: auto; flex: none; }
+.prep-edit-head .mins { flex: none; width: 92px; }
+/* 有内容之后 placeholder 就不显示了，字段靠这行小字认 —— 意图与追问长得太像 */
+.prep-edit-tag { flex: none; font-size: var(--t-xs); color: var(--muted); }
+.prep-edit-label { margin-bottom: var(--s1); font-size: var(--t-xs); color: var(--muted); }
+.prep-edit-add { margin-top: var(--s2); }
 
 /* ==========================================================================
    打印 —— 「导出 PDF」走浏览器打印（PRD §4.12）。

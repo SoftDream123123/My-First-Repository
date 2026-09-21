@@ -89,9 +89,6 @@ export async function render(container, params) {
 
   /**
    * 状态动作按状态机给（API 文档 §8.1 的操作矩阵）。
-   *
-   * ⚠️ 「面试准备」按钮尚未渲染 —— `/interviews/:id/prep` 属准备助手模块，
-   * 还没落地。路由表里没有的路由不放在按钮上，点了只会「什么都没发生」。
    */
   async function transition(action, successMessage) {
     try {
@@ -524,6 +521,13 @@ export async function render(container, params) {
       ),
       el('div', { class: 'page-head-actions' },
         el('button', { class: 'btn btn--ghost', text: '返回列表', onClick: () => navigate('/interviews') }),
+        // 准备提纲与面试状态机正交（PRD §5.1），因此不进下面那组状态动作
+        el('button', {
+          class: 'btn btn--ghost',
+          text: '面试准备',
+          title: '面试前的工作稿：提纲、考察重点与问题预案。不影响面试进度。',
+          onClick: () => navigate(`/interviews/${interviewId}/prep`),
+        }),
         buildActions()),
     ),
 
