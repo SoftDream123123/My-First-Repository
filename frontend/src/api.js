@@ -17,6 +17,7 @@
  */
 
 import * as session from './session.js';
+import { parseChunk } from './sse.js';
 
 const BASE = '/api';
 const NETWORK_MESSAGE = '网络连接失败，请检查后端服务';
@@ -83,3 +84,120 @@ export const post = (path, body) => request('POST', path, body);
 export const put = (path, body) => request('PUT', path, body);
 export const patch = (path, body) => request('PATCH', path, body);
 export const del = (path) => request('DELETE', path);
+
+/* ==========================================================================
+   SSE 流式读取
+   ========================================================================== */
+
+/**
+ * 读一条 SSE 流。**不用 `EventSource`** —— 它带不了 `Authorization` 头，
+ * 而这个端点需要 JWT（API 文档 §15.2）。
+ *
+ * 分帧与解析在 `sse.js`（纯函数、有单测）；这里只负责连接、解码与回调。
+ *
+ * ⚠️ **重连会从头重放**（API 文档 §9.2 明说的设计特性，不是缺陷）：
+ * 调用方累加进度时必须**按 id/维度覆盖**而不是追加，否则刷新一次进度就翻倍。
+ */
+export async function stream(path, { onEvent, signal } = {}) {
+  const token = session.getToken();
+  let response;
+  try {
+    response = await fetch(BASE + path, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      signal,
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error; // 主动断开不算错误
+    throw new ApiError({ code: 'NETWORK_ERROR', message: NETWORK_MESSAGE });
+  }
+
+  if (!response.ok) {
+    // 403 / 404 在这里就结束：响应根本不是 event-stream，页面拿到的是一个正常错误
+    let payload = null;
+    try { payload = await response.json(); } catch { payload = null; }
+    const shaped = payload && typeof payload.code === 'string' && 'message' in payload;
+    throw new ApiError(shaped
+      ? { ...payload, status: response.status }
+      : { code: 'UNKNOWN', message: `请求失败（${response.status}）`, status: response.status });
+  }
+  if (!response.body) {
+    throw new ApiError({ code: 'STREAM_UNAVAILABLE', message: '当前浏览器不支持流式响应' });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    const [events, rest] = parseChunk(buffer, decoder.decode(value, { stream: true }));
+    buffer = rest;
+    for (const event of events) onEvent(event);
+  }
+}
+
+/* ==========================================================================
+   下载后端生成的文件
+   ========================================================================== */
+
+/**
+ * 纯函数：从 `Content-Disposition` 里取文件名。
+ *
+ * 中文名走 RFC 5987 的 `filename*=UTF-8''…`，`filename=` 只留 ASCII 兜底，
+ * 因此**优先取 `filename*`**，都取不到时由调用方给一个本地名字。
+ */
+export function parseContentDisposition(header) {
+  const value = String(header ?? '');
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(value);
+  if (utf8) {
+    try { return decodeURIComponent(utf8[1]); } catch { return null; }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(value);
+  return plain ? plain[1] : null;
+}
+
+/**
+ * 下载二进制响应（报告 DOCX）。
+ *
+ * 不能直接用 `<a href>` —— 那个带不上 JWT，会拿回一个 401（API 文档 §9.4）。
+ */
+export async function download(path, fallbackName) {
+  const token = session.getToken();
+  let response;
+  try {
+    response = await fetch(BASE + path, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError({ code: 'NETWORK_ERROR', message: NETWORK_MESSAGE });
+  }
+
+  if (!response.ok) {
+    let payload = null;
+    try { payload = await response.json(); } catch { payload = null; }
+    const shaped = payload && typeof payload.code === 'string' && 'message' in payload;
+    throw new ApiError(shaped
+      ? { ...payload, status: response.status }
+      : { code: 'UNKNOWN', message: `导出失败（${response.status}）`, status: response.status });
+  }
+
+  const filename = parseContentDisposition(response.headers.get('Content-Disposition')) || fallbackName;
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  // 立刻 revoke 会让部分浏览器来不及取数据，等一拍再释放
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return filename;
+}

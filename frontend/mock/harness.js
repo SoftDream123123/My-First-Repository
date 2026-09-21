@@ -20,6 +20,11 @@
 /**
  * @param {Record<string, Function>} defaults 默认处理器：`'GET /users': ({path, body}) => ({status, body})`
  * 支持 `:id` 这类占位段。未命中的路由返回 404 + 一个能指出漏了哪条的 message。
+ *
+ * 处理器还可以返回 `{ status, stream: '<原始 SSE 报文>' , chunkSize }` —— 这时
+ * 响应体会是一个真的 `ReadableStream` 替身，逐块吐出那段文本。
+ * **`chunkSize` 可以刻意调小**（例如 5），用来逼出「一条事件被切成两半」的
+ * 跨块缓冲问题 —— 那是 SSE 解析里最容易错、也最难靠肉眼发现的地方。
  */
 export function installFakeBackend(defaults = {}) {
   const state = { handlers: defaults, calls: [] };
@@ -64,6 +69,10 @@ export function installFakeBackend(defaults = {}) {
       headers: {
         get: (name) => (result.headers ?? {})[name] ?? (result.headers ?? {})[name.toLowerCase()] ?? null,
       },
+      // SSE：把预置报文切成若干块吐出来，驱动真实的流式读取循环
+      body: result.stream === undefined
+        ? null
+        : streamOf(result.stream, result.chunkSize ?? 17, result.hold === true),
       async json() {
         if (result.body === undefined) throw new Error('该响应无 JSON 体');
         return result.body;
@@ -87,6 +96,48 @@ export function installFakeBackend(defaults = {}) {
 }
 
 /* ==========================================================================
+   1b. SSE 报文 → 可读流替身
+   ========================================================================== */
+
+/**
+ * 按固定字节数切块，模拟网络分包。
+ *
+ * `hold` 为真时，报文吐完之后 `read()` **永不落地** —— 模拟「连接还开着、
+ * 服务端还在评」。没有它就只能表达「推完即断」，而评估进行中恰恰是
+ * 长连接状态，好几个断言（进度计数、阶段文案）必须在这个状态下才测得到。
+ */
+function streamOf(text, chunkSize, hold) {
+  const bytes = new TextEncoder().encode(text);
+  let offset = 0;
+  return {
+    getReader() {
+      return {
+        async read() {
+          if (offset >= bytes.length) {
+            if (hold) return new Promise(() => {}); // 一直开着，什么都不返回
+            return { done: true, value: undefined };
+          }
+          const slice = bytes.slice(offset, Math.min(offset + chunkSize, bytes.length));
+          offset += chunkSize;
+          return { done: false, value: slice };
+        },
+      };
+    },
+  };
+}
+
+/** 把一组 `{event, data}` 拼成 SSE 报文。`null` 项用来插心跳注释行。 */
+export function sseText(events, { pingEvery = 0 } = {}) {
+  const chunks = [];
+  events.forEach((item, index) => {
+    if (pingEvery && index > 0 && index % pingEvery === 0) chunks.push(': ping');
+    if (item === null) { chunks.push(': ping'); return; }
+    chunks.push(`event: ${item.event}\ndata: ${JSON.stringify(item.data)}`);
+  });
+  return `${chunks.join('\n\n')}\n\n`;
+}
+
+/* ==========================================================================
    2. 断言与结果面板
    ========================================================================== */
 
@@ -101,8 +152,18 @@ export function createReport(label) {
     // 条件允许传函数（惰性求值）。
     // 必须先判类型再调用 —— `Boolean(函数)` 恒为 true，
     // 直接 Boolean(condition) 会让惰性条件的断言**永远通过**（踩过一次）。
-    const pass = Boolean(typeof condition === 'function' ? condition() : condition);
-    results.push({ name, pass, detail: String(detail) });
+    //
+    // 断言体里抛错（例如 `nodes[0].querySelector` 撞上空数组）**记为失败而不是中断**：
+    // 中断会让后面所有断言都不再执行，报告只留下前几条 ——
+    // 那正是「出问题时最需要看全」的时候。
+    let pass = false;
+    let note = String(detail);
+    try {
+      pass = Boolean(typeof condition === 'function' ? condition() : condition);
+    } catch (error) {
+      note = `断言抛错：${error?.message ?? error}`;
+    }
+    results.push({ name, pass, detail: note });
   }
 
   function paint() {

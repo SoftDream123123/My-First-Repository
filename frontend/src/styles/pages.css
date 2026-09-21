@@ -89,3 +89,248 @@
   max-width: 46em;
 }
 .login-card .note-box { margin-top: var(--s6); }
+
+/* ---- 面试前 / 评估前的「三步说明」 ----
+   真正有先后的过程，因此编号是在编码顺序而不是装饰。 */
+.stage-list { margin-top: var(--s5); border-top: 1px solid var(--line-soft); }
+.stage-list li {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.stage-list-index {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  color: var(--brand);
+  line-height: 1.4;
+}
+.stage-list-label { font-size: 14px; font-weight: 600; }
+.stage-list-text { margin-top: var(--s1); font-size: var(--t-sm); line-height: 1.7; color: var(--muted); }
+
+/* ---- 评估报告 ----
+   报告的读法是「先结论后证据」：头版给总分与综合结论，右侧是维度形状；
+   再往下才是逐题评分这条证据链。
+   维度分**不再单出一张表** —— 雷达图的图例每行直接带该维度的评语，
+   图给形状、给一眼的比较，图例给数值、给理由，两者是同一件事的两面。
+   （PRD §4.12 里 DOCX 的「多维评分表」是那份文件的要求，屏幕上不必照抄。） */
+.report-head { display: grid; grid-template-columns: minmax(0, 1fr) 400px; }
+.report-head-main { padding: var(--s6); }
+/* 图表比左边那一栏矮（4 维的图例横跨底部），居中放，免得顶部堆一块、下面空一块 */
+.report-head-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--s5) var(--s6);
+  border-left: 1px solid var(--line-soft);
+}
+
+/* 评估进行中时总分还没算出来：给一个小字占位并占住 56px 的高度，
+   免得整块在分数落地那一刻跳一下。这里不能用一个 56px 的「—」——
+   那个字形在这个字号下就是一条灰杠，读起来像进度条。 */
+.report-score { display: flex; align-items: baseline; gap: var(--s2); min-height: var(--t-hero); }
+.report-score-pending { font-size: var(--t-xl); font-weight: 600; color: var(--faint); }
+.report-score-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-hero);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.report-score-value.is-pass { color: var(--pass); }
+.report-score-value.is-watch { color: var(--watch); }
+.report-score-unit { font-family: var(--font-num); font-size: var(--t-lg); color: var(--muted); }
+.report-score-scale { margin-top: var(--s3); font-size: var(--t-sm); color: var(--muted); }
+.report-conclusion {
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line-soft);
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 32em;
+}
+
+/* 优点 / 待改进：结论正下方的两块，用分数带的方向做标记 —— 与评分的颜色同源 */
+.report-finds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--s6);
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line-soft);
+}
+.find-list { display: flex; flex-direction: column; gap: var(--s3); }
+.find-item {
+  padding-left: var(--s3);
+  border-left: 3px solid var(--line);
+  font-size: 14px;
+  line-height: 1.75;
+}
+.find-item.is-pass { border-left-color: var(--pass); }
+.find-item.is-watch { border-left-color: var(--watch); }
+
+/* 逐题评分：一条可以逐条核对的证据链 */
+.score-item { padding: var(--s5); border-top: 1px solid var(--line-soft); }
+.score-item:first-child { border-top: none; }
+.score-item-head { display: flex; align-items: center; gap: var(--s3); }
+.score-seq {
+  min-width: 26px;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--brand);
+}
+.score-value {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-xl);
+  font-weight: 700;
+  line-height: 1;
+}
+.score-value.is-pass { color: var(--pass); }
+.score-value.is-watch { color: var(--watch); }
+.score-question { margin-top: var(--s3); font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+.score-comment { margin-top: var(--s3); font-size: 14px; line-height: 1.8; max-width: 44em; }
+
+/* 回答与评估意见各自成块：两块长得像，靠标题分开，不靠猜 */
+.score-block { margin-top: var(--s4); }
+.score-block .dossier-label { margin-bottom: var(--s2); }
+.score-block .answer-quote { margin-top: 0; }
+
+.answer-quote {
+  margin-top: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: #f7fafc;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-control);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: var(--ink-soft);
+  max-width: 48em;
+}
+.answer-quote.is-blank { color: var(--muted); }
+
+/* 评估流：只有一条状态行。不做三段的步骤条 ——
+   逐题分数自己就是进度，再画一遍是把同一件事说两次。 */
+.stream-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s5);
+  border-bottom: 1px solid var(--line-soft);
+  background: #fafcfe;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+.stream-note.is-failed {
+  background: var(--danger-wash);
+  border-bottom-color: var(--danger-line);
+  color: var(--danger);
+}
+.stream-note.is-failed .btn { margin-left: auto; }
+.stream-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: stream-pulse 1.3s ease-in-out infinite;
+}
+@keyframes stream-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+.stream-count {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--muted);
+}
+
+/* 新到的一条只在落地那一下动一次，之后完全安静 */
+.just-arrived { animation: arrive 0.28s ease-out; }
+@keyframes arrive { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---- 雷达图 + 维度图例 ---- */
+.radar { display: block; width: 100%; height: auto; }
+.radar-grid { fill: none; stroke: var(--line-soft); }
+.radar-spoke { stroke: var(--line-soft); }
+.radar-area { stroke-width: 2; }
+.radar-area.is-pass { fill: var(--pass); fill-opacity: 0.12; stroke: var(--pass); }
+.radar-area.is-watch { fill: var(--watch); fill-opacity: 0.12; stroke: var(--watch); }
+.radar-dot { stroke: var(--paper); stroke-width: 1.5; }
+.radar-dot.is-pass { fill: var(--pass); }
+.radar-dot.is-watch { fill: var(--watch); }
+.radar-label { font-family: var(--font-ui); font-size: var(--t-xs); fill: var(--muted); }
+
+/* 维度图例：横跨面板底部的一行。图给形状，图例给数值与理由。
+   auto-fit 是为了让 3–6 个维度都排得下 —— 维度数是岗位定的，不是设计定的。 */
+.dim-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s4) var(--s6);
+  padding: var(--s5) var(--s6) var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+.dim-legend-row { min-width: 0; }
+.dim-legend-top { display: flex; align-items: baseline; gap: var(--s2); }
+.dim-legend-name { font-size: 14px; font-weight: 600; }
+.dim-legend-score {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-md);
+  font-weight: 700;
+}
+.dim-legend-score.is-pass { color: var(--pass); }
+.dim-legend-score.is-watch { color: var(--watch); }
+.dim-legend-comment { margin-top: var(--s1); font-size: var(--t-sm); line-height: 1.7; color: var(--muted); }
+
+/* 维度不足 3 个时雷达围不出形状 —— 改画横条，不硬凑一个三角形 */
+.dim-bars { display: flex; flex-direction: column; gap: var(--s5); }
+.dim-bar-top { display: flex; align-items: baseline; gap: var(--s2); }
+.dim-bar-track { margin-top: var(--s2); height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.dim-bar-fill { height: 100%; }
+.dim-bar-fill.is-pass { background: var(--pass); }
+.dim-bar-fill.is-watch { background: var(--watch); }
+
+/* ==========================================================================
+   打印 —— 「导出 PDF」走浏览器打印（PRD §4.12）。
+   后端不生成 PDF，所以这份样式要负责把屏幕上的东西整理成一份能直接交出去的
+   纸件：拿掉导航、状态轨与操作栏，保住分数色带与雷达图的颜色（它们是内容，
+   不是装饰），并避免一条评分被切在两页之间。
+   ========================================================================== */
+@media print {
+  @page { margin: 16mm; }
+
+  body { min-width: 0; background: #fff; }
+  .spine,
+  .topbar,
+  .rail,
+  .page-head-actions,
+  .stream-note,
+  .toast-stack,
+  .modal-overlay,
+  .no-print { display: none !important; }
+
+  .shell { display: block; }
+  .main { padding: 0; max-width: none; }
+
+  /* 浏览器默认会丢掉背景与浅色填充，那样雷达与分数色带就全白了 */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .panel { border-color: #cbd5e0; }
+  .report-head,
+  .report-finds { break-inside: avoid; }
+  .score-item,
+  .dim-legend-row,
+  .find-item,
+  .prep-stage,
+  .prep-focus,
+  .prep-question { break-inside: avoid; }
+
+  h1, h2, h3, .panel-title { break-after: avoid; }
+}

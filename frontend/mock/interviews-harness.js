@@ -234,9 +234,17 @@ report.run(async () => {
     rows()[2].querySelectorAll('td')[4].textContent.trim() === '2026-09-08 10:00',
     rows()[2].querySelectorAll('td')[4].textContent.trim());
 
+  // 主操作按状态命名，而不是一律叫「查看」—— HR 扫这张表时问的是「这场该我做什么」
   check('进行中的行主操作是「记录回答」',
     buttonIn(rows()[2], '记录回答') !== undefined, [...rows()[2].querySelectorAll('button')].map((b) => b.textContent).join(','));
-  check('已评估的行主操作是「查看」', buttonIn(rows()[0], '查看') !== undefined);
+  check('已完成的行主操作是「去评估」',
+    buttonIn(rows()[1], '去评估') !== undefined, [...rows()[1].querySelectorAll('button')].map((b) => b.textContent).join(','));
+  check('已评估的行主操作是「查看报告」',
+    buttonIn(rows()[0], '查看报告') !== undefined, [...rows()[0].querySelectorAll('button')].map((b) => b.textContent).join(','));
+  check('已评估的行另外给一个回详情页的口子',
+    buttonIn(rows()[0], '详情') !== undefined);
+  check('进行中的行不给「详情」（它已经在详情上了）',
+    buttonIn(rows()[2], '详情') === undefined);
 
   /* ---------- 3. 点一行 → 真的进详情页 ---------- */
   buttonIn(rows()[2], '记录回答').click();

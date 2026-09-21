@@ -101,6 +101,11 @@ export function contextTitle(text, note) {
   ];
 }
 
+/** 浏览器标签的兜底标题 —— 按端区分：候选人不该在自己的标签页上看到「HR 工作台」。 */
+export function baseTitle() {
+  return session.getSide() === 'candidate' ? '面试助手 · 候选人端' : '面试助手 · HR 工作台';
+}
+
 /** 面试状态标签。状态文案与状态机一一对应（API 文档 §8.1）。 */
 const STATUS_LABELS = {
   draft: '草稿',

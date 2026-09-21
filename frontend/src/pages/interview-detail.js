@@ -88,9 +88,10 @@ export async function render(container, params) {
   /* --------------------------- 状态操作 --------------------------- */
 
   /**
-   * ⚠️ 评估页尚未搬进来，因此 `completed` / `evaluating` / `evaluated` 三态的
-   * 「去评估 / 查看进度 / 查看报告」**暂时不渲染**。路由表里没有的路由不放在按钮上 ——
-   * 点了只会「什么都没发生」。评估模块落地时把这三个按钮加回来。
+   * 状态动作按状态机给（API 文档 §8.1 的操作矩阵）。
+   *
+   * ⚠️ 「面试准备」按钮尚未渲染 —— `/interviews/:id/prep` 属准备助手模块，
+   * 还没落地。路由表里没有的路由不放在按钮上，点了只会「什么都没发生」。
    */
   async function transition(action, successMessage) {
     try {
@@ -102,25 +103,59 @@ export async function render(container, params) {
     }
   }
 
+  const toEvaluation = () => navigate(`/interviews/${interviewId}/evaluation`);
+
   function buildActions() {
+    const buttons = [];
+
     if (detail.status === 'ongoing') {
-      return [el('button', {
+      buttons.push(el('button', {
         class: 'btn btn--primary',
         text: '标记完成',
         onClick: () => transition('complete', '已标记完成'),
-      })];
+      }));
     }
 
-    // completed 与 evaluated 都允许回退（evaluating 不允许 —— 后端状态机如此）
-    if (detail.status === 'completed' || detail.status === 'evaluated') {
-      return [el('button', {
-        class: 'btn btn--ghost',
-        text: '回退到进行中',
-        onClick: () => transition('rollback', '已回退到进行中'),
-      })];
+    if (detail.status === 'completed') {
+      buttons.push(
+        el('button', {
+          class: 'btn btn--ghost',
+          text: '回退到进行中',
+          onClick: () => transition('rollback', '已回退到进行中'),
+        }),
+        el('button', {
+          class: 'btn btn--primary',
+          // 这里只负责带路：真正触发评估的是评估页上的「开始评估」，按钮名字要和结果一致
+          text: '去评估',
+          onClick: toEvaluation,
+        }),
+      );
     }
 
-    return [];
+    if (detail.status === 'evaluating') {
+      buttons.push(el('button', {
+        class: 'btn btn--primary',
+        text: '查看评估进度',
+        onClick: toEvaluation,
+      }));
+    }
+
+    if (detail.status === 'evaluated') {
+      buttons.push(
+        el('button', {
+          class: 'btn btn--ghost',
+          text: '回退到进行中',
+          onClick: () => transition('rollback', '已回退到进行中'),
+        }),
+        el('button', {
+          class: 'btn btn--primary',
+          text: '查看报告',
+          onClick: toEvaluation,
+        }),
+      );
+    }
+
+    return buttons;
   }
 
   /* ---------------------------- 题目导航 ---------------------------- */

@@ -18,6 +18,7 @@ import { toast } from './components/toast.js';
 import * as login from './pages/login.js';
 import * as interviews from './pages/interviews.js';
 import * as interviewDetail from './pages/interview-detail.js';
+import * as evaluation from './pages/evaluation.js';
 import * as positions from './pages/positions.js';
 import * as questions from './pages/questions.js';
 import * as users from './pages/users.js';
@@ -26,6 +27,7 @@ export const PAGES = {
   login,
   interviews,
   interviewDetail,
+  evaluation,
   positions,
   questions,
   users,

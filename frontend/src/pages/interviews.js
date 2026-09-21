@@ -17,17 +17,15 @@ import { contextTitle, createShell, emptyState, formatDateTime, loadingBlock, st
 import { navigate } from '../router.js';
 
 /**
- * 主操作的文案按状态分叉，但**目的地暂时都指向详情页**：
- * `/interviews/:id/evaluation` 属于评估模块，尚未落地。
- * 评估页搬进来时把 completed / evaluating / evaluated 三项改指过去即可。
- * （路由表里没有的路由不放在按钮上 —— 点了会「什么都没发生」。）
+ * 主操作按状态命名，而不是一律叫「查看」——
+ * HR 扫这张表时问的是「这场该我做什么」，按钮直接回答它。
  */
 const NEXT_ACTION = {
   draft:      { label: '查看',     path: (id) => `/interviews/${id}` },
   ongoing:    { label: '记录回答', path: (id) => `/interviews/${id}` },
-  completed:  { label: '查看',     path: (id) => `/interviews/${id}` },
-  evaluating: { label: '查看',     path: (id) => `/interviews/${id}` },
-  evaluated:  { label: '查看',     path: (id) => `/interviews/${id}` },
+  completed:  { label: '去评估',   path: (id) => `/interviews/${id}/evaluation` },
+  evaluating: { label: '查看进度', path: (id) => `/interviews/${id}/evaluation` },
+  evaluated:  { label: '查看报告', path: (id) => `/interviews/${id}/evaluation` },
 };
 
 function progressCell(interview) {
@@ -43,6 +41,21 @@ function progressCell(interview) {
 
 function buildRow(interview) {
   const next = NEXT_ACTION[interview.status] ?? NEXT_ACTION.draft;
+  const actions = [
+    el('button', {
+      class: 'btn btn--quiet btn--sm',
+      text: next.label,
+      onClick: () => navigate(next.path(interview.id)),
+    }),
+  ];
+  // 已经能出报告的面试，除了「查看报告」再给一个回详情页的口子
+  if (interview.status === 'evaluating' || interview.status === 'evaluated') {
+    actions.push(el('button', {
+      class: 'btn btn--quiet btn--sm',
+      text: '详情',
+      onClick: () => navigate(`/interviews/${interview.id}`),
+    }));
+  }
 
   return el(
     'tr',
@@ -58,12 +71,7 @@ function buildRow(interview) {
     el('td', {}, statusTag(interview.status)),
     el('td', {}, progressCell(interview)),
     el('td', { class: 'meta', text: formatDateTime(interview.created_at) }),
-    el('td', { class: 'cell-actions' },
-      el('button', {
-        class: 'btn btn--quiet btn--sm',
-        text: next.label,
-        onClick: () => navigate(next.path(interview.id)),
-      })),
+    el('td', { class: 'cell-actions' }, actions),
   );
 }
 

@@ -38,7 +38,7 @@ Vite 把 `/api` 代理到 `http://localhost:8000`，因此前端代码一律使�
 | 命令 | 作用 |
 |---|---|
 | `npm run dev` | 开发服务器（5173） |
-| `npm test` | Vitest 单测：路由守卫的纯函数 |
+| `npm test` | Vitest 单测：三组纯函数（路由守卫 / SSE 分帧 / 雷达几何） |
 | `npm run build` | 构建到 `dist/` |
 | `npm run preview` | 预览构建产物 |
 
@@ -94,11 +94,12 @@ python scripts/seed_admin.py
 | HR | `#/login` | 登录（三角色同一入口，按 `role` 分流） | ✅ |
 | HR | `#/interviews` | 面试列表（表格 + 状态/进度 + 创建并同步出题）**← HR 默认落地页** | ✅ |
 | HR | `#/interviews/:id` | 面试详情（题目导航 + 单题编辑 + 自动保存 + 状态机 + 邀请 + 简历只读 + 补题） | ✅ |
+| HR | `#/interviews/:id/evaluation` | 评估报告：SSE 流式评分 + 雷达图 + 报告 + 导出 DOCX/PDF | ✅ |
 | HR | `#/positions` | 岗位：列表 + 案卷 + 维度编辑器 | ✅ |
 | HR | `#/questions` | 题库：六项筛选 + 题型/选项/参考答案表单 + AI 生成参考答案 | ✅ |
 | HR | `#/users` | 用户管理（仅 admin） | ✅ |
 
-**尚未搬进来**：评估报告、面试前准备助手；
+**尚未搬进来**：面试前准备助手（`#/interviews/:id/prep`）；
 候选人端整体（登录/激活/刷题/我的面试/在线答题/反馈/错题本/统计/简历）。
 
 未落地的页面**没有被写进 `src/router.js` 的路由表**，因此 nav 上不会出现、
@@ -121,14 +122,15 @@ frontend/
     main.js                   入口（两行）
     app.js                    装配：页面注册表、统一 401、启动前刷新用户信息
     router.js                 路由表 + 导航守卫（守卫决策是纯函数）
-    api.js                    HTTP 封装（JWT 注入 / 统一错误 / 401 / 204）
+    api.js                    HTTP 封装（JWT 注入 / 统一错误 / 401 / 204 / SSE / 下载）
+    sse.js                    SSE 报文的纯解析（分帧、跨块缓冲、心跳注释）
     session.js                登录态存储（按端分 key：hr.* / candidate.*）
     auth.js                   登录态语义（isAdmin / logout / refreshUser）
     dom.js                    DOM 助手 —— 把 XSS 约束结构化
-    components/               shell（脊 + 顶栏 + 展示件）· modal · toast · form（字段级报错）
-    pages/                    login · interviews · interview-detail · positions · questions · users
-    styles/                   tokens / base / components / pages
-    __tests__/router.test.js  路由守卫纯函数单测
+    components/               shell（脊 + 顶栏 + 展示件 + 状态轨）· radar · modal · toast · form
+    pages/                    login · interviews · interview-detail · evaluation · positions · questions · users
+    styles/                   tokens / base / components / pages（含打印样式）
+    __tests__/                router.test.js · sse.test.js · radar.test.js
   standalone.html             原型单文件快照（手工维护，见下）
   mock/                       Mock 联调测试（浏览器端，见「单测」一节）
   .screenshots/               设计记录（25 张：HR 侧 12 + 候选人侧 13）
@@ -148,8 +150,12 @@ frontend/
 
 它**无法设置自定义请求头**，而本项目的鉴权完全依赖 `Authorization: Bearer`。
 把 JWT 放进 query string 会让令牌进入服务器访问日志、代理日志与浏览器历史 ——
-这是可以避免的泄露面。SSE 用 `fetch` + `ReadableStream` 手工解析协议，
-在评估模块落地时随 `api.js` 一起补上。
+这是可以避免的泄露面。SSE 用 `fetch` + `ReadableStream` 手工解析协议：
+分帧与跨块缓冲在 `sse.js`（纯函数、有单测），连接循环在 `api.js` 的 `stream()`。
+
+> ⚠️ **重连会从头重放**，这是设计特性而不是缺陷（API 文档 §9.2）。
+> 评估页因此**按 `interview_question_id` 覆盖**而不是「来一条加一条」——
+> 追加过一次就会看到进度翻倍（`evaluation-harness` 专门喂了一份重放报文钉住它）。
 
 ### `dom.js` 为什么存在
 
@@ -178,6 +184,8 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | 文件 | 覆盖 |
 |---|---|
 | `src/__tests__/router.test.js` | 路由匹配（含段数不等不吃掉子路径）、默认落地页（adminOnly 不成为非管理员的落地页）、守卫决策（公开页 / 未登录 / 角色不符 / 改道到自己时的空转）、裸入口与未知 hash 的按端分流 |
+| `src/__tests__/sse.test.js` | 分帧（`LF LF` 与 `CRLF CRLF` 两种）、**跨块缓冲**（含逐字节喂入）、多行 data、**心跳注释必须静默丢弃**、畸形 JSON 不让流崩掉 |
+| `src/__tests__/radar.test.js` | 首顶点在正上方、相邻维度均分整圈、半径与分数成正比、0 分落圆心、越界夹取、**缺维度不封口**、标签按方位对齐、6.5 阈值是 `>=` |
 
 **守卫决策抽成纯函数**是刻意的：它的错法都很安静 —— 少一次重定向就是白屏，
 多一次就是「点了没反应」，而在浏览器里要靠手工构造登录态才能复现。
@@ -192,7 +200,8 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 | `mock/auth-harness.html` | 44 | 登录分流（三角色）、会话失效 vs 凭据不符的区分、按端分 key、退出只清本端、守卫真的执行了、统一 401、注册表与路由表一一对应 |
 | `mock/users-harness.html` | 47 | 列表、自身行保护、字段级校验、400/409、二次确认、加载失败 |
 | `mock/positions-harness.html` | 48 | 列表 + 案卷、**模糊搜索走服务端 `keyword`**、搜到 0 条时搜索框仍在、维度编辑器校验、`PUT` 全量替换而非追加、删除保护 |
-| `mock/interviews-harness.html` | 98 | **启动真实路由**，所以「点一行 → 进详情页」是真的走了一遍守卫与切页。列表：状态标签与进度、主操作按状态命名；详情：状态轨、题目导航（已答/待答、打开时定位到第一道未答）、失焦自动保存（**没改就不发请求**、提交的是 `interview_question_id`）、只读锁定、状态机给哪几个按钮、简历未关联是 404 而非报错、补题的三种结果（0 条 / 有新增 / 502）、邀请的生成与撤销 |
+| `mock/interviews-harness.html` | 101 | **启动真实路由**，所以「点一行 → 进详情页」是真的走了一遍守卫与切页。列表：状态标签与进度、主操作按状态命名；详情：状态轨、题目导航（已答/待答、打开时定位到第一道未答）、失焦自动保存（**没改就不发请求**、提交的是 `interview_question_id`）、只读锁定、状态机给哪几个按钮、简历未关联是 404 而非报错、补题的三种结果（0 条 / 有新增 / 502）、邀请的生成与撤销 |
+| `mock/evaluation-harness.html` | 61 | **事件契约**（`question` / `dimension` / `report` / `done` / `error`，刻意把报文切到 5 字节一块以逼出跨块缓冲）、心跳注释被丢弃、**重连重放不翻倍**（按 id 覆盖而非追加）、缺维度不封口、断流不被说成失败、状态机失败后回到可重试态、导出 DOCX 的中文文件名（RFC 5987）与「改用 PDF」提示、`window.print()` |
 | `mock/questions-harness.html` | 83 | 六项筛选的参数名与 AND 关系、**分类下拉在首次加载后就有值**、三种来源标签（含 `resume_match`）、题型切换改表单结构、维度跟随岗位、单选的选项/答案约束逐条、`source` 不由客户端提交、**简答必须传 `options: []` 而不是省略**、AI 生成的成功/502/409 与「失败不改动题目」、删除保护 |
 
 每个测试台拦截 `window.fetch` 当假后端，然后**驱动 `src/` 里的真实页面代码**，
@@ -207,7 +216,7 @@ msedge --headless=new --virtual-time-budget=30000 \
 `mock/` 不参与 `npm run build`，不会进入 `dist/`。
 
 **每个模块都做过变异检查**（沿用后端测试报告 §6.2 的手法）：把缺陷植回去，
-断言必须失败。至今八次：
+断言必须失败。至今十次：
 
 | 模块 | 植入的缺陷 | 结果 |
 |---|---|---|
@@ -219,8 +228,10 @@ msedge --headless=new --virtual-time-budget=30000 \
 | 题库 | 条件分区改回原生 `append`（把 `null` 拼进 DOM） | `questions-harness` 1 条红（正是那一条）✅ |
 | 面试 | 打开详情时不再定位到第一道未答的题 | `interviews-harness` 4 条红 ✅ |
 | 面试 | 回答不再按状态锁定（已完成也能改） | `interviews-harness` 4 条红 ✅ |
+| 评估 | **事件名退回原型的 `question_score`** | `evaluation-harness` 11 条红 ✅ |
+| 评估 | 维度没到齐也把雷达封口 | 单测 1 条红 + `evaluation-harness` 1 条红 ✅ |
 
-> 这套测试至今抓到**四个真 bug**：
+> 这套测试至今抓到**五个真 bug**：
 >
 > 1. **岗位搜索搜到 0 条时，搜索框会跟着空态一起消失** —— 用户既看不到「为什么是空的」，
 >    也没有地方把词改回去。已改成「有搜索词就保留左栏」。
@@ -233,6 +244,10 @@ msedge --headless=new --virtual-time-budget=30000 \
 >    条件渲染的，为假时传的是 `null`，而 `dossier.append(...)` 用的是**原生** `append`，
 >    它把 `null` 变成了文本节点。`dom.js` 的 `append()` 会跳过 `null`，但那一处没走它。
 >    前三个是跑断言发现的，这一个**是看截图看出来的** —— 断言当时是绿的。
+> 5. **评估跑完后状态轨仍停在「评估中」** —— 状态轨是回答「现在到哪了」的那一条，
+>    而它在挂载时按当时的状态画好之后就不再重画。收到 `done` 时动作栏换了、
+>    状态轨没换，于是它对着使用者说谎，刷新一下才对得上。
+>    （`evaluation-harness` 抓到；这个是搬原型时就带着的，原型同样只挂载不重画。）
 >
 > ⚠️ 第 3、4 两个 bug **原型 `standalone.html` 里同样存在**，尚未修（它是设计快照）。
 > 搬后续页面时留意同类写法：`questions.js` 已在搬入 `src/` 时一并修掉。
@@ -242,8 +257,11 @@ msedge --headless=new --virtual-time-budget=30000 \
 ## 已知限制
 
 - **仅 PC**：按 1280px+ 设计，不写媒体查询（PRD §2）
-- **`src/` 尚缺**：评估 / 准备助手 / 候选人端整体（见「当前进度」）
-- **面试详情页暂不给评估与准备入口**：`去评估 / 查看进度 / 查看报告` 与 `面试准备` 按钮**尚未渲染**，因为 `/interviews/:id/evaluation` 与 `/interviews/:id/prep` 还没落地。列表里各行主操作的**文案**已按状态分叉，但目的地暂时都指向详情页 —— 评估页搬进来时一并改指过去。
+- **`src/` 尚缺**：准备助手 / 候选人端整体（见「当前进度」）
+- **面试详情页暂不给「面试准备」入口**：`/interviews/:id/prep` 属准备助手模块，还没落地。
+  路由表里没有的路由不放在按钮上 —— 点了只会「什么都没发生」。
+- **评估必须单 worker 部署**：运行注册表是进程内的，多 worker 会让
+  `POST /evaluate` 与 `GET /evaluation/stream` 落在不同进程（API 文档 §2.1）。
 - **候选人账号不能在 HR 登录页登录**：会明确告知「这是 HR 工作台」并拒绝，
   不写登录态 —— 候选人端页面尚未落地，存下 token 也无处可去。
   候选人端搬进来时这一条要改成跳 `#/candidate/*`。
