@@ -93,9 +93,10 @@ python scripts/seed_admin.py
 |---|---|---|---|
 | HR | `#/login` | 登录（三角色同一入口，按 `role` 分流） | ✅ |
 | HR | `#/positions` | 岗位：列表 + 案卷 + 维度编辑器 | ✅ |
+| HR | `#/questions` | 题库：六项筛选 + 题型/选项/参考答案表单 + AI 生成参考答案 | ✅ |
 | HR | `#/users` | 用户管理（仅 admin） | ✅ |
 
-**尚未搬进来**：题库、面试列表、面试详情、评估报告、准备助手；
+**尚未搬进来**：面试列表、面试详情、评估报告、准备助手；
 候选人端整体（登录/激活/刷题/我的面试/在线答题/反馈/错题本/统计/简历）。
 
 未落地的页面**没有被写进 `src/router.js` 的路由表**，因此 nav 上不会出现、
@@ -122,8 +123,8 @@ frontend/
     session.js                登录态存储（按端分 key：hr.* / candidate.*）
     auth.js                   登录态语义（isAdmin / logout / refreshUser）
     dom.js                    DOM 助手 —— 把 XSS 约束结构化
-    components/               shell（脊 + 顶栏）· modal · toast · form（字段级报错）
-    pages/                    login · positions · users
+    components/               shell（脊 + 顶栏 + 展示件）· modal · toast · form（字段级报错）
+    pages/                    login · positions · questions · users
     styles/                   tokens / base / components / pages
     __tests__/router.test.js  路由守卫纯函数单测
   standalone.html             原型单文件快照（手工维护，见下）
@@ -186,9 +187,10 @@ module-07 §6 要求「所有后端数据用 `textContent` 渲染，禁止 `inne
 
 | 测试台 | 断言 | 覆盖 |
 |---|---:|---|
-| `mock/auth-harness.html` | 42 | 登录分流（三角色）、会话失效 vs 凭据不符的区分、按端分 key、退出只清本端、守卫真的执行了、统一 401、注册表与路由表一一对应 |
+| `mock/auth-harness.html` | 44 | 登录分流（三角色）、会话失效 vs 凭据不符的区分、按端分 key、退出只清本端、守卫真的执行了、统一 401、注册表与路由表一一对应 |
 | `mock/users-harness.html` | 47 | 列表、自身行保护、字段级校验、400/409、二次确认、加载失败 |
 | `mock/positions-harness.html` | 48 | 列表 + 案卷、**模糊搜索走服务端 `keyword`**、搜到 0 条时搜索框仍在、维度编辑器校验、`PUT` 全量替换而非追加、删除保护 |
+| `mock/questions-harness.html` | 82 | 六项筛选的参数名与 AND 关系、**分类下拉在首次加载后就有值**、三种来源标签（含 `resume_match`）、题型切换改表单结构、维度跟随岗位、单选的选项/答案约束逐条、`source` 不由客户端提交、**简答必须传 `options: []` 而不是省略**、AI 生成的成功/502/409 与「失败不改动题目」、删除保护 |
 
 每个测试台拦截 `window.fetch` 当假后端，然后**驱动 `src/` 里的真实页面代码**，
 把结果渲染到右上角面板并写进 `document.title`（`MOCK-ALL-PASS n` / `MOCK-FAIL n/m`），
@@ -202,27 +204,40 @@ msedge --headless=new --virtual-time-budget=30000 \
 `mock/` 不参与 `npm run build`，不会进入 `dist/`。
 
 **每个模块都做过变异检查**（沿用后端测试报告 §6.2 的手法）：把缺陷植回去，
-断言必须失败。本轮三次：
+断言必须失败。至今五次：
 
-| 植入的缺陷 | 结果 |
-|---|---|
-| 摘掉 `adminOnly` 守卫 | 单测 2 条红 + `auth-harness` 3 条红 ✅ |
-| `session` 不再按端分 key | `auth-harness` 4 条红（正好是与分端有关的那 4 条）✅ |
-| 岗位搜索改回本地过滤（不带 `keyword`） | `positions-harness` 4 条红 ✅ |
+| 模块 | 植入的缺陷 | 结果 |
+|---|---|---|
+| 地基 | 摘掉 `adminOnly` 守卫 | 单测 2 条红 + `auth-harness` 3 条红 ✅ |
+| 地基 | `session` 不再按端分 key | `auth-harness` 4 条红（正好是与分端有关的那 4 条）✅ |
+| 地基 | 岗位搜索改回本地过滤（不带 `keyword`） | `positions-harness` 4 条红 ✅ |
+| 题库 | 分类下拉只在渲染开始时算一次 | `questions-harness` 1 条红（正是那一条）✅ |
+| 题库 | 简答题的 `options` 传 `undefined` 而不是 `[]` | `questions-harness` 1 条红（正是那一条）✅ |
+| 题库 | 条件分区改回原生 `append`（把 `null` 拼进 DOM） | `questions-harness` 1 条红（正是那一条）✅ |
 
-> 这套测试当轮就抓到两个真 bug：
+> 这套测试至今抓到**四个真 bug**：
 >
 > 1. **岗位搜索搜到 0 条时，搜索框会跟着空态一起消失** —— 用户既看不到「为什么是空的」，
->    也没有地方把词改回去。改为「有搜索词就保留左栏」。
+>    也没有地方把词改回去。已改成「有搜索词就保留左栏」。
 > 2. **`decide()` 里 `deny` 分支的改道目标另算了一遍**，与调用方传进来的 `target`
 >    不一致 —— 同一个概念在两处各算一次，迟早会漂。
+> 3. **题库的「分类」下拉永远只有「全部分类」一项** —— 分类是自由文本，取值只能从
+>    已加载的题目里派生，而原型在 `questions` 还是空数组时就把这份清单算完了。
+>    等于这个筛选项自始至终没生效过。
+> 4. **题库案卷在稀疏的题上会渲染出字面量 `null`** —— 选项 / 解析 / 标签这几个分区是
+>    条件渲染的，为假时传的是 `null`，而 `dossier.append(...)` 用的是**原生** `append`，
+>    它把 `null` 变成了文本节点。`dom.js` 的 `append()` 会跳过 `null`，但那一处没走它。
+>    前三个是跑断言发现的，这一个**是看截图看出来的** —— 断言当时是绿的。
+>
+> ⚠️ 第 3、4 两个 bug **原型 `standalone.html` 里同样存在**，尚未修（它是设计快照）。
+> 搬后续页面时留意同类写法：`questions.js` 已在搬入 `src/` 时一并修掉。
 
 ---
 
 ## 已知限制
 
 - **仅 PC**：按 1280px+ 设计，不写媒体查询（PRD §2）
-- **`src/` 尚缺**：题库 / 面试 / 评估 / 准备助手 / 候选人端整体（见「当前进度」）
+- **`src/` 尚缺**：面试 / 评估 / 准备助手 / 候选人端整体（见「当前进度」）
 - **候选人账号不能在 HR 登录页登录**：会明确告知「这是 HR 工作台」并拒绝，
   不写登录态 —— 候选人端页面尚未落地，存下 token 也无处可去。
   候选人端搬进来时这一条要改成跳 `#/candidate/*`。

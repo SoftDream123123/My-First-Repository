@@ -151,18 +151,29 @@ report.run(async () => {
   check('脊上显示角色为「管理员」', page().querySelector('.spine-role')?.textContent === '管理员');
 
   const navTexts = [...page().querySelectorAll('.nav-item')].map((a) => a.textContent.trim());
-  check('admin 的导航 = [岗位, 用户管理]', navTexts.join(',') === '岗位,用户管理', navTexts.join(','));
+  // 期望值**从路由表算**，不写死清单 —— 写死的话每加一个页面都要改这里，
+  // 而「改了忘了同步」恰恰是这类断言最该防的事。
+  const expectedNav = (isAdmin) => router.routes
+    .filter((r) => r.nav && r.side === 'hr' && (!r.adminOnly || isAdmin))
+    .map((r) => r.nav);
+  check('admin 的导航 = 路由表里本端带 nav 且角色可见的全部路由',
+    navTexts.join(',') === expectedNav(true).join(','),
+    `${navTexts.join(',')} vs ${expectedNav(true).join(',')}`);
+  check('导航项确实有多于一项（否则上面那条会因为两边都空而恒真）', navTexts.length >= 2, String(navTexts.length));
   check('当前项高亮在「岗位」上', page().querySelector('.nav-item.is-active')?.textContent.trim() === '岗位');
-  check('导航由路由表派生（与 routes 过滤结果一致）',
-    navTexts.length === router.routes.filter((r) => r.nav && r.side === 'hr' && !r.adminOnly).length + 1);
   check('业务请求带上了 JWT', backend.calls.some((c) => c.path === '/positions' && c.auth === 'Bearer hr-token'),
     backend.calls.map((c) => `${c.path}:${c.auth}`).join(' '));
 
   /* ---------- 6. 守卫：HR 角色访问 adminOnly 页面 ---------- */
   session.setUser({ ...ADMIN, role: 'hr' });
   await go('#/positions');
-  check('HR 角色的导航里没有「用户管理」',
-    ![...page().querySelectorAll('.nav-item')].some((a) => a.textContent.trim() === '用户管理'));
+  const hrNav = [...page().querySelectorAll('.nav-item')].map((a) => a.textContent.trim());
+  check('HR 角色的导航里没有「用户管理」', !hrNav.includes('用户管理'), hrNav.join(','));
+  check('HR 角色的导航 = 去掉 adminOnly 之后的那一份',
+    hrNav.join(',') === expectedNav(false).join(','),
+    `${hrNav.join(',')} vs ${expectedNav(false).join(',')}`);
+  check('HR 角色确实少了东西（否则上面那条可能因为两边相等而没测到过滤）',
+    expectedNav(false).length < expectedNav(true).length);
 
   clearToasts();
   await go('#/users');

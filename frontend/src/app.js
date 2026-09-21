@@ -17,11 +17,13 @@ import { toast } from './components/toast.js';
 
 import * as login from './pages/login.js';
 import * as positions from './pages/positions.js';
+import * as questions from './pages/questions.js';
 import * as users from './pages/users.js';
 
 export const PAGES = {
   login,
   positions,
+  questions,
   users,
 };
 

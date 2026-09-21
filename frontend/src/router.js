@@ -34,6 +34,7 @@ import { toast } from './components/toast.js';
 export const routes = [
   { path: '/login',     key: 'login',     side: 'hr', isPublic: true },
   { path: '/positions', key: 'positions', side: 'hr', nav: '岗位' },
+  { path: '/questions', key: 'questions', side: 'hr', nav: '题库' },
   { path: '/users',     key: 'users',     side: 'hr', nav: '用户管理', adminOnly: true },
 ];
 

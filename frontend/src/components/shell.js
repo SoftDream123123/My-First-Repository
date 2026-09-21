@@ -114,6 +114,28 @@ export function dimTag(dimension) {
   return el('span', { class: 'tag tag--dim', text: dimension });
 }
 
+/**
+ * 题目来源。**三个分支都要有** —— `resume_match` 是 MVP-3 新增的来源，
+ * 漏掉它会把英文枚举值（`resume_match`）直接显示给用户，并给出错误或空的提示。
+ *
+ * 注：来源标签**不带底色**（`.tag--bank` / `.tag--ai` 没有对应规则），
+ * 它与旁边带框的元数据标签是两层信息 —— 来源更安静，这是原型定的层级。
+ */
+const SOURCE_LABELS = { bank: '手工', ai: 'AI', resume_match: '简历匹配' };
+const SOURCE_TITLES = {
+  bank: '手工录入题库',
+  ai: '由 AI 生成并收录进题库',
+  resume_match: '按候选人简历从题库匹配而来',
+};
+
+export function sourceTag(source) {
+  return el('span', {
+    class: `tag tag--${source}`,
+    text: SOURCE_LABELS[source] || source,
+    title: SOURCE_TITLES[source] || '',
+  });
+}
+
 function pad(n) { return String(n).padStart(2, '0'); }
 
 /** 接口下发的是无时区的 ISO 串（按本地时间理解），因此直接取字段而不是转 UTC。 */
