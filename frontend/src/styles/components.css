@@ -276,6 +276,8 @@
 .tag--evaluated  { background: var(--pass-wash); border-color: #c6e0d5; color: var(--pass); }
 .tag--dim        { background: #f2f6fa; border-color: #e0e8f0; color: var(--ink-soft); }
 .tag--off        { background: #eef2f6; border-color: #dde5ec; color: var(--muted); }
+/* 错题本的「错 N 次」：它带的是「要重点补」的信号，因此用破坏性色而不是灰 */
+.tag--wrong      { background: var(--danger-wash); border-color: var(--danger-line); color: var(--danger); }
 
 /* 候选人看到的「我的面试」四态。只有**要你动手**的两态上色（待作答 / 有反馈），
    其余一律灰。`--pass` / `--watch` 在这四个里一次都不出现：候选人不看分数，
@@ -434,6 +436,88 @@
   color: var(--brand-deep);
 }
 
+/* 单选复盘：候选人**自己选错**的那一项也要标出来 —— 只标正确答案不够，
+   复盘的价值在于看清「我当时选了哪个」 */
+.option-item.is-mine-wrong { background: var(--danger-wash); }
+.option-item.is-mine-wrong .option-key { color: var(--danger); }
+.option-flag.is-danger { color: var(--danger); }
+
+/* ---- 单选题的作答控件（刷题时可选的那种） ---- */
+.choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  font-size: 14px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.choice-option:last-child { margin-bottom: 0; }
+.choice-option:hover { background: #f7fafc; }
+.choice-option input { flex: none; margin-top: 3px; }
+.choice-option.is-picked { border-color: var(--brand); background: var(--brand-wash); }
+.choice-option:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ---- 逐题作答（刷题与错题本共用） ---- */
+.practice-item { padding: var(--s5); border-top: 1px solid var(--line-soft); }
+.practice-item:first-child { border-top: none; }
+.practice-item-head { display: flex; align-items: center; gap: var(--s3); }
+.practice-item-question { margin-top: var(--s3); font-size: var(--t-base); font-weight: 600; line-height: 1.7; max-width: 46em; }
+/* 选项列表与作答区都要收在同一条阅读宽度里，否则会横到面板最右边 */
+.practice-answer { margin-top: var(--s4); max-width: 48em; }
+.practice-item .textarea { min-height: 96px; }
+.practice-actions { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
+
+/* ---- 判分结果：对 / 错 / **未判分** 三态 ----
+   未判分不加任何底色 —— 它不是「答错」，用破坏性色会让人以为自己错了 */
+.verdict {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-control);
+  background: #f7fafc;
+  max-width: 48em;
+}
+.verdict.is-correct { background: var(--pass-wash); border-color: #c6e0d5; }
+.verdict.is-wrong { background: var(--danger-wash); border-color: var(--danger-line); }
+.verdict-head { display: flex; align-items: baseline; gap: var(--s3); }
+.verdict-label { font-size: var(--t-sm); font-weight: 600; color: var(--muted); }
+.verdict.is-correct .verdict-label { color: var(--pass); }
+.verdict.is-wrong .verdict-label { color: var(--danger); }
+.verdict-score {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  font-weight: 700;
+}
+.verdict-note { margin-top: var(--s2); font-size: var(--t-sm); line-height: 1.75; color: var(--ink-soft); }
+
+/* ---- 练习小结 / 统计：数字格 + 按维度（题型）的正确率条 ---- */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: var(--s4); }
+.summary-cell { padding: var(--s4); border: 1px solid var(--line-soft); border-radius: var(--r-control); }
+.summary-value {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.summary-label { margin-top: var(--s2); font-size: var(--t-sm); color: var(--muted); }
+.summary-bars { margin-top: var(--s6); display: flex; flex-direction: column; gap: var(--s4); }
+.summary-bar-top { display: flex; align-items: baseline; gap: var(--s2); font-size: 14px; }
+.summary-bar-value {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 700;
+}
+.summary-bar-track { margin-top: var(--s2); height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.summary-bar-fill { height: 100%; background: var(--brand); }
+
 /* ---- 选项编辑器 ---- */
 .choice-row {
   display: flex;
@@ -505,10 +589,13 @@
   white-space: nowrap;
 }
 
-/* ---- 交卷条：另一条细条 + 数字 + 尾部一个动作 ----
-   与上面的 `.progress` 是同一种构件，区别在**位置与权重**：`.progress` 是表格
-   单元格里的一粒读数，这一条横在正文上方，是整页的进度与唯一的收口动作。 */
-.submit-bar {
+/* ---- 交卷条 / 练习进度条：一条细条 + 数字 + 尾部一个动作 ----
+   两处是同一种构件（练习页的「已答 3 / 8 … 答对 2」与在线答题的「已答 3 / 8 … 交卷」），
+   共用一套样式，只在尾部那颗按钮上分叉。
+   与表格单元格里那粒读数（上面的 `.progress`）不是一回事：这一条横在正文上方，
+   是整页的进度与唯一的收口动作。 */
+.submit-bar,
+.practice-progress {
   display: flex;
   align-items: center;
   gap: var(--s3);
@@ -518,9 +605,12 @@
   border: 1px solid var(--line);
   border-radius: var(--r-surface);
 }
-.submit-bar-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
-.submit-bar-fill { height: 100%; background: var(--brand); }
-.submit-bar-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
+.submit-bar-track,
+.practice-progress-track { flex: 1; height: 6px; border-radius: 3px; background: #e4eaf1; overflow: hidden; }
+.submit-bar-fill,
+.practice-progress-fill { height: 100%; background: var(--brand); }
+.submit-bar-text,
+.practice-progress-text { flex: none; font-size: var(--t-sm); color: var(--ink-soft); }
 .submit-bar .btn { flex: none; }
 /* 已交卷 / 通道关闭后，这条不再表示「还差多少」，而是一个既成事实 */
 .submit-bar.is-frozen { background: #fafcfe; }

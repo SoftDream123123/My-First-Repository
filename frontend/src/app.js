@@ -28,6 +28,10 @@ import * as candidateActivate from './pages/candidate-activate.js';
 import * as candidateInterviews from './pages/candidate-interviews.js';
 import * as candidateInterviewDetail from './pages/candidate-interview-detail.js';
 import * as candidateFeedback from './pages/candidate-feedback.js';
+import * as candidatePractice from './pages/candidate-practice.js';
+import * as practiceSession from './pages/candidate-practice-session.js';
+import * as wrongBook from './pages/candidate-wrong-book.js';
+import * as practiceStats from './pages/candidate-stats.js';
 
 export const PAGES = {
   login,
@@ -43,6 +47,10 @@ export const PAGES = {
   candidateInterviews,
   candidateInterviewDetail,
   candidateFeedback,
+  candidatePractice,
+  practiceSession,
+  wrongBook,
+  practiceStats,
 };
 
 /**

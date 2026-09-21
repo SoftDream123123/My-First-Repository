@@ -169,6 +169,55 @@ export function dimTag(dimension) {
   return el('span', { class: 'tag tag--dim', text: dimension });
 }
 
+/** 选项字母 A…Z。后端单选的选项上限是 10 个，26 个足够。 */
+export function optionKey(index) { return String.fromCharCode(65 + index); }
+
+/**
+ * 从判分结果里取出**参考答案**。
+ *
+ * ⚠️ 这个函数存在的唯一理由是：提交作答与重新判分的响应里，参考答案**按题型二选一**
+ * ——单选放在 `correct_answer`、简答放在 `reference_answer`，另一个为 `null`
+ * （API 文档 §13.22）。原型只读 `reference_answer`，于是**单选题的复盘永远标不出
+ * 正确答案**：界面不报错，只是那一栏空着，很难发现。
+ *
+ * 抽成纯函数是为了让它**能被测到** —— 留在页面里就等于永远不会被测（同 radar 的做法）。
+ * 注意「练习详情」的 `PracticeItemOut` 用的是另一个形状（单选简答都放
+ * `reference_answer`），它不走这个函数。
+ */
+export function referenceAnswerOf(result) {
+  return result?.reference_answer ?? result?.correct_answer ?? null;
+}
+
+/**
+ * 单选题复盘：标出**正确答案**，以及候选人**自己选错**的那一项。
+ *
+ * 只标正确答案是不够的 —— 复盘的价值在于让人看清「我当时选了哪个」，
+ * 所以错选那一项用破坏性色单独标出，并给一句「你选的」。
+ *
+ * ⚠️ `correctAnswer` 必须传**已经归一化过的**参考答案：提交作答的响应里
+ * 单选把答案放在 `correct_answer`、简答放在 `reference_answer`（API 文档 §13.22），
+ * 两者按题型二选一。取错字段的表现是「正确答案那一项没被标出来」，
+ * 界面上不会报错，只是这条复盘失去了意义。
+ */
+export function choiceRecap(options, correctAnswer, myAnswer) {
+  return el('div', { class: 'option-list' }, (options || []).map((text, index) => {
+    const isCorrect = text === correctAnswer;
+    const mine = myAnswer != null && text === myAnswer;
+    const flag = mine && isCorrect ? '你选对了'
+      : mine ? '你选的'
+        : isCorrect ? '正确答案'
+          : null;
+    return el('div', {
+      class: ['option-item',
+        isCorrect ? 'is-correct' : '',
+        mine && !isCorrect ? 'is-mine-wrong' : ''].filter(Boolean).join(' '),
+    },
+      el('span', { class: 'option-key', text: optionKey(index) }),
+      el('span', { text }),
+      flag ? el('span', { class: `option-flag${mine && !isCorrect ? ' is-danger' : ''}`, text: flag }) : null);
+  }));
+}
+
 /* ---- 候选人看到的「我的面试」状态 ----
    候选人关心的是**他自己接下来要做什么**，不是 HR 的面试状态机
    （draft / ongoing / completed / evaluating / evaluated）。后端下发的是 HR 的
@@ -202,6 +251,18 @@ export function candidateState(item) {
 export function candidateStateTag(item) {
   const state = candidateState(item);
   return el('span', { class: `tag tag--${state}`, text: CANDIDATE_STATE_LABELS[state] });
+}
+
+/* ---- 刷题侧的题型 / 难度文案 ----
+   与 HR 题库页刻意不同字：那边是「易 / 中 / 难」「单选题 / 简答题」（编辑表单里宽裕），
+   这边是筛选栏的选项与题头的小标签，一行里要塞好几项，用短名才不挤。
+   三个候选人页面共用，所以放这里而不是各写一份。 */
+export const PRACTICE_DIFFICULTY_LABELS = { easy: '简单', medium: '中等', hard: '困难' };
+export const PRACTICE_TYPE_LABELS = { single_choice: '单选', short_answer: '简答' };
+
+/** 正确率百分比。`null` 一律显示「—」—— 0% 与「没数据」是两件事。 */
+export function percent(value) {
+  return value == null ? '—' : `${Math.round(value * 100)}%`;
 }
 
 /**

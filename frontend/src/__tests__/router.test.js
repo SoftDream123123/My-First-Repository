@@ -43,10 +43,17 @@ describe('matchRoute', () => {
     expect(matchRoute('/candidate/interviews/3/feedback')?.route.key).not.toBe('candidateInterviewDetail');
   });
 
+  it('候选人练习一侧的四条路由都匹配得上', () => {
+    expect(matchRoute('/candidate/practice')?.route.key).toBe('candidatePractice');
+    expect(matchRoute('/candidate/practice/7')?.route.key).toBe('practiceSession');
+    expect(matchRoute('/candidate/practice/7')?.params).toEqual({ id: '7' });
+    expect(matchRoute('/candidate/wrong-book')?.route.key).toBe('wrongBook');
+    expect(matchRoute('/candidate/stats')?.route.key).toBe('practiceStats');
+  });
+
   it('未注册的路径返回 null，而不是模糊匹配到别处', () => {
-    // 这几个是后续模块才落地的页面 —— 现在必须**明确不匹配**，
+    // 这是最后一个还没落地的候选人页面 —— 现在必须**明确不匹配**，
     // 否则会渲染出「页面未注册」的错误，而不是被送去一个能用的地方。
-    expect(matchRoute('/candidate/practice')).toBeNull();
     expect(matchRoute('/candidate/resumes')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });

@@ -390,6 +390,12 @@
 .prep-edit-label { margin-bottom: var(--s1); font-size: var(--t-xs); color: var(--muted); }
 .prep-edit-add { margin-top: var(--s2); }
 
+/* ---- 刷题页筛选栏里的实时计数 ----
+   「符合条件 23 题」在改动筛选时就地更新，候选人不必先点了开始才知道是空的。
+   取不到题时换成警示色 —— 那不是错误，是「换一组条件」的提示。 */
+.practice-count { font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
+.practice-count.is-none { color: var(--watch); }
+
 /* ---- 面试反馈：一份文书，不是一块看板 ----
    宽度收在 1000px（与准备助手同一种读法），内容是**顺着读**的：
    结论 → 优点 → 待改进。HR 报告那套是「左右对照」，候选人这边不需要对照。 */
