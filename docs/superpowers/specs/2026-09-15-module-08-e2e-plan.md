@@ -308,6 +308,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | 1 | **三端数据隔离** | admin 见全部；hr 仅见自己创建的 position/question/interview；candidate 仅见自己的练习数据与自己已接受的邀请所对应面试 | PRD §4.1、§4.6 |
 | 2 | **权限守卫（强制项）** | `app.routes` 中不存在任何 HR 侧路由可被 candidate token 访问；hr/admin **确实放行**（反向断言） | module-16 §9 |
 | 3 | **候选人可见性脱敏** | 反馈默认仅结论/优点/待改进；候选人取题的响应中**不含**参考答案、解析、来源、建题人 | PRD §4.9；question-题型 §4.2 |
+| 3b | **候选人反馈的结论不含去留判断**（2026-09-21 修正） | 结论是**面向本人的重写**，不出现「建议进入下一轮 / 不建议继续推进」；且报告结论**不进** `generate_candidate_feedback` 的入参 —— 这是**结构性**保证，不是靠提示词 | PRD §4.9；evaluation-反馈 §1.2 |
 | 4 | **单机约束适配** | 同一 origin 下单浏览器可同时登录 HR 与候选人（会话按端分 key）；限流为进程内实现，**未引入 Redis 等中间件** | PRD §2、§9；frontend-候选人 §4 |
 | 5 | **邀请码安全** | 不可枚举（足够熵）、有效期默认 7 天、一次性接受、可撤销 | PRD §9；interview-邀请 §3 |
 | 6 | **题库对 candidates 的隔离放宽已记录在案** | 刷题取题不按 `created_by` 过滤，且该取舍在文档中显式声明（而非实现疏漏） | question-题型 §5.7 |
@@ -353,7 +354,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **（MVP-2）题目新增题型 / 选项 / 参考答案 / 解析** | §4.3 | question | question §3.1、question-题型 §3、§4 |
 | **（MVP-2）刷题练习闭环：取题 → 判分 → 解析 → 错题本 → 统计** | §4.7 | practice + question + ai | practice §5；question-题型 §5.7；ai-新增 §4.2 |
 | **（MVP-2）候选人在线答题 + 交卷锁定（HR 可覆盖）** | §4.4、§4.8 | interview | interview-邀请 §5 |
-| **（MVP-2）候选人脱敏反馈（默认仅结论/优点/待改进）** | §4.9 | evaluation + ai + 配置项 | evaluation-反馈 §5；ai-新增 §4.3 |
+| **（MVP-2）候选人脱敏反馈（默认仅结论/优点/待改进，且结论为面向本人的重写、不含去留判断）** | §4.9 | evaluation + ai + 配置项 | evaluation-反馈 §1.2/§5；ai-新增 §4.3 |
 
 ### 6.2 架构约束（PRD §2、§3）
 
@@ -378,7 +379,7 @@ README 需补充以下三项（否则 MVP-2 的能力无法被发现或误用于
 | **（MVP-2）新增三个方法，共七个** | §6 | ai-新增 §3.2（签名）、§4（Mock 规则）、§5（真实 Prompt） |
 | **（MVP-2）`generate_reference_answer` 由 question 调用** | §4.3、§6 | question-题型 §5.2 |
 | **（MVP-2）`grade_practice_answer` 由 practice 调用** | §4.7、§6 | practice §5.2 |
-| **（MVP-2）`generate_candidate_feedback` 由 evaluation 调用** | §4.9、§6 | evaluation-反馈 §5 |
+| **（MVP-2）`generate_candidate_feedback` 由 evaluation 调用（入参**不含报告结论**，2026-09-21 修正）** | §4.9、§6 | evaluation-反馈 §4.5；ai-新增 §4.3 |
 | **（MVP-2）判分阈值全项目唯一（`PASS_THRESHOLD = 6.5`）** | §4.7 | ai-新增 §3.3；前端 6.5 见 frontend-候选人 §5 |
 
 ### 6.4 错误处理与流程（PRD §5.1、§5.3、§7）

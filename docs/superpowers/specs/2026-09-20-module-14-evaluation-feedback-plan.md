@@ -37,7 +37,7 @@
 | 子职责 | 内容 | PRD |
 |---|---|---|
 | 候选人反馈实体 | `candidate_feedback` 表的定义与迁移 | §4.5 |
-| 反馈生成 | 由报告结论生成面向候选人的脱敏文案（懒生成 + 缓存） | §4.9 |
+| 反馈生成 | 由**评分事实重写**出面向候选人的脱敏文案（懒生成 + 缓存）—— 报告那句综合结论含去留判断，**不复述、也不传给 AI** | §4.9 |
 | 档位裁剪 | 按 `CANDIDATE_FEEDBACK_LEVEL` 决定响应是否含总分 | §4.9 |
 | 反馈读取端点 | `GET /api/candidate/interviews/{id}/feedback` | §8 |
 | 缓存失效 | 重新评估后使旧反馈失效 | §5.3 |
@@ -49,7 +49,7 @@
 | **改动 HR 侧报告的任何行为** | PRD §4.9 明确「HR 端报告视图保持不变」。`GET /interviews/{id}/report`、SSE 流、三张评估表的读写**一律不动** |
 | **候选人查看逐题分 / 维度分 / 雷达图** | PRD §1.3、§4.9 明确不下发。**注意**：这不是「前端不显示」，而是**后端不下发**（§4.2 的白名单响应结构） |
 | **候选人反馈的编辑 / 审批流** | PRD 未要求。HR 若不同意反馈措辞，应通过重新评估来改变（反馈由报告派生） |
-| **录用建议 / 通过与否的结论** | PRD §1.3 未要求；此类表述有合规风险，且属 HR 的判断，不应由系统代答 |
+| **录用建议 / 通过与否的结论** | PRD §1.3、§4.9（2026-09-21 修正）。此类表述有合规风险，且属 HR 的判断，不应由系统代答。**注意它不只是一个「不加的字段」**：报告的综合结论里那句「建议进入下一轮 / 不建议继续推进」本身就是去留判断，所以 —— ① 候选人反馈的结论必须是**重写**而非复述；② 报告结论**不进 `generate_candidate_feedback` 的入参**（§4.5）。**结构上不给，比叮嘱模型「不要复述」可靠** —— 与 §4.2 用白名单保证分数不下发是同一手法 |
 | **反馈的邮件 / 通知推送** | PRD §1.3 明确不做通知 |
 | **候选人反馈的历史版本** | 重评即重建（§5.3）。保留多版本需要版本选择 UI（YAGNI，与 module-06 §5.4「不做版本留存」同一态度） |
 | **在评估流程内同步生成反馈** | 会让评估的失败面变大（§5.2 的取舍） |
@@ -163,7 +163,7 @@ evaluation ✗→ practice
 |---|---|---|---|---|
 | `interview_id` | int | ✓ | ✓ | — |
 | `level` | str | ✓ | ✓ | 回显当前档位，便于前端与排查 |
-| `conclusion` | str | ✓ | ✓ | 综合结论 |
+| `conclusion` | str | ✓ | ✓ | 综合结论 —— **面向本人的重写**，不含去留判断（§1.2） |
 | `strengths` | list[str] | ✓ | ✓ | 优点 |
 | `weaknesses` | list[str] | ✓ | ✓ | 待改进 |
 | `overall_score` | float \| null | **`null`** | ✓（0–10） | 总分 |
@@ -213,7 +213,7 @@ evaluation ✗→ practice
 
 | 调用 | 方法 | 说明 |
 |---|---|---|
-| 生成反馈 | `provider.generate_candidate_feedback(level, conclusion, strengths, weaknesses, overall_score)` | **只传原始值**；`level` 同时决定返回的 `overall_score` 是否为 `None`（[module-11 §4.3](./2026-09-20-module-11-ai-plan.md)） |
+| 生成反馈 | `provider.generate_candidate_feedback(level, overall_score, strengths, weaknesses, dimension_scores)` | **只传原始值**；`level` 同时决定返回的 `overall_score` 是否为 `None`（[module-11 §4.3](./2026-09-20-module-11-ai-plan.md)）。⚠️ **报告的综合结论不在参数里**（PRD §4.9）：它含去留判断，不给才是结构上的保证。`dimension_scores` 由 `repository.list_dimension_scores(db, interview_id)` 转成 ai 层 dataclass 传入，供 AI 判断强项 / 弱项 —— 阈值留在 `ai` 层（`PASS_THRESHOLD`），本模块**不另算一套**「哪些算强项」 |
 
 ---
 
@@ -327,6 +327,8 @@ get_candidate_feedback(db, user, interview_id):
 | `test_response_never_contains_radar_payload` | 不出现任何雷达图数据结构 |
 | `test_full_has_overall_score_but_still_no_detail` | `full` 档 → `overall_score` 非空，**但逐题分与维度分仍然不出现** |
 | `test_client_cannot_escalate_level` | 请求带 `?level=full` → 响应 `level` 仍为服务端配置值，`overall_score` 仍受配置决定 |
+| `test_conclusion_carries_no_hiring_verdict` | 综合结论**不含**「建议进入下一轮 / 不建议继续推进」这类去留判断，且 **≠ 报告的 `conclusion`** —— 断言「是重写，不是复述」（§1.2） |
+| `test_report_conclusion_is_not_passed_to_ai` | 检查 provider 收到的实参：**没有**报告结论这一项。这是**结构性**断言，比「断言输出里没有某句话」更硬 —— 后者挡不住换个说法 |
 
 > **第一条与后三条的组合是刻意的**：只断言「`overall_score` 为 None」无法发现「逐题分被顺手带出去了」。键集合的**精确**比对（而非包含比对）才能拦住新增字段时的意外泄露。
 
@@ -475,4 +477,4 @@ get_candidate_feedback(db, user, interview_id):
 | 档位校验放两层 | 启动期 fail fast + provider 层防御性降级 | 启动期拦住配置错误；provider 不该因调用方失误而泄露分数 |
 | 并发首次读取 | 唯一索引 + 捕获 `IntegrityError` 后返回既有行 | 不报错，因为对候选人而言「拿到反馈」这一目标已达成 |
 | HR 是否能看候选人反馈的措辞 | **不在端点范围内** | PRD 未要求；HR 需要的是报告，不是候选人版的措辞。若将来需要，应作为 HR 端点单独评审 |
-| 反馈是否含「是否通过」的结论 | **不含** | 录用判断属 HR 职责，系统代答有合规风险（§1.2） |
+| 反馈是否含「是否通过」的结论 | **不含，而且是结构上的**：结论为面向本人的重写，报告结论**不进 AI 的入参** | 录用判断属 HR 职责，系统代答有合规风险（§1.2）。只靠提示词约束模型，等于「把不该给的给了再要求别看」——与 §4.2 白名单同一态度 |

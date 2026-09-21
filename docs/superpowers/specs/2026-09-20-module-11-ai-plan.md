@@ -101,7 +101,7 @@ ai ✗→ auth / position / question / interview / evaluation / practice
 | `PracticeGradeResult` | `score` | float | 0–10，一位小数 |
 | | `is_correct` | bool | 等价于 `score >= PASS_THRESHOLD` |
 | | `explanation` | str | 面向候选人的解析 |
-| `CandidateFeedbackResult` | `conclusion` | str | 综合结论 |
+| `CandidateFeedbackResult` | `conclusion` | str | 面向本人的**重写**结论，不含去留判断（§4.3） |
 | | `strengths` | list[str] | 优点 |
 | | `weaknesses` | list[str] | 待改进 |
 | | `overall_score` | float \| None | **`level='summary'` 时为 `None`**，`'full'` 时为原值 |
@@ -112,14 +112,15 @@ ai ✗→ auth / position / question / interview / evaluation / practice
 |---|---|---|
 | `generate_reference_answer(question_type: str, content: str, options: list[str], dimension: str)` | `ReferenceAnswerResult` | 为一题生成参考答案与解析 |
 | `grade_practice_answer(question_type: str, content: str, reference_answer: str, user_answer: str)` | `PracticeGradeResult` | 刷题作答判分 + 解析 |
-| `generate_candidate_feedback(level: str, conclusion: str, strengths: list[str], weaknesses: list[str], overall_score: float)` | `CandidateFeedbackResult` | 生成面向候选人的脱敏反馈 |
+| `generate_candidate_feedback(level: str, overall_score: float, strengths: list[str], weaknesses: list[str], dimension_scores: list[DimensionScoreResult])` | `CandidateFeedbackResult` | 由**评分事实重写**面向候选人的脱敏反馈 |
 
-**两个新增模块级常量（`base.py`）**
+**三个新增模块级常量（`base.py`）**
 
 | 常量 | 值 | 用途 |
 |---|---|---|
 | `PASS_THRESHOLD` | `6.5` | **全项目唯一的及格线**，见 §3.3 |
 | `QUESTION_TYPE_SINGLE_CHOICE` / `QUESTION_TYPE_SHORT_ANSWER` | `"single_choice"` / `"short_answer"` | 判分支路的取值 |
+| `CANDIDATE_FEEDBACK_LEAD` | `"感谢你参与本次面试。以下是本次面试的反馈，供你参考。"` | 候选人反馈的开头。两个 Provider **共用一句** —— 它是这份文案的语气，不是某个 Provider 的实现细节。真实 Provider 生成不出结论时也用它兜底：**宁可兜一句没有信息量的话，也不能退回报告那句结论**，那里面有去留判断（§4.3） |
 
 > 题型常量在 `question.models` 与 `ai.base` 各定义一份，与既有 `SOURCE_BANK` / `SOURCE_AI` / `DIFFICULTY_*` 的现状一致：**`ai` 不能依赖 `question`**，因此常量必须各自定义。这是模块解耦换来的重复，不是疏漏。
 
@@ -148,7 +149,7 @@ ai ✗→ auth / position / question / interview / evaluation / practice
 |---|---|---|
 | `generate_reference_answer(question)` | `(question_type, content, options, dimension)` | 传 ORM 对象会让 `ai` 反向依赖 `question`，破坏依赖单向；且 Mock 单测需起库 |
 | `grade_practice_answer(question, user_answer)` | `(question_type, content, reference_answer, user_answer)` | 同上 |
-| `generate_candidate_feedback(report, level)` | `(level, conclusion, strengths, weaknesses, overall_score)` | 同上；`report` 是 `evaluation` 的表，`ai` 不得依赖它 |
+| `generate_candidate_feedback(report, level)` | `(level, overall_score, strengths, weaknesses, dimension_scores)` | `report` 是 `evaluation` 的表，`ai` 不得依赖它。⚠️ 这里比 PRD 写得**更窄**（PRD §4.9，2026-09-21 修正）：**报告的 `conclusion` 也不传** —— 它含招聘方的去留判断，不给进去才是结构上的保证（§4.3） |
 
 这与 module-04 §3.3 对既有四方法的处理是同一手法。
 
@@ -212,17 +213,27 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 
 ### 4.3 `generate_candidate_feedback`
 
+⚠️ **本方法刻意不接收报告的综合结论**（PRD §4.9，2026-09-21 修正）。报告那句里含招聘方的
+去留判断（「建议进入下一轮 / 不建议继续推进」），那是 HR 的决策，该由 HR 另行沟通 ——
+把它传给生成方、再叮嘱一句「不要复述」，等于把不该给的给了再要求别看。
+**入参里根本没有它，才是结构上的保证。**
+
+因此 `conclusion` 是**由维度得分重写**的一句：只点出强项 / 弱项**是哪几个维度**，理由交给
+那两条原样下发的列表（结论里再复述一遍理由，会和紧接着的条目逐字重复）。
+
 | `level` | 行为 |
 |---|---|
-| `summary` | 用固定模板润色 `conclusion` / `strengths` / `weaknesses`；**`overall_score = None`** |
+| `summary` | 结论由 `dimension_scores` 重写；`strengths` / `weaknesses` 原样 `strip` 后下发；**`overall_score = None`** |
 | `full` | 同上，但**保留** `overall_score` 原值 |
 | 未知取值 | **按 `summary` 处理**并记 `warning` 日志 |
 
 | 设计决策 | 说明 |
 |---|---|
 | **未知 `level` 退化为 `summary`** | 「给得更少」是安全方向：即使配置被写错（如 `CANDIDATE_FEEDBACK_LEVEL=detailed`），候选人也不会意外看到自己的分数。同时打 warning，让配置错误可见 |
-| Mock **不改变** 优点/待改进的条目数量与顺序 | 保持与报告一致，便于 HR 与候选人对照；Mock 只做措辞润色 |
-| 不产出「录用建议」类结论 | PRD §1.3 未要求，且此类表述有合规风险 |
+| Mock **不改变** 优点/待改进的条目数量与顺序 | 保持与报告一致，便于 HR 与候选人对照；Mock 只做 `strip` |
+| **判强弱的阈值用 `PASS_THRESHOLD`** | 与 `summarize_report` 同一把尺。若调用方再自己算一套「哪些算强项」，同一个分数会在报告里算强项、在反馈里算弱项 |
+| 结论**必须是重写，不能复述** | 报告结论含去留判断。Mock 拿不到它，所以结构上不可能复述（§3.4） |
+| 没有明显强项 / 弱项时各有一句兜底 | 保证结论读起来是完整的一句：`各个维度上还没有体现出明显突出的部分` / `各维度表现比较均衡，没有明显短板` |
 
 ---
 
@@ -238,7 +249,7 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 |---|---|---|---|
 | `generate_reference_answer` | 资深面试官 / 命题人；给出「标准答案 + 解析」 | 题型、题干、选项（单选时列出并标注该答案必须是其一）、维度 | JSON 对象：`reference_answer`、`explanation` |
 | `grade_practice_answer` | 严格但公允的判卷人；按 0–10 打分 | 题型、题干、参考答案、候选人作答 | JSON 对象：`score`、`explanation`（**不要求模型给 `is_correct`**） |
-| `generate_candidate_feedback` | 面向候选人的沟通者；措辞建设性、不含录用判断 | 结论文本、优点列表、待改进列表、（`level='full'` 时才给）总分 | JSON 对象：`conclusion`、`strengths`、`weaknesses` |
+| `generate_candidate_feedback` | 面向候选人的沟通者；措辞建设性；**拿不到录用结论，也不去推断它** | **各维度得分**（可据此判断强弱）、优点列表、待改进列表、（`level='full'` 时才给）总分。⚠️ **报告的综合结论不作为输入**，否则等于给了再要求别看 | JSON 对象：`conclusion`、`strengths`、`weaknesses` |
 
 > **`is_correct` 不让模型输出**：它由 `PASS_THRESHOLD` 与 `score` 在后端推导，保证阈值唯一（§3.3）。让模型返回布尔值会引入第二个「是否判对」的判据。
 
@@ -253,6 +264,7 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 | `reference_answer` 不在 `options` 内（单选） | **不在 provider 内纠正**：原样返回。由 `question.service` 判定并报 409（module-10 §5.2） |
 | `strengths` / `weaknesses` 非数组 | 经 `_str_list` 转换；转换后为空则回落到空列表 |
 | 字段缺失 | 抛 `AIProviderError`（不猜、不填默认答案） |
+| `conclusion` 缺失 / 为空 | 兜底为 `CANDIDATE_FEEDBACK_LEAD`，**绝不回落到报告结论**（那含去留判断）。这是「字段缺失即抛错」的**唯一例外**：结论少一句时优缺点仍然成立、仍然有用，为此让整个读接口 502 不划算（PRD §4.9） |
 
 > **为何「答案不在选项内」的判定放在 `question` 而不是 `ai`**：这是**题目数据自洽性**的校验，属业务规则；`ai` 只负责生成，不知道选项是否合法。职责边界与 §1.2 一致。
 
@@ -326,6 +338,9 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 | `test_mock_feedback_unknown_level_defaults_to_summary` | `level='detailed'` → `overall_score is None` |
 | `test_mock_feedback_preserves_items` | 优点 / 待改进的**条目数量与顺序**与输入一致 |
 | `test_mock_feedback_is_deterministic` | 同输入两次调用结果相等 |
+| `test_mock_feedback_conclusion_names_dimensions` | 结论点出强项 / 弱项**是哪几个维度**（阈值 6.5，与 `summarize_report` 同尺） |
+| `test_mock_feedback_conclusion_has_no_verdict` | 遍历各分数段：结论**不含**「建议进入下一轮 / 建议暂不推进」等去留判断（PRD §4.9） |
+| `test_mock_feedback_interface_rejects_conclusion_param` | `inspect.signature` 里**没有** `conclusion` 参数 —— **结构性守门**：想漏也漏不出去 |
 
 **契约一致性**
 
@@ -345,6 +360,7 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 | `test_openai_grade_short_answer_empty_reference_short_circuits` | 参考答案为空 → 抛 `AIProviderError` 且**未发起请求**（断言 transport 未被调用） |
 | `test_openai_grade_empty_answer_short_circuits` | 作答为空 → 直接返回 0 分且**未发起请求** |
 | `test_openai_feedback_summary_omits_score` | `level='summary'` → `overall_score is None` |
+| `test_openai_feedback_missing_conclusion_falls_back` | 模型没给 `conclusion` → 兜底为 `CANDIDATE_FEEDBACK_LEAD`，**不是**报告结论（报告结论本就不该进 prompt，§4.3） |
 | `test_openai_retries_then_raises` | transport 连续失败 → 重试 `ai_max_retries` 次后抛 `AIProviderError` |
 | `test_openai_missing_field_raises` | JSON 缺 `reference_answer` → `AIProviderError`（不填默认值） |
 
@@ -365,7 +381,7 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 
 ### Task 11.1：数据结构与常量
 
-- [ ] `base.py` 新增三个 dataclass、`PASS_THRESHOLD`、两个题型常量
+- [ ] `base.py` 新增三个 dataclass、`PASS_THRESHOLD`、两个题型常量、`CANDIDATE_FEEDBACK_LEAD`
 - [ ] 写失败测试：三个 dataclass 可实例化、字段默认值正确（`overall_score` 可传 `None`）
 - [ ] 运行确认通过
 - [ ] 提交
@@ -395,17 +411,17 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 
 ### Task 11.5：Mock 候选人反馈
 
-- [ ] 写 §7.1 中 `test_mock_feedback_*` 五条失败测试
+- [ ] 写 §7.1 中 `test_mock_feedback_*` 八条失败测试（**含「结论不含去留判断」与「接口不收 `conclusion` 参数」两条**）
 - [ ] 运行确认失败
-- [ ] 实现（level 分支 + 未知取值退化为 summary + warning 日志）
+- [ ] 实现（由 `dimension_scores` 按 `PASS_THRESHOLD` **重写**结论 + level 分支 + 未知取值退化为 summary + warning 日志）
 - [ ] 运行确认通过
 - [ ] 提交
 
 ### Task 11.6：真实 Provider
 
-- [ ] 写 §7.2 九条测试（transport stub，**不打真实 API**）
+- [ ] 写 §7.2 十条测试（transport stub，**不打真实 API**）
 - [ ] 运行确认失败
-- [ ] 实现三个方法（prompt + 解析 + `is_correct` 本地推导 + 重试）
+- [ ] 实现三个方法（prompt + 解析 + `is_correct` 本地推导 + 重试 + 结论缺失兜底）
 - [ ] 运行确认通过
 - [ ] 提交
 
@@ -427,6 +443,7 @@ user_answer.strip() == ""  →  返回 PracticeGradeResult(
 - [ ] `is_correct` 恒等于 `score >= PASS_THRESHOLD`，**不由模型输出决定**
 - [ ] `PASS_THRESHOLD` 一处定义（`ai.base`），值为 `6.5`，与前端 `scoreClass` / `radar.js` 的及格线一致
 - [ ] `generate_candidate_feedback(level='summary')` 的 `overall_score` 为 `None`；未知 level 退化为 `summary` 并记 warning
+- [ ] `generate_candidate_feedback` **不接受**报告结论作入参，且候选人结论**不含**去留判断（两条**结构性**测试通过，见 §4.3 / §7.1）
 - [ ] 单选补参考答案返回的答案**必在 `options` 内**
 - [ ] 「答案不在选项内」不由 `ai` 纠正（交由 `question` 判 409）
 - [ ] `FailingProvider(AIProvider)` 测试替身已补齐三个方法，`test_interview.py` 零回归

@@ -146,7 +146,7 @@ ai ✗→ 任何业务模块（position / question / interview / evaluation）
 |---|---|---|
 | `generate_reference_answer(question_type: str, content: str, options: list[str], dimension: str) -> ReferenceAnswerResult` | 结果 | 补参考答案（§4.3） |
 | `grade_practice_answer(question_type: str, content: str, reference_answer: str, user_answer: str) -> PracticeGradeResult` | 结果 | 刷题判分 + 解析（§4.7） |
-| `generate_candidate_feedback(level: str, conclusion: str, strengths: list[str], weaknesses: list[str], overall_score: float) -> CandidateFeedbackResult` | 结果 | 候选人脱敏反馈（§4.9） |
+| `generate_candidate_feedback(level: str, overall_score: float, strengths: list[str], weaknesses: list[str], dimension_scores: list[DimensionScoreResult]) -> CandidateFeedbackResult` | 结果 | 候选人脱敏反馈（§4.9）。⚠️ **入参不含报告结论**（2026-09-21 修正）：它含招聘方的去留判断，不给才是结构上的保证 |
 
 > ⚠️ **新增抽象方法会打断既有测试替身**：`backend/tests/test_interview.py` 中的 `FailingProvider` 直接继承 `AIProvider`，必须补齐三个方法，否则既有用例将因无法实例化而集体失败。其余替身（`PartialDimensionProvider` 继承自 `MockProvider`、`FailingProvider`/`GatedProvider` 为普通类）经核实不受影响。清单见 module-11 §2。
 
