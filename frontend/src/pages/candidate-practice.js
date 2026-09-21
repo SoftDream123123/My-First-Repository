@@ -10,9 +10,9 @@
  * 2. **进行中的练习必须出现在这里。** 它是候选人中途离开后唯一的返回入口
  *    （module-15 §4.3），因此不塞进「历史记录」里，单独给一块。
  *
- * ⚠️ **本页当前不做「按简历推荐」。** 那需要一个简历下拉 + 无简历时的引导链接
- * （指向 `#/candidate/resumes`），而简历页还没落地 —— 挂一个点进去报错的链接
- * 比缺这个入口更难查。module-22 会把这块增量加进来。
+ * ⚠️ **「按简历推荐」是取题方式，不是筛选条件。** 它不缩小题目池，只改变「从符合
+ * 条件的题里挑哪些、怎么排」。因此它与其余六个筛选**分行**放，并且与「题量」同组 ——
+ * 同排会让人以为多了一项过滤（module-22 §5.3）。
  */
 
 import { el, mount } from '../dom.js';
@@ -89,11 +89,13 @@ export async function render(container) {
   let positions = [];
   let sessions = [];
   let pool = [];
+  let resumes = [];
   try {
-    [positions, sessions, pool] = await Promise.all([
+    [positions, sessions, pool, resumes] = await Promise.all([
       api.get('/candidate/positions'),
       api.get('/practice/sessions'),
       api.get('/practice/questions'),
+      api.get('/candidate/resumes'),
     ]);
   } catch (error) {
     mount(main, el('div', { class: 'panel' }, emptyState('加载失败', error.message,
@@ -112,6 +114,16 @@ export async function render(container) {
   };
   const size = makeSelect('题量', SIZES.map((n) => [n, `${n} 题`]));
   size.value = String(SIZES[0]);
+
+  // 简历**不是筛选条件**（它不缩小题目池），而是取题方式：选了之后由 AI 从符合
+  // 筛选条件的题里按相关度挑选排序（PRD §4.7）。因此与「题量」同组、另起一行。
+  const resume = makeSelect('不使用简历', resumes.map((r) => [r.id, r.title]));
+  resume.title = '选一份自己的简历后，取题会按与它的相关度挑选排序；不选就按原有筛选取题。';
+  if (!resumes.length) {
+    // 没有简历时**只留「不使用」并禁用** —— 下拉里没有任何可选项，留着可点会让人
+    // 以为「选一下就有了」。旁边直接把「去哪录」指出来。
+    resume.disabled = true;
+  }
 
   const count = el('span', { class: 'practice-count' });
   const start = el('button', { class: 'btn btn--primary', text: '开始练习' });
@@ -160,12 +172,14 @@ export async function render(container) {
     const original = trigger.textContent;
     trigger.textContent = '正在取题…';
     try {
-      // 不传 `resume_id`：本轮还没有简历相关的能力，省略比传 null 更干净
-      // （后端对「不传」与「传 null」等价处理，都走普通筛选）
-      const detail = await api.post('/practice/sessions', {
+      const body = {
         ...currentFilters(),
         size: Number(size.value) || SIZES[0],
-      });
+      };
+      // 选了简历才带 `resume_id`；不选时**省略该字段**（与后端「不传 / 传 null 都走
+      // 普通筛选」等价，但省略更干净 —— module-22 §5.3）
+      if (resume.value) body.resume_id = Number(resume.value);
+      const detail = await api.post('/practice/sessions', body);
       navigate(`/candidate/practice/${detail.session.id}`);
     } catch (error) {
       // 409 = 取不到题 / 触发限流。**筛选条件保留不重置** —— 让人看到自己选的是什么
@@ -183,6 +197,23 @@ export async function render(container) {
     count,
     start);
 
+  // 简历另起一行：它不是筛选条件（不缩小题目池），只改变挑选与排序。
+  // 同排会让人以为多了一项过滤，两行则把「筛什么」与「怎么挑」分开了
+  const resumeBar = el('div', { class: 'filterbar filterbar--sub' },
+    el('span', { class: 'filterbar-label', text: '取题方式' }),
+    resume,
+    // 没有简历时把「去哪录」直接指出来，而不是只留一个灰掉的下拉
+    resumes.length
+      ? null
+      : el('span', { class: 'meta' },
+          '录入简历后可按简历推荐题目 —— ',
+          el('button', {
+            class: 'btn btn--quiet btn--sm',
+            type: 'button',
+            text: '去录入',
+            onClick: () => navigate('/candidate/resumes'),
+          })));
+
   /* -------------------------- 我的练习 -------------------------- */
 
   const ongoing = sessions.filter((s) => s.status === 'ongoing');
@@ -195,7 +226,7 @@ export async function render(container) {
         el('p', { class: 'page-lede' },
           '选好条件开始一次练习。题目提交即判分，答错的会自动进错题本。'))),
 
-    el('div', { class: 'panel' }, filterBar),
+    el('div', { class: 'panel' }, filterBar, resumeBar),
 
     ongoing.length
       ? el('div', { class: 'panel' },

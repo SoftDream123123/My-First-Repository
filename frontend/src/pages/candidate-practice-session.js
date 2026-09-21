@@ -158,6 +158,16 @@ export async function render(container, params) {
   document.title = `${title} · 刷题`;
 
   const progressHolder = el('div', { class: 'practice-progress' });
+  // 降级提示：关联了简历却**没有**按它推荐（AI 不可用，或没命中）。这是**正常状态**
+  // 而不是错误 —— 取题照常完成了，所以用信息条、不用报错样式（module-22 §5.4）。
+  //
+  // ⚠️ 两个字段在**详情顶层**（`PracticeSessionDetail`），不在 `session` 里。
+  // ⚠️ 未关联简历时（`resume_id == null`）**不显示任何提示** —— 那是候选人的
+  // 正常选择，不是降级；显示出来就是把「正常」说成「异常」。
+  const resumeNote = (detail.resume_id != null && detail.resume_match_applied !== true)
+    ? el('p', { class: 'note-box', style: 'margin-top:var(--s4)' },
+        '按简历推荐这次没有生效，已按筛选条件取题。')
+    : null;
   const summaryHolder = el('div', {});
   const listHolder = el('div', { class: 'panel' });
   const actionsHolder = el('div', { class: 'page-head-actions' });
@@ -343,6 +353,7 @@ export async function render(container, params) {
           : '提交即判分，可以随时离开，回来接着做。' })),
       actionsHolder),
     progressHolder,
+    resumeNote,
     summaryHolder,
     el('div', { style: 'margin-top:var(--s5)' }, listHolder),
   );

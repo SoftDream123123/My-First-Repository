@@ -173,6 +173,10 @@ function handlers() {
   return {
     'GET /auth/me': () => ({ status: 200, body: CANDIDATE }),
     'GET /candidate/positions': () => ({ status: 200, body: POSITIONS }),
+    // 刷题页会拉简历列表给「取题方式」下拉用（module-22 §5.3）。
+    // 这里给一份**可用**的简历 —— 「没选简历时请求体不带 resume_id」那条断言
+    // 在有简历可选的条件下才真的测得到（否则下拉是禁用的，测的是另一回事）
+    'GET /candidate/resumes': () => ({ status: 200, body: [{ id: 4, title: '李云-后端开发' }] }),
 
     'GET /practice/sessions': () => ({ status: 200, body: flags.sessions }),
 
@@ -378,7 +382,7 @@ report.run(async () => {
   check('未选的筛选项**不出现在请求体里**（不是传空串）',
     !('dimension' in startBody) && !('position_id' in startBody) && !('question_type' in startBody),
     JSON.stringify(startBody));
-  check('本轮**不带 resume_id**（简历能力属于下一轮，省略比传 null 干净）',
+  check('没选简历时**省略 resume_id 字段**（后端对「不传」与「传 null」等价，但选了才该带）',
     !('resume_id' in startBody), JSON.stringify(startBody));
   check('取题成功 → 进入该次练习', hash() === '#/candidate/practice/7', hash());
 

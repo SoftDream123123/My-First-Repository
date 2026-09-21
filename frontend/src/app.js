@@ -32,6 +32,7 @@ import * as candidatePractice from './pages/candidate-practice.js';
 import * as practiceSession from './pages/candidate-practice-session.js';
 import * as wrongBook from './pages/candidate-wrong-book.js';
 import * as practiceStats from './pages/candidate-stats.js';
+import * as candidateResumes from './pages/candidate-resumes.js';
 
 export const PAGES = {
   login,
@@ -51,6 +52,7 @@ export const PAGES = {
   practiceSession,
   wrongBook,
   practiceStats,
+  candidateResumes,
 };
 
 /**

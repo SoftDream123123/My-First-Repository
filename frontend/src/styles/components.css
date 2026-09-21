@@ -393,6 +393,10 @@
   border-bottom: 1px solid var(--line-soft);
   background: #fafcfe;
 }
+/* 第二行（刷题的「取题方式」）：与筛选条件同排会让人以为它也是一项过滤，
+   但它不缩小题目池，只改变挑选与排序（PRD §4.7） */
+.filterbar--sub { border-bottom: none; padding-top: 0; }
+.filterbar-label { flex: none; font-size: var(--t-sm); color: var(--muted); }
 .filterbar .input,
 .filterbar .select {
   width: auto;
@@ -559,6 +563,46 @@
 /* ---- 弹窗里的两列表单 ---- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s4); }
 .form-grid .field { min-width: 0; }
+
+/* ---- 长文本字段：标签与实时字数同行 ----
+   简历正文能写到两万字，三行可见的框改起来是折磨；字数要**越界立刻看得见**，
+   而不是等提交被拒才知道。 */
+.field-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.field-head .field-label { margin-bottom: 0; }
+.textarea--tall { min-height: 260px; }
+.char-count {
+  flex: none;
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+.char-count.is-over { color: var(--danger); font-weight: 600; }
+
+/* ---- 我的简历：右栏里「被哪几场面试用到」的那两行 ---- */
+.used-row { display: flex; align-items: center; gap: var(--s2); }
+.used-row + .used-row { margin-top: var(--s2); }
+.used-row-name { font-size: 14px; }
+
+/* ---- 「这份简历用在哪些面试」里的多选行 ----
+   与 `.choice-option` 同构，区别是这里多选，且每行要说清「这场现在用的是哪一份」 */
+.pick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  cursor: pointer;
+}
+.pick-row + .pick-row { margin-top: var(--s2); }
+.pick-row:hover { background: #f7fafc; }
+.pick-row.is-picked { border-color: var(--brand); background: var(--brand-wash); }
+.pick-row input { flex: none; margin-top: 3px; }
+.pick-row-body { flex: 1; min-width: 0; }
+.pick-row-title { font-size: 14px; font-weight: 600; }
+.pick-row-note { margin-top: 2px; font-size: var(--t-xs); color: var(--muted); }
+.pick-row:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .meta-row {
   display: flex;

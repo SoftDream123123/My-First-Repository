@@ -47,8 +47,7 @@ export const routes = [
   // 「我的面试」排在最前：候选人最关心的永远是「有没有待答的面试」，刷题是次一级的
   // 自主行为。因此它就是候选人端的默认落地页，也排在导航第一位。
   //
-  // 尚未落地的候选人页面（我的简历）同样先不写进来 —— 理由与开头那段一样：
-  // 路由表里放一行点进去报错的路由，比缺一个入口更难查。
+  // 这一组已**全部落地** —— 候选人端不再有待搬的页面。
   { path: '/candidate/login',      key: 'candidateLogin',     side: 'candidate', isPublic: true },
   // 激活页**登录与否都要能进**（`open`）：没账号时凭码建号，已有账号时凭码绑定。
   // 只标 isPublic 会让已登录的人被弹走，只标登录可达则新人根本进不来（API 文档 §10.2）。
@@ -60,6 +59,9 @@ export const routes = [
   { path: '/candidate/practice/:id',       key: 'practiceSession',          side: 'candidate' },
   { path: '/candidate/wrong-book',         key: 'wrongBook',                side: 'candidate', nav: '错题本' },
   { path: '/candidate/stats',              key: 'practiceStats',            side: 'candidate', nav: '练习统计' },
+  // 「我的简历」排在最后（原型定的顺序）：它是备料，不是日常入口 ——
+  // 录一次、之后由刷题与面试去用它
+  { path: '/candidate/resumes',            key: 'candidateResumes',         side: 'candidate', nav: '我的简历' },
 ];
 
 const LOGIN_BY_SIDE = { hr: '/login', candidate: '/candidate/login' };

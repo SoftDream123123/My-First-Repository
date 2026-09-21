@@ -51,10 +51,15 @@ describe('matchRoute', () => {
     expect(matchRoute('/candidate/stats')?.route.key).toBe('practiceStats');
   });
 
+  it('我的简历路由匹配得上', () => {
+    expect(matchRoute('/candidate/resumes')?.route.key).toBe('candidateResumes');
+  });
+
   it('未注册的路径返回 null，而不是模糊匹配到别处', () => {
-    // 这是最后一个还没落地的候选人页面 —— 现在必须**明确不匹配**，
-    // 否则会渲染出「页面未注册」的错误，而不是被送去一个能用的地方。
-    expect(matchRoute('/candidate/resumes')).toBeNull();
+    // 两端页面已**全部落地**，因此这里改用一个根本不存在的前缀。
+    // 它必须明确不匹配 —— 否则会渲染出「页面未注册」的错误，
+    // 而不是被送去一个能用的地方。
+    expect(matchRoute('/candidate/nope')).toBeNull();
     expect(matchRoute('/')).toBeNull();
   });
 
