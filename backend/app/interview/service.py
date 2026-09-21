@@ -141,6 +141,21 @@ def _build_questions_and_answers(
     return items
 
 
+def _is_answered(content: str | None) -> bool:
+    """「这道题算已作答吗」的**唯一判据** —— 有非空白内容才算。
+
+    此前这个事实有三套写法：这里用 `.strip()`，`repository.count_answers` 用
+    SQL 的 `content != ""`，评估入口 `get_items_for_evaluation` 又用 `.strip()`。
+    于是候选人只敲了空格时，交卷响应报 0 题、HR 列表报 1 题，而 AI 那侧按
+    「未作答」打分 —— 同一份数据三个结论。空白串按未作答处理，与评估侧一致。
+
+    注意：判据统一在**读取**侧，不改写入侧的原文（作答可能是代码片段，
+    保留其缩进与换行）。`repository.count_answers` 的 SQL 用 `TRIM` 对齐；
+    MySQL 的 `TRIM` 默认只去空格，制表符等历史数据属残余差异。
+    """
+    return content is not None and content.strip() != ""
+
+
 def _detail(db: Session, interview: Interview) -> InterviewDetail:
     position = repository.get_position(db, interview.position_id)
     questions = _build_questions_and_answers(db, interview.id)
@@ -155,7 +170,7 @@ def _detail(db: Session, interview: Interview) -> InterviewDetail:
         created_at=interview.created_at,
         completed_at=interview.completed_at,
         question_count=len(questions),
-        answered_count=sum(1 for q in questions if q.answer not in (None, "")),
+        answered_count=sum(1 for q in questions if _is_answered(q.answer)),
         jd=position.jd if position else "",
         evaluation_dimensions=list(position.evaluation_dimensions) if position else [],
         questions=questions,
@@ -804,49 +819,50 @@ def get_evaluation_dimensions(db: Session, interview_id: int) -> list[str]:
     return list(position.evaluation_dimensions) if position else []
 
 
+def transition_to(
+    db: Session, interview_id: int, target: str, *, idempotent: bool = False
+) -> None:
+    """状态迁移的**唯一实现** —— 下面四个具名 helper 都转发到这里。
+
+    `_assert_transition` 仍是唯一的合法性校验入口，本函数只负责
+    「取行 → 校验 → 落库」。`idempotent=True` 时「已在目标状态」直接返回。
+    """
+    interview = repository.get_by_id(db, interview_id)
+    if interview is None:
+        raise NotFoundError("面试不存在")
+    if idempotent and interview.status == target:
+        return
+
+    _assert_transition(interview.status, target)
+    interview.status = target
+    db.commit()
+
+
 def begin_evaluation(db: Session, interview_id: int) -> None:
     """进入评估：completed / evaluated → evaluating。
 
     幂等 —— 已在 evaluating 则直接返回。这让 evaluate_interview 可以独立调用，
     而不必依赖调用方先做过状态迁移。
     """
-    interview = repository.get_by_id(db, interview_id)
-    if interview is None:
-        raise NotFoundError("面试不存在")
-    if interview.status == STATUS_EVALUATING:
-        return
-
-    _assert_transition(interview.status, STATUS_EVALUATING)
-    interview.status = STATUS_EVALUATING
-    db.commit()
+    transition_to(db, interview_id, STATUS_EVALUATING, idempotent=True)
 
 
 def transition_to_evaluating(db: Session, interview_id: int) -> None:
-    interview = repository.get_by_id(db, interview_id)
-    if interview is None:
-        raise NotFoundError("面试不存在")
-    _assert_transition(interview.status, STATUS_EVALUATING)
-    interview.status = STATUS_EVALUATING
-    db.commit()
+    transition_to(db, interview_id, STATUS_EVALUATING)
 
 
 def transition_to_evaluated(db: Session, interview_id: int) -> None:
-    interview = repository.get_by_id(db, interview_id)
-    if interview is None:
-        raise NotFoundError("面试不存在")
-    _assert_transition(interview.status, STATUS_EVALUATED)
-    interview.status = STATUS_EVALUATED
-    db.commit()
+    transition_to(db, interview_id, STATUS_EVALUATED)
 
 
 def transition_back_to_completed(db: Session, interview_id: int) -> None:
-    """评估失败时回退（PRD §7）—— 让用户可立即重新触发。"""
-    interview = repository.get_by_id(db, interview_id)
-    if interview is None:
-        raise NotFoundError("面试不存在")
-    _assert_transition(interview.status, STATUS_COMPLETED)
-    interview.status = STATUS_COMPLETED
-    db.commit()
+    """评估失败**且库里没有旧报告**时回退（PRD §7），让用户可立即重新触发。
+
+    已有报告的场景要用 `transition_to_evaluated`：那说明这场面试此前评估过，
+    退到 completed 会让 `GET /report`、导出与候选人反馈全部 409「评估尚未完成」，
+    像是报告丢了。判定在哪一种见 `evaluation.stream._rollback_status`。
+    """
+    transition_to(db, interview_id, STATUS_COMPLETED)
 
 
 # ==================== 作答邀请（HR 侧）====================
@@ -1013,15 +1029,27 @@ def accept_invitation(
 
     candidate = auth_service.create_candidate_account(db, username, password)
 
+    # ---- 临界区：一次性接受必须串行化 ----
+    # 加锁放在 create_candidate_account **之后**：新建账号会 commit，而 commit
+    # 释放本事务已持有的锁，先加锁等于白加。锁面试行而不是邀请行 —— 对
+    # 「尚不存在的接受记录」加锁只拿到间隙锁，挡不住并发。
+    repository.lock_interview(db, invitation.interview_id)
+
     # 否则同一候选人可用第二条码重复接受同一面试，产生两条绑定记录，
-    # 候选人端的面试列表会出现重复项。
+    # 候选人端的面试列表会出现重复项。用**当前读**：本事务的快照可能早于
+    # 并发事务的提交，快照读会漏判这条已被写入的接受记录。
     if (
         repository.get_accepted_invitation(
-            db, invitation.interview_id, candidate.id
+            db, invitation.interview_id, candidate.id, for_update=True
         )
         is not None
     ):
         raise BusinessError("你已接受过该面试的邀请")
+
+    # 同一条码被并发接受：拿到锁后重新当前读，确认它仍是 pending。
+    invitation = repository.get_invitation_by_code(db, code, for_update=True)
+    if invitation is None or invitation.status != INVITATION_PENDING:
+        raise BusinessError(_INVITATION_INVALID_MESSAGE)
 
     repository.update_invitation(
         db,
@@ -1156,12 +1184,12 @@ def save_candidate_answer(
 def _count_non_empty_answers(db: Session, interview_id: int) -> int:
     """实际有内容的作答数 —— **不含交卷时补的空串**。
 
-    它回答的是「候选人答了几题」，而不是「有几条记录」。
+    它回答的是「候选人答了几题」，而不是「有几条记录」。判据见 `_is_answered`。
     """
     return sum(
         1
         for answer in repository.list_answers(db, interview_id)
-        if answer.content.strip() != ""
+        if _is_answered(answer.content)
     )
 
 

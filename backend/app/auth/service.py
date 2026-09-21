@@ -191,6 +191,11 @@ def create_candidate_account(db: Session, username: str, password: str) -> User:
             # 存在」可探测性只对**持有有效邀请码**的人成立，而邀请码一次性、高熵、私发。
             if not verify_password(password, existing.password_hash):
                 raise UnauthorizedError(_LOGIN_FAILED_MESSAGE)
+            # 禁用账号不得被复用绑定：绑定会消耗掉一次性邀请码，而该账号此后
+            # login 与 get_current_user 都拒绝它 —— 候选人永远打不开这场面试，
+            # HR 也无法重新发码。文案与登录一致。
+            if not existing.is_active:
+                raise UnauthorizedError("账号已禁用，请联系管理员")
             return existing
         raise BusinessError("用户名已被占用")
 

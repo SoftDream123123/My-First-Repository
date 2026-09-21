@@ -4,6 +4,9 @@
 计数用重算而非累加、错题本排除未判分、正确率分母是已判分数。
 """
 
+import time
+from collections import deque
+
 import pytest
 
 from app.ai.base import MatchedQuestion, PracticeGradeResult
@@ -819,6 +822,59 @@ class TestRateLimit:
             practice_service.start_session(
                 db, candidate_user, PracticeSessionCreate(size=1)
             )
+        finally:
+            get_settings.cache_clear()
+            practice_service.reset_rate_limit()
+
+    def test_failed_request_does_not_consume_quota(
+        self, db, candidate_user, practice_questions, monkeypatch
+    ):
+        """失败的操作不退还额度前的行为：会把真实原因盖成「操作过于频繁」。
+
+        配额默认 60/min。筛选不到题时每次都吃掉一个配额，反复重试到第 61 次
+        返回的就是「操作过于频繁」，而真实原因是「没有符合条件的题目」——
+        用户看到的错误与事实不符。
+        """
+        monkeypatch.setenv("PRACTICE_RATE_LIMIT_PER_MINUTE", "1")
+        get_settings.cache_clear()
+        practice_service.reset_rate_limit()
+
+        try:
+            empty = PracticeSessionCreate(size=1, dimension="不存在的维度")
+            for _ in range(5):
+                with pytest.raises(BusinessError) as exc:
+                    practice_service.start_session(db, candidate_user, empty)
+                assert "没有符合条件的题目" in exc.value.message
+
+            # 配额未被这些失败请求吃掉
+            practice_service.start_session(
+                db, candidate_user, PracticeSessionCreate(size=1)
+            )
+        finally:
+            get_settings.cache_clear()
+            practice_service.reset_rate_limit()
+
+    def test_stale_windows_are_purged(
+        self, db, candidate_user, practice_questions, monkeypatch
+    ):
+        """彻底过期的用户键会被回收，内存不随历史用户数单调增长。"""
+        monkeypatch.setenv("PRACTICE_RATE_LIMIT_PER_MINUTE", "60")
+        monkeypatch.setattr(practice_service, "_RATE_SWEEP_THRESHOLD", 0)
+        get_settings.cache_clear()
+        practice_service.reset_rate_limit()
+
+        try:
+            stale = time.monotonic() - practice_service.RATE_WINDOW_SECONDS - 1
+            practice_service._rate_windows[99991] = deque([stale])
+            practice_service._rate_windows[99992] = deque()  # 空窗口同样属过期
+
+            practice_service.start_session(
+                db, candidate_user, PracticeSessionCreate(size=1)
+            )
+
+            assert 99991 not in practice_service._rate_windows
+            assert 99992 not in practice_service._rate_windows
+            assert candidate_user.id in practice_service._rate_windows
         finally:
             get_settings.cache_clear()
             practice_service.reset_rate_limit()

@@ -378,6 +378,44 @@ class TestSubmit:
         )
         assert resp.json()["answered_count"] == 1  # 不是题目总数
 
+    def test_whitespace_only_answer_is_unanswered_everywhere(
+        self, client, candidate_headers, hr_headers, accepted_interview
+    ):
+        """只敲空格的作答 = 未作答，且**交卷 / 详情 / 列表三处口径一致**。
+
+        此前三处各写一套判据（`.strip() != ""`、SQL 的 `content != ""`、
+        `not in (None, "")`），同一份数据会给出「0 题」与「1 题」两个结论；
+        而评估侧 `get_items_for_evaluation` 又按未作答送分 —— 于是 HR 可能
+        看到一道标着「已作答」的题，AI 其实根本没评过分。
+        """
+        interview_id = accepted_interview["interview_id"]
+        entries = _entry_ids(client, candidate_headers, interview_id)[:3]
+        _save(client, candidate_headers, interview_id, entries[0], "真正作答")
+        _save(client, candidate_headers, interview_id, entries[1], "   ")
+
+        submitted = client.post(
+            f"/api/candidate/interviews/{interview_id}/submit",
+            headers=candidate_headers,
+        ).json()
+        assert submitted["answered_count"] == 1
+
+        detail = client.get(
+            f"/api/interviews/{interview_id}", headers=hr_headers
+        ).json()
+        assert detail["answered_count"] == 1
+
+        listing = client.get("/api/interviews", headers=hr_headers).json()
+        row = next(item for item in listing if item["id"] == interview_id)
+        assert row["answered_count"] == 1
+
+        candidate_list = client.get(
+            "/api/candidate/interviews", headers=candidate_headers
+        ).json()
+        candidate_row = next(
+            item for item in candidate_list if item["id"] == interview_id
+        )
+        assert candidate_row["answered_count"] == 1
+
     def test_is_idempotent(self, client, candidate_headers, accepted_interview):
         interview_id = accepted_interview["interview_id"]
         url = f"/api/candidate/interviews/{interview_id}/submit"

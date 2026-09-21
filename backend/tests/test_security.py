@@ -60,6 +60,22 @@ class TestJwt:
         with pytest.raises(InvalidTokenError):
             decode_token(expired)
 
+    def test_decode_token_without_exp_raises(self):
+        """缺少 exp 声明的令牌必须被拒绝。
+
+        PyJWT 默认的校验是「若存在 exp 则判其是否过期」，**不带 exp 就直接
+        放行**。于是用同一密钥签一个无过期的 token 即可永久访问 ——
+        密钥一旦被脚本或工具顺手签过一次，就没有任何失效机制。
+        """
+        settings = get_settings()
+        no_exp = jwt.encode(
+            {"sub": "1", "iat": datetime.now(UTC)},
+            settings.jwt_secret,
+            algorithm=settings.jwt_algorithm,
+        )
+        with pytest.raises(InvalidTokenError):
+            decode_token(no_exp)
+
     def test_decode_tampered_token_raises(self):
         token = create_access_token(1)
         head, payload, signature = token.split(".")

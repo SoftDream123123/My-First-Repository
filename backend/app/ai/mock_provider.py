@@ -346,13 +346,16 @@ class MockProvider(AIProvider):
             sum(item.score for item in dimension_scores) / len(dimension_scores)
         )
 
+        # 条目不内嵌维度分：这些条目会**原样**进入候选人可见的脱敏反馈
+        #（PRD §4.9「便于两处逐条对照」），而 §4.9 同时规定默认不下发维度分。
+        # 分数留在 dimension_score 表里供 HR 端雷达图使用。
         strengths = [
-            f"{item.dimension}（{item.score:.1f}）：表现较好"
+            f"{item.dimension}：表现较好"
             for item in dimension_scores
             if item.score >= PASS_THRESHOLD
         ]
         weaknesses = [
-            f"{item.dimension}（{item.score:.1f}）：有待提升"
+            f"{item.dimension}：有待提升"
             for item in dimension_scores
             if item.score < PASS_THRESHOLD
         ]

@@ -336,6 +336,9 @@ class OpenAIProvider(AIProvider):
             '- "conclusion"：综合结论（字符串）\n'
             '- "strengths"：优势（**字符串数组**）\n'
             '- "weaknesses"：待改进（**字符串数组**）\n'
+            "注意：strengths / weaknesses 的每条只描述维度上的表现，"
+            "**不得出现任何数字或分数**（这些条目会原样下发给候选人，"
+            "而候选人不该看到维度分）。\n"
             "只输出 JSON，不要任何解释文字。"
         )
 

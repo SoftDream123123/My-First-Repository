@@ -1,6 +1,7 @@
 """evaluation SSE 层测试：事件序列、重连重放、幂等、失败回退、孤儿自愈。"""
 
 import threading
+import time
 
 import pytest
 
@@ -315,6 +316,37 @@ class TestFailureHandling:
         )
         assert events[-1][0] == "done"
 
+    def test_reeval_failure_falls_back_to_evaluated(
+        self, client, hr_headers, db, completed_id, monkeypatch
+    ):
+        """重评失败时回退到 evaluated，而不是 completed。
+
+        库里已有旧报告，说明这场面试此前评估成功过。一律退到 completed 会让
+        GET /report、导出与候选人反馈全部 409「评估尚未完成」—— 报告明明还在，
+        用户看起来却像丢了，且与「失败也不损失既有数据」的承诺相矛盾。
+        """
+        from app.interview import repository as interview_repo
+
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+        # 必须先结束当前事务：本会话的快照早于评估的提交，REPEATABLE READ 下
+        # 后续查询仍读旧版本（expire_all 只失效对象缓存，不换快照）。
+        db.rollback()
+        assert interview_repo.get_by_id(db, completed_id).status == "evaluated"
+
+        monkeypatch.setattr(
+            "app.evaluation.service.get_provider", lambda: FailingProvider()
+        )
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+
+        db.rollback()
+        assert interview_repo.get_by_id(db, completed_id).status == "evaluated"
+
+        # 旧报告仍可读 —— 这才是修复的目的，比状态本身更重要
+        resp = client.get(f"/api/interviews/{completed_id}/report", headers=hr_headers)
+        assert resp.status_code == 200
+
 
 # ---------------------------- 孤儿自愈 ----------------------------
 
@@ -362,6 +394,76 @@ class TestOrphanHealing:
         stream.heal_orphan(db, completed_id)
 
         assert interview_repo.get_by_id(db, completed_id).status == "evaluating"
+
+    def test_heal_orphan_restores_evaluated_when_report_exists(
+        self, client, hr_headers, db, completed_id
+    ):
+        """孤儿 + 库里已有报告 → 恢复到 evaluated。
+
+        孤儿不只来自「首次评估时进程挂了」，也来自「重评到一半进程挂了」，
+        后者同样有旧报告可用。
+        """
+        from app.interview import repository as interview_repo
+
+        _trigger(client, hr_headers, completed_id)
+        _wait_until_finished(completed_id)
+        db.rollback()
+
+        interview = interview_repo.get_by_id(db, completed_id)
+        interview.status = "evaluating"
+        db.commit()
+
+        # 孤儿的前提是「状态卡在 evaluating **且**注册表里没有运行记录」，
+        # 所以先移除上一轮的运行记录。
+        stream.remove_run(completed_id)
+
+        stream.heal_orphan(db, completed_id)
+
+        db.rollback()
+        assert interview_repo.get_by_id(db, completed_id).status == "evaluated"
+
+
+# ---------------------------- 运行记录生命周期 ----------------------------
+
+
+class TestRunLifecycle:
+    def test_disconnect_during_replay_removes_subscriber(self, completed_id):
+        """在**重放阶段**断开也必须移除订阅者。
+
+        订阅注册若落在 try 之外，重放中途收到 GeneratorExit 就不会执行
+        finally —— 死队列永久留在名单里，之后每个事件都往里投递而无人消费。
+        """
+        run = stream._create_run(completed_id)
+        stream.publish(run, "question", {"seq": 1})
+
+        generator = stream.stream_events(completed_id)
+        next(generator)  # 停在重放的 yield 处
+        generator.close()  # 模拟客户端断开
+
+        assert run.subscribers == []
+
+    def test_eviction_is_identity_guarded(self, completed_id):
+        """上一轮的回收定时器不得删掉新一轮的运行记录（重评场景）。"""
+        old = stream._create_run(completed_id)
+        new = stream._create_run(completed_id)  # 重评：注册表被替换
+
+        stream._evict_if_current(old)
+
+        assert stream.get_run(completed_id) is new
+
+    def test_terminal_run_is_evicted(
+        self, client, hr_headers, completed_id, monkeypatch
+    ):
+        """终结后的运行记录会到期回收，不再随进程生命周期无限增长。"""
+        monkeypatch.setattr(stream, "REGISTRY_TTL_SECONDS", 0)
+
+        _trigger(client, hr_headers, completed_id)
+
+        deadline = time.monotonic() + 10
+        while stream.get_run(completed_id) is not None:
+            if time.monotonic() > deadline:
+                pytest.fail("终结后的运行记录未被回收")
+            time.sleep(0.05)
 
 
 # ---------------------------- 报告端点 ----------------------------

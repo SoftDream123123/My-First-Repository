@@ -64,7 +64,13 @@ def decode_token(token: str) -> int:
     settings = get_settings()
     try:
         payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+            # exp 必须存在。PyJWT 默认只校验「有 exp 且未过期」，不带 exp 的
+            # 令牌会被直接放行 —— 用同一密钥签一个无过期时间的 token 即可永久
+            # 使用。这里显式要求该声明存在。
+            options={"require": ["exp"]},
         )
     except jwt.PyJWTError as exc:
         raise InvalidTokenError() from exc

@@ -3,6 +3,8 @@
 本文件最重要的一组是 §7.1：脱敏规则的落点是**响应结构**，不是前端是否渲染。
 """
 
+import re
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -137,6 +139,24 @@ class TestSanitization:
             _url(evaluated_interview["interview_id"]), headers=candidate_headers
         ).text
         assert forbidden not in raw
+
+    def test_strengths_entries_carry_no_dimension_score(
+        self, client, candidate_headers, evaluated_interview
+    ):
+        """优缺点条目里不得出现维度分。
+
+        这两组条目是**原样**从 HR 报告透传的（PRD §4.9「便于两处逐条对照」），
+        因此报告条目若内嵌「沟通能力（7.0）」，就等于绕过脱敏把维度分发给候选人。
+        分数只能出现在 HR 侧的 `dimension_scores` 里。
+        """
+        body = client.get(
+            _url(evaluated_interview["interview_id"]), headers=candidate_headers
+        ).json()
+
+        entries = body["strengths"] + body["weaknesses"]
+        assert entries, "本用例需要一个非空的优缺点列表才有意义"
+        for entry in entries:
+            assert not re.search(r"[0-9]", entry), entry
 
     def test_no_per_question_score_keys(
         self, client, candidate_headers, evaluated_interview

@@ -6,6 +6,7 @@
 import logging
 import time
 from collections import deque
+from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
@@ -89,16 +90,39 @@ def reset_rate_limit() -> None:
     _rate_windows.clear()
 
 
-def _check_rate_limit(user: User) -> None:
+_RATE_SWEEP_THRESHOLD = 1024
+
+
+def _purge_stale_windows(now: float) -> None:
+    """回收彻底过期的用户键。
+
+    滑动窗口只关心最近 RATE_WINDOW_SECONDS，更早的状态没有任何读取方。
+    不回收的话，每个用过一次计分接口的候选人都会永久留下一个键。
+    """
+    stale = [
+        key
+        for key, bucket in _rate_windows.items()
+        if not bucket or now - bucket[-1] > RATE_WINDOW_SECONDS
+    ]
+    for key in stale:
+        _rate_windows.pop(key, None)
+
+
+def _check_rate_limit(user: User) -> float | None:
     """滑动窗口限流，只对**计分动作**生效（开始练习 / 提交作答 / 重判）。
 
     读接口不计：浏览题目与历史不该消耗配额。
+
+    返回本次占位的时间戳，供 `_refund_rate_limit` 在操作失败时退还。
     """
     limit = get_settings().practice_rate_limit_per_minute
     if limit <= 0:
-        return
+        return None
 
     now = time.monotonic()
+    if len(_rate_windows) > _RATE_SWEEP_THRESHOLD:
+        _purge_stale_windows(now)
+
     bucket = _rate_windows.setdefault(user.id, deque())
 
     # 顺带剔除窗口外的旧时间戳，无需后台清理线程
@@ -109,6 +133,35 @@ def _check_rate_limit(user: User) -> None:
         raise BusinessError("操作过于频繁，请稍后再试")
 
     bucket.append(now)
+    return now
+
+
+def _refund_rate_limit(user: User, stamp: float | None) -> None:
+    """退还一次占位 —— 只移除**自己那一个**时间戳，不影响并发请求。"""
+    if stamp is None:
+        return
+    bucket = _rate_windows.get(user.id)
+    if bucket is None:
+        return
+    try:
+        bucket.remove(stamp)
+    except ValueError:  # pragma: no cover - 已被窗口剔除
+        pass
+
+
+@contextmanager
+def _rate_limited(user: User):
+    """占一个配额；块内抛异常则退还。
+
+    失败的操作不该消耗额度：否则反复重试一个注定失败的请求（如筛选条件
+    匹配不到题）会把真实原因耗成「操作过于频繁」，用户看到的错误与事实不符。
+    """
+    stamp = _check_rate_limit(user)
+    try:
+        yield
+    except Exception:
+        _refund_rate_limit(user, stamp)
+        raise
 
 
 def _now() -> datetime:
@@ -366,8 +419,13 @@ def start_session(
     db: Session, user: User, data: PracticeSessionCreate
 ) -> PracticeSessionDetail:
     """取题 → 建会话 → 建待答项（写满快照）。"""
-    _check_rate_limit(user)
+    with _rate_limited(user):
+        return _start_session(db, user, data)
 
+
+def _start_session(
+    db: Session, user: User, data: PracticeSessionCreate
+) -> PracticeSessionDetail:
     settings = get_settings()
     size = (
         data.size
@@ -586,8 +644,13 @@ def _item_result(
 def submit_item(
     db: Session, user: User, session_id: int, data: PracticeItemSubmit
 ) -> PracticeItemResult:
-    _check_rate_limit(user)
+    with _rate_limited(user):
+        return _submit_item(db, user, session_id, data)
 
+
+def _submit_item(
+    db: Session, user: User, session_id: int, data: PracticeItemSubmit
+) -> PracticeItemResult:
     session = _get_owned_session(db, user, session_id)
     if session.status != STATUS_ONGOING:
         raise BusinessError("本次练习已结束，不可继续作答")
@@ -605,8 +668,11 @@ def rescore_item(db: Session, user: User, item_id: int) -> PracticeItemResult:
     **仅允许重判未判分项**：已判分的项重判会改变正确答案与分数，等于允许刷分。
     已判分时幂等返回既有结果，且不重复调用 provider。
     """
-    _check_rate_limit(user)
+    with _rate_limited(user):
+        return _rescore_item(db, user, item_id)
 
+
+def _rescore_item(db: Session, user: User, item_id: int) -> PracticeItemResult:
     item = repository.get_item_by_id(db, item_id)
     if item is None:
         raise NotFoundError("题目不属于该练习")

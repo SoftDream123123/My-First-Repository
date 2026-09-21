@@ -3,6 +3,7 @@
 覆盖：生成、撤销、派生过期、接受。
 """
 
+import threading
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -334,11 +335,106 @@ class TestAcceptInvitation:
         reused = auth_service.get_user_by_id(db, candidate_user.id)
         assert reused.password_hash == before_hash  # 密码未被改写
 
+    def test_rejects_disabled_candidate_account(
+        self,
+        client,
+        db,
+        admin_headers,
+        hr_headers,
+        candidate_headers,
+        candidate_user,
+        position,
+    ):
+        """账号被禁用时不得复用绑定。
+
+        复用会消耗掉一次性邀请码，而该账号此后 login 与 get_current_user
+        都拒绝它 —— 候选人永远打不开这场面试，HR 也无法重新发码。
+        """
+        _, invitation = self._interview_with_invitation(client, hr_headers, position)
+
+        resp = client.patch(
+            f"/api/users/{candidate_user.id}",
+            json={"is_active": False},
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+
+        resp = client.post(
+            f"/api/candidate/invitations/{invitation['code']}/accept",
+            json={
+                "username": candidate_user.username,
+                "password": CANDIDATE_PASSWORD,
+            },
+            headers=candidate_headers,
+        )
+        assert resp.status_code == 401
+        assert resp.json()["message"] == "账号已禁用，请联系管理员"
+
+        # 拒绝必须是「完全不动」：码仍是 pending，可换回启用状态后再用
+        _fresh(db)
+        assert (
+            repository.get_invitation_by_id(db, invitation["id"]).status
+            == INVITATION_PENDING
+        )
+
+    def test_concurrent_accept_same_interview_binds_once(
+        self, client, db, hr_headers, candidate_user, position
+    ):
+        """两条不同的码并发接受同一面试 → 只能产生一条绑定。
+
+        「一次性接受」此前只是先查后写，没有数据库约束或行锁兜底：两个并发
+        请求都能通过检查，候选人列表里同一场面试会出现两次
+        （`list_accepted_interviews_for_candidate` 是 INNER JOIN，不去重）。
+        """
+        from app.core.db import SessionLocal
+        from app.interview import service as interview_service
+
+        interview = _create_interview(client, hr_headers, position.id)
+        codes = [
+            _create_invitation(client, hr_headers, interview["id"])["code"]
+            for _ in range(2)
+        ]
+
+        results: list[str] = []
+        barrier = threading.Barrier(len(codes))
+
+        def _accept(code: str) -> None:
+            session = SessionLocal()
+            try:
+                barrier.wait(timeout=10)
+                interview_service.accept_invitation(
+                    session, code, candidate_user.username, CANDIDATE_PASSWORD
+                )
+                results.append("ok")
+            except Exception as exc:  # noqa: BLE001 - 并发失败也算一种结果
+                results.append(type(exc).__name__)
+            finally:
+                session.close()
+
+        threads = [
+            threading.Thread(target=_accept, args=(code,)) for code in codes
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        assert results.count("ok") == 1, results
+
+        _fresh(db)
+        bound = [
+            row.id
+            for row, _ in repository.list_accepted_interviews_for_candidate(
+                db, candidate_user.id
+            )
+        ]
+        assert bound.count(interview["id"]) == 1
+
     def test_rejects_hr_username(
         self, client, db, hr_headers, candidate_headers, hr_user, position
     ):
         """绝不允许把 HR / admin 账号绑到候选人邀请上 —— 那是越权入口。"""
-        interview, invitation = self._interview_with_invitation(
+        _, invitation = self._interview_with_invitation(
             client, hr_headers, position
         )
 

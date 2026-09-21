@@ -282,9 +282,30 @@ def create_invitation(db: Session, **fields: object) -> InterviewInvitation:
     return invitation
 
 
-def get_invitation_by_code(db: Session, code: str) -> InterviewInvitation | None:
-    """不带权限过滤 —— 权限判定在 service。"""
+def lock_interview(db: Session, interview_id: int) -> Interview | None:
+    """对面试行加排他锁 —— 串行化同一场面试的并发操作。
+
+    用于 `accept_invitation` 的「一次性接受」语义。锁必须落在**真实存在**的
+    行上：对「尚未存在的接受记录」加锁只能拿到间隙锁，而间隙锁之间互不冲突，
+    挡不住两个并发请求同时通过检查。面试行是现成的、唯一的互斥点。
+    """
+    stmt = select(Interview).where(Interview.id == interview_id).with_for_update()
+    return db.execute(stmt).scalars().first()
+
+
+def get_invitation_by_code(
+    db: Session, code: str, *, for_update: bool = False
+) -> InterviewInvitation | None:
+    """不带权限过滤 —— 权限判定在 service。
+
+    `for_update=True` 走当前读，绕过事务快照读到最新已提交版本；判定
+    「这条码是否已被并发请求消耗掉」必须用它。同时 `populate_existing` 强制
+    覆盖身份映射里已加载的实例 —— 否则同一行先前已被本会话读过时，
+    SQLAlchemy 会直接复用旧属性，当前读也白做。
+    """
     stmt = select(InterviewInvitation).where(InterviewInvitation.code == code)
+    if for_update:
+        stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return db.execute(stmt).scalars().first()
 
 
@@ -312,7 +333,11 @@ def update_invitation(
 
 
 def get_accepted_invitation(
-    db: Session, interview_id: int, candidate_user_id: int
+    db: Session,
+    interview_id: int,
+    candidate_user_id: int,
+    *,
+    for_update: bool = False,
 ) -> InterviewInvitation | None:
     """候选人可见性判定的数据源（见 service.get_interview_for_candidate）。
 
@@ -322,12 +347,17 @@ def get_accepted_invitation(
     排除它，访问被立即切断，而 candidate_user_id 与 accepted_at 仍留在该行上
     ——「谁在何时接受了」这一事实没有被抹掉。撤销后该行不再有第二种解释，
     因此不需要额外的 NOT EXISTS 条件。
+
+    `for_update=True` 用于接受邀请的临界区：那里已持有面试行锁，本查询必须
+    走当前读才能看见并发事务刚提交的那一行（快照读会读到旧版本，从而漏判）。
     """
     stmt = select(InterviewInvitation).where(
         InterviewInvitation.interview_id == interview_id,
         InterviewInvitation.candidate_user_id == candidate_user_id,
         InterviewInvitation.status == INVITATION_ACCEPTED,
     )
+    if for_update:
+        stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return db.execute(stmt).scalars().first()
 
 
@@ -363,7 +393,12 @@ def count_questions(db: Session, interview_ids: list[int]) -> dict[int, int]:
 
 
 def count_answers(db: Session, interview_ids: list[int]) -> dict[int, int]:
-    """只统计「非空回答」—— 空串表示候选人未作答。"""
+    """只统计「非空回答」—— 空串表示候选人未作答。
+
+    用 `TRIM(...) != ""` 与 service 侧 `_is_answered`（`content.strip()`）同口径：
+    只写了空格的作答算未作答。此前这里只判 `content != ""`，同一份数据
+    在交卷响应（0 题）与列表接口（1 题）会给出相反的结论。
+    """
     if not interview_ids:
         return {}
     stmt = (
@@ -371,7 +406,7 @@ def count_answers(db: Session, interview_ids: list[int]) -> dict[int, int]:
         .join(Answer, Answer.interview_question_id == InterviewQuestion.id)
         .where(
             InterviewQuestion.interview_id.in_(interview_ids),
-            Answer.content != "",
+            func.trim(Answer.content) != "",
         )
         .group_by(InterviewQuestion.interview_id)
     )

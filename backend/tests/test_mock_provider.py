@@ -272,10 +272,24 @@ class TestSummarizeReport:
             result = provider.summarize_report([], self._scores(provider, values), [])
             assert expected in result.conclusion
 
-    def test_strength_entry_format(self, provider):
+    def test_strength_entry_has_no_score(self, provider):
+        """条目只带维度名，**不带分数**。
+
+        这些字符串会原样进入候选人可见的脱敏反馈（PRD §4.9 要求条目与 HR
+        报告逐条一致），而 §4.9 同时规定默认不下发维度分 —— 条目内嵌分数
+        等于从这条路径把维度分漏给候选人。分数归属 dimension_score 表，
+        供 HR 端雷达图使用。
+        """
         result = provider.summarize_report([], self._scores(provider, [8.0]), [])
-        assert "8.0" in result.strengths[0]
-        assert "表现较好" in result.strengths[0]
+        entry = result.strengths[0]
+        assert "表现较好" in entry
+        assert "8.0" not in entry
+
+    def test_weakness_entry_has_no_score(self, provider):
+        result = provider.summarize_report([], self._scores(provider, [3.0]), [])
+        entry = result.weaknesses[0]
+        assert "有待提升" in entry
+        assert "3.0" not in entry
 
 
 # ======================= MVP-2：补参考答案 =======================
