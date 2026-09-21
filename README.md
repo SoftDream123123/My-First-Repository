@@ -79,17 +79,23 @@ cp .env.example .env
 #   必须填写：DATABASE_URL、JWT_SECRET
 #   生成密钥：python -c "import secrets; print(secrets.token_urlsafe(48))"
 
-# 4) 建库（字符集必须是 utf8mb4）
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS interview_dev \
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# 4) 建库建表（一次到位，15 张表）
+mysql -u root -p --default-character-set=utf8mb4 < script.sql
 
-# 5) 执行迁移
-python -m alembic upgrade head
+#    script.sql 里已含建库语句（utf8mb4 + utf8mb4_unicode_ci），不必先手工建库。
+#
+#    ⚠️ 不要用 `alembic upgrade head` 建库。迁移只到 b7f1c2a4d8e6（user.role 加
+#       candidate 取值），MVP-2 / MVP-3 的 6 张表与 9 个列按项目约定**没有写迁移**
+#       （PRD §11「只改模型、不写迁移」）。跑迁移得到的是半套结构，应用起不来。
+#       当前 schema 的事实来源是 `app/**/models.py` 与 script.sql，不是 alembic/versions/。
+#
+#    已有 MVP-1 库、且库里有数据不想丢：不要重复跑 §2（表已存在会明确报错），
+#    改用 script.sql 里的 §3「存量库升级」，那一段就是为这种情况写的。
 
-# 6) 创建初始管理员（幂等，重复执行不会重复创建）
+# 5) 创建初始管理员（幂等，重复执行不会重复创建）
 python scripts/seed_admin.py
 
-# 7) 启动
+# 6) 启动
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
@@ -331,10 +337,12 @@ backend/
     position/            # 岗位与评估维度
     question/            # 题库
     ai/                  # AI Provider 抽象 + Mock + 真实实现 + 工厂
-    interview/           # 面试、出题组装、回答记录、状态机、作答邀请
-    evaluation/          # 流式评估、报告、候选人脱敏反馈
+    interview/           # 面试、出题组装、回答记录、状态机、作答邀请、准备助手
+    evaluation/          # 流式评估、报告、候选人脱敏反馈、DOCX 导出
+    resume/              # 简历：候选人侧纯文本 CRUD，HR 侧经面试只读
     practice/            # 刷题：练习会话、逐题判分、错题本、统计
-  alembic/               # 数据库迁移
+  alembic/               # 数据库迁移 —— ⚠️ 只到 b7f1c2a4d8e6，已落后于模型
+  script.sql             # 建库建表脚本（15 张表）—— 当前 schema 的事实来源，见安装第 4 步
   scripts/
     seed_admin.py        # 创建初始管理员（幂等）
     smoke_e2e.py         # 端到端冒烟
