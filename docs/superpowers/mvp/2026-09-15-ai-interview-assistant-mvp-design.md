@@ -286,6 +286,7 @@ repository → 数据访问：CRUD，对接 MySQL
   - 只能在**本人已接受邀请**的面试上操作，否则 403（沿用既有候选人隔离判据）
   - 一场面试只关联一份简历；同一份简历可被多场面试关联
   - 面试 `completed` 及之后拒绝变更关联（409）——简历是面试的输入，面试结束即冻结
+- **候选人必须能看到「这场现在关联的是哪份简历」**：`GET /candidate/interviews` 与 `GET /candidate/interviews/{id}` 下发该场的 `resume_id`（未关联为 `null`）。缺了它，候选人只能盲改关联，「解除关联」也无从判断该不该给 —— 关联状态是他自己的数据，**能写就必须能读**
 - **这是 HR 读取候选人简历的唯一通路**：没有这条关联，HR 看不到候选人的任何简历
 - 候选人可在面试进行中随时改关联（例如换一份更贴合的简历），改后 HR 需重新触发补题才会生效（见 4.14）
 
@@ -556,8 +557,8 @@ pending（待接受）→ accepted（已接受） / revoked（已撤销） / exp
 |---|---|---|
 | GET | `/candidate/positions` | 刷题岗位筛选项（**有题目的岗位**：id / 名称 / 题量；不含 JD） |
 | POST | `/candidate/invitations/{code}/accept` | 凭邀请码激活并绑定面试 |
-| GET | `/candidate/interviews` | 我参与的面试列表 |
-| GET | `/candidate/interviews/{id}` | 面试详情（仅题目与我自己的作答） |
+| GET | `/candidate/interviews` | 我参与的面试列表（**含每场已关联的 `resume_id`**，未关联为 `null`） |
+| GET | `/candidate/interviews/{id}` | 面试详情（仅题目与我自己的作答，**同样含 `resume_id`**） |
 | POST | `/candidate/interviews/{id}/answers` | 保存/更新我的作答（交卷后拒绝） |
 | POST | `/candidate/interviews/{id}/submit` | 交卷（幂等） |
 | GET | `/candidate/interviews/{id}/feedback` | 查看面向候选人的脱敏反馈 |

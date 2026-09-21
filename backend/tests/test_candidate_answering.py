@@ -167,6 +167,52 @@ class TestVisibility:
         ]
 
 
+# ==================== 关联简历的读回（PRD §4.13）====================
+#
+# 候选人端把「这份简历用在哪些面试上」放在简历页，因此**要能按面试读回关联状态**。
+# 少了它，候选人只能盲勾、「解除关联」也无从判断该不该给 —— 关联是他自己的数据，
+# 能写就必须能读。
+
+
+class TestCandidateInterviewResumeReadback:
+    def test_list_reports_linked_resume(
+        self, client, candidate_headers, linked_interview, resume
+    ):
+        listed = client.get("/api/candidate/interviews", headers=candidate_headers).json()
+        assert listed[0]["resume_id"] == resume.id
+
+    def test_list_resume_id_is_null_when_unlinked(
+        self, client, candidate_headers, accepted_interview
+    ):
+        """未关联 → `null`，**不是缺这个键** —— 前端要能区分「没关联」与「拿不到」。"""
+        listed = client.get("/api/candidate/interviews", headers=candidate_headers).json()
+        assert listed[0]["resume_id"] is None
+
+    def test_unlink_reads_back_as_null(
+        self, client, candidate_headers, linked_interview
+    ):
+        """解除之后读回 `null` —— 「能写就能读」的另一半。"""
+        client.put(
+            f"/api/candidate/interviews/{linked_interview['interview_id']}/resume",
+            json={"resume_id": None},
+            headers=candidate_headers,
+        )
+        listed = client.get("/api/candidate/interviews", headers=candidate_headers).json()
+        assert listed[0]["resume_id"] is None
+
+    def test_detail_reports_linked_resume(
+        self, client, candidate_headers, linked_interview, resume
+    ):
+        """**详情的 `resume_id` 也要有**（module-22 §2.3 两个模型都改）。
+
+        只加列表就会漏掉详情页的消费方，而这两个模型是同一件事的两处投影。
+        """
+        detail = _detail(
+            client, candidate_headers, linked_interview["interview_id"]
+        )
+        assert detail["resume_id"] == resume.id
+
+
 # ========================= 作答 =========================
 
 

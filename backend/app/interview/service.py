@@ -1065,6 +1065,8 @@ def list_my_interviews(db: Session, user: User) -> list[CandidateInterviewItem]:
             question_count=question_counts.get(interview.id, 0),
             answered_count=answer_counts.get(interview.id, 0),
             submitted=repository.get_submitted_at(db, interview.id) is not None,
+            # 关联状态是候选人自己的数据，能写就要能读（PRD §4.13）
+            resume_id=interview.resume_id,
             created_at=interview.created_at,
         )
         for interview, position_name in rows
@@ -1106,6 +1108,7 @@ def get_candidate_interview_detail(
         created_at=interview.created_at,
         submitted=submitted_at is not None,
         submitted_at=submitted_at,
+        resume_id=interview.resume_id,
         questions=questions,
     )
 

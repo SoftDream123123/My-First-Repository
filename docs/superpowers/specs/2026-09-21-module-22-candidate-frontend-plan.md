@@ -24,7 +24,7 @@
 
 因此 **module-15（候选人前端全套，11 个页面 + `src/side.js` + 按端分 key 改造）必须先执行完毕**，本模块才有可改的基座。
 
-**本模块不重复 module-15 的任何内容**——它只写 MVP-3 的**增量**。本模块修改的若干文件（`candidate-interview-detail.js` / `candidate-practice.js` / `candidate-shell.js` 等）**由 module-15 创建**，本模块在其上做扩展。
+**本模块不重复 module-15 的任何内容**——它只写 MVP-3 的**增量**。本模块修改的若干文件（`candidate-practice.js` / `candidate-shell.js` 等）**由 module-15 创建**，本模块在其上做扩展。（`candidate-interview-detail.js` **不在改动之列** —— 关联入口在「我的简历」页，见 §1.1 的注。）
 
 > **不要因为「候选人前端不存在」就在本模块里重建它。** 那会让两个计划书对同一批文件各有一套描述，必然漂移。执行顺序是：**先 module-15，再本模块。**
 
@@ -54,10 +54,17 @@
 | 子职责 | 内容 | PRD |
 |---|---|---|
 | 简历管理页 | 列表 / 新建 / 编辑 / 删除（纯文本 + 字数计数） | §4.10 |
-| 关联简历到面试 | 在面试详情页选择「这场面试用哪份简历」，可解除 | §4.13 |
+| 关联简历到面试 | 在**「我的简历」页**勾选「这份简历用在哪些面试上」，可解除（见下方注） | §4.13 |
 | 刷题关联入口 | 开始练习时可选一份简历触发按简历推荐 | §4.7 |
 | 降级提示 | 显示「按简历推荐暂不可用，已按筛选条件取题」 | §7（module-20 的 `resume_match_applied`） |
 | 导航入口 | 候选人侧边栏加「我的简历」 | §4.10 |
+
+> **⚠️ 关联入口的位置是 2026-09-21 定的，与本文档早期版本不同。** 早期版本把它放在**面试详情页**
+> （`candidate-interview-detail.js`），那也正好是 PRD §4.13 的流程落点（激活后跳到该场面试）。
+> 后来改为放在「我的简历」页，理由有两条：① 「这份简历用在哪几场面试上」是**这一份简历的属性**，
+> 与它的增删改查放一处才好理解；② 关联动作是「一份简历 → 多场面试」，放在简历侧一次就能看完，
+> 放在面试侧则要逐场翻。**执行时不要按早期版本改回面试详情页**；代价是列表接口要下发每场的
+> `resume_id`（§2.3）。
 
 ### 1.2 边界（明确不做）
 
@@ -81,7 +88,6 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
                               │
                               ↓  本模块在其上「加一个页 + 改三处入口」
 本模块改动：      ＋ candidate-resumes.js（唯一新增页）
-                  ✎ candidate-interview-detail.js（加关联简历选择器）
                   ✎ candidate-practice.js（加简历下拉）
                   ✎ candidate-practice-session.js（加降级提示）
                   ✎ candidate-shell.js（导航加入口）
@@ -89,7 +95,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
                   ✎ styles/pages.css（追加样式）
 
 后端侧（本模块声明的上游改动，见 §2.3）：
-                  ✎ interview/schemas.py：CandidateInterviewDetail 加 resume_id
+                  ✎ interview/schemas.py：候选人两个响应模型加 resume_id
 ```
 
 > **本模块**不新增任何前端基础设施文件**（除一个页面文件）**：不加新的组件、不加新的工具模块、不加新的 CSS 文件。这是「增量」的实质含义。
@@ -111,7 +117,6 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 | `frontend/src/router.js` | 候选人路由组加 `#/candidate/resumes` | 新页面的可访问入口 |
 | `frontend/src/main.js` | 注册 `candidateResumes` | 页面注册表是**静态**的，不注册则路由找不到页面 |
 | `frontend/src/components/candidate-shell.js` | 侧边导航加「我的简历」 | 候选人需有可达入口 |
-| `frontend/src/pages/candidate-interview-detail.js` | 加「关联简历」区块（选择 / 解除） | §4.13 的 UI |
 | `frontend/src/pages/candidate-practice.js` | 开始练习表单加「使用我的简历」下拉 | §4.7 的 UI |
 | `frontend/src/pages/candidate-practice-session.js` | 显示「按简历推荐未生效」提示 | 消费 module-20 的 `resume_match_applied` |
 | `frontend/src/styles/pages.css` | 追加简历页与新增区块的样式 | **不得新建 CSS 文件**（module-15 §2.2） |
@@ -120,11 +125,11 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 
 | 文件 | 修改内容 | 为何必要 |
 |---|---|---|
-| `backend/app/interview/schemas.py` | **`CandidateInterviewDetail` 新增 `resume_id: int \| None = None`** | ⚠️ 候选人端需要知道「这场面试当前关联了哪份简历」，否则关联选择器**无法回显当前值**——打开页面永远是「未选择」，候选人无法判断是否已关联、也无法解除 |
+| `backend/app/interview/schemas.py` | **候选人两个响应模型都加 `resume_id: int \| None = None`** —— `CandidateInterviewItem`（列表）与 `CandidateInterviewDetail`（详情） | ⚠️ 候选人端需要知道「这场面试当前关联了哪份简历」。**两个都要**：关联入口在「我的简历」页（§5.2），那一页要一次列出「我每一场用的是哪一份」，只用详情页的字段就得逐场发请求；而 `null` 与「字段缺失」在展示上无从区分，前端也没法自己补 |
 
 > **为什么这一条写在本模块而不是回头改 module-19**：本仓库已有先例——module-13 的 `auth/service.py` 增量就是由**消费方** module-13 声明并实现的（module-13 §2 的「本模块需修改的上游文件」）。**改动跟着需要它的模块走**，避免在已提交的计划书里来回改。
 >
-> **⚠️ 该改动会触达既有用例**：`CandidateInterviewDetail` 加字段可能影响断言响应键集合的既有测试（同 module-19 §4.2 对 `InterviewDetail` 的提醒）。执行时须先跑 `test_candidate_answering.py` / `test_interview.py`。
+> **⚠️ 该改动会触达既有用例**：给既有响应模型加字段可能影响断言响应键集合的既有测试（同 module-19 §4.2 对 `InterviewDetail` 的提醒）。执行时须先跑 `test_candidate_answering.py` / `test_interview.py`。
 
 **测试文件**
 
@@ -174,7 +179,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 | 更新简历 | `PUT /candidate/resumes/{id}` | module-17 §4.1 |
 | 删除简历 | `DELETE /candidate/resumes/{id}` | module-17 §4.1 |
 | 关联 / 解除 | `PUT /candidate/interviews/{id}/resume`，body `{resume_id}` | module-19 §4.1 |
-| 面试详情（取当前关联） | `GET /candidate/interviews/{id}` | module-19（**本次加 `resume_id`**，见 §2.3） |
+| 面试列表 / 详情（取当前关联） | `GET /candidate/interviews`、`GET /candidate/interviews/{id}` | module-12（**本次两者都加 `resume_id`**，见 §2.3） |
 | 开始练习（带简历） | `POST /practice/sessions`，body 加 `resume_id` | module-20 §4.1 |
 | 会话详情（读降级标记） | `GET /practice/sessions/{id}` | module-20 §4.2 |
 
@@ -267,36 +272,37 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 
 > **抽成纯函数不是为了「架构好看」**：本工程的前端测试**只能测纯函数**（无 DOM 环境，§2.3）。把判定逻辑留在 `render()` 里就等于**它永远不会被测到**。
 
-### 5.2 `candidate-interview-detail.js` 的增量（关联简历区块）
+### 5.2 `candidate-resumes.js` 的增量（「用于面试」关联区块）
 
-**位置**：详情页顶部信息区之下、题目列表之上。
+**位置**：右栏案卷的操作区，与「编辑」「删除」并排 —— 它回答的是「**这一份**简历用在哪」。
 
-**内容**
+**内容**：弹窗里列出**我已接受的面试**（`GET /candidate/interviews`，§2.3 的 `resume_id` 在这里被消费），每行一个复选框：
 
-| 状态 | 展示 |
-|---|---|
-| 尚未关联（`resume_id == null`） | 一个下拉（选项来自 `GET /candidate/resumes`）+「关联」按钮；无简历时提示「你还没有简历，先去录入一份」并给 `#/candidate/resumes` 链接 |
-| 已关联 | 显示「当前使用简历：{title}（最后更新 {updated_at}）」+「更换」（重开下拉）+「解除关联」 |
+| 该场当前关联 | 行内说明 | 复选框 |
+|---|---|---|
+| 就是这一份 | 「本场现在用的就是这份简历」 | 勾上 |
+| 另一份 | 「本场现在用的是《X》」 | 未勾（勾上 = 改用这一份） |
+| 没有 | 「本场还没有关联简历」 | 未勾 |
+| 面试已结束 | 「本场面试已结束，关联已冻结」 | 未勾且**禁用** |
 
-**交互**
+**交互**：勾上 = 本场用这一份；取消勾 = 本场不用简历 —— **只在该场当前用的确实是这一份时**才给取消（用着另一份时，改由那一份的「用于面试」去换，否则会误把别人的关联解除掉）。
 
-| 动作 | 请求 |
-|---|---|
-| 关联 / 更换 | `PUT /candidate/interviews/{id}/resume`，body `{resume_id}` |
-| 解除 | `PUT /candidate/interviews/{id}/resume`，body `{"resume_id": null}`（**必须显式提交 null**，§4.2） |
+**提交**：一场面试只挂一份简历，因此逐场 `PUT /candidate/interviews/{id}/resume`，body `{resume_id}` 或 `{resume_id: null}`（**解除必须显式传 null**，§4.2）。
+
+> **⚠️ 中途失败会留下「部分成功」**：关掉弹窗 + 重载列表，让界面与事实一致 —— 比留着勾选状态更不容易让人误判「已经生效」。
 
 **状态相关的禁用**
 
 | 面试状态 | 行为 |
 |---|---|
-| `ongoing` | 可关联 / 更换 / 解除 |
-| 其他（`completed` / `evaluating` / `evaluated`） | **整个区块只读**，显示当前关联（或「未关联」），隐藏按钮 |
+| `ongoing` | 可勾 / 可取消 |
+| 其他（`completed` / `evaluating` / `evaluated`） | **该行只读并禁用**，且说明原因 |
 
-> **前端只做「隐藏按钮」的体验优化，不作为安全边界**：后端对非 `ongoing` 一律 409（module-19 §5.1），前端不禁用也不会造成数据问题。**但禁用能避免候选人点了才吃一个错**。
+> **前端只做「禁用」的体验优化，不作为安全边界**：后端对非 `ongoing` 一律 409（module-19 §5.1），前端不禁用也不会造成数据问题。**但禁用能避免候选人点了才吃一个错**。
 >
 > **`draft` 态候选人不可能看到**（邀请只在 `ongoing` 可生成），因此无需单独处理。
 
-**关联成功后**的提示：`toast.success('已关联简历，HR 可据此补充面试题')` —— 这句话解释了**为什么值得做这件事**，而不只是「保存成功」。
+**弹窗里那句解释**：「关联之后，招聘方才能按这份简历补题」—— 它解释了**为什么值得做这件事**。刻意不做成 `toast.success('已关联简历，HR 可据此补充面试题')`：解除关联时同一句话就成了错话。保存提示只用中性的「已更新关联」。
 
 ### 5.3 `candidate-practice.js` 的增量（按简历推荐入口）
 
@@ -392,7 +398,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 | `npm run build` | 构建通过 |
 | HR 侧零回归 | 7 个 HR 页面功能不变（本模块不碰任何 HR 文件） |
 | `standalone.html` | **未被修改**（`git status` 无该文件） |
-| 后端回归 | 跑 `pytest tests/ -q` 确认 `CandidateInterviewDetail` 加字段未破坏既有用例（§2.3） |
+| 后端回归 | 跑 `pytest tests/ -q` 确认候选人两个响应模型加字段未破坏既有用例（§2.3） |
 
 ---
 
@@ -401,9 +407,9 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 > 每步 2–5 分钟。**提交信息由你指定**。
 > **前置（硬性）**：**module-15 已执行完毕**（候选人前端基座存在）。未执行前，本模块的任何任务都无法开始。
 
-### Task 22.1：后端上游改动（`CandidateInterviewDetail` 加 `resume_id`）
+### Task 22.1：后端上游改动（候选人两个响应模型加 `resume_id`）
 
-- [ ] `interview/schemas.py` 的 `CandidateInterviewDetail` 加 `resume_id: int | None = None`
+- [ ] `interview/schemas.py` 的 `CandidateInterviewItem` 与 `CandidateInterviewDetail` **都**加 `resume_id: int | None = None`，并让 `list_my_interviews` / `get_candidate_interview_detail` 填上它
 - [ ] `get_candidate_interview_detail` 填入该值
 - [ ] **先跑** `pytest tests/test_candidate_answering.py tests/test_interview.py -q` 确认既有断言（§2.3 的回归风险）
 - [ ] 补一条测试：详情响应含 `resume_id`，未关联时为 null
@@ -434,7 +440,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 
 ### Task 22.5：面试详情关联简历
 
-- [ ] `candidate-interview-detail.js` 加关联区块（下拉 / 关联 / 更换 / 解除 / 只读态）
+- [ ] `candidate-resumes.js` 加「用于面试」区块（逐场复选框 / 解除 / 已结束只读）
 - [ ] **解除时显式提交 `{"resume_id": null}`**（§4.2）
 - [ ] 无简历时给出引导链接
 - [ ] 手工走查 §7.2 的关联四项
@@ -460,7 +466,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 ## 9. 验收标准
 
 - [ ] **module-15 已执行**（候选人前端基座存在于仓库中）
-- [ ] `CandidateInterviewDetail` 含 `resume_id`，候选人的面试详情响应能回显当前关联
+- [ ] 候选人两个响应模型都含 `resume_id`（列表 + 详情），「用于面试」弹窗能逐场回显当前关联
 - [ ] 新增 **1 个**页面文件 `candidate-resumes.js`；**未新增**任何组件 / 工具 / CSS 文件
 - [ ] 路由 `#/candidate/resumes` 注册且可访问；侧边导航出现「我的简历」
 - [ ] 简历列表：新建 / 编辑 / 删除可用；空态有引导文案
@@ -487,7 +493,7 @@ module-15 已建：  side.js / session.js / api.js / auth.js / router.js / main.
 |---|---|---|
 | **候选人前端整体不存在，本模块无基座** | 计划书**开头即声明**执行前提是 module-15 已完成 | 若不声明，执行者会面对「要改的文件根本不存在」，进而就地重建候选人前端——那会让两份计划书对同一批文件各有一套描述，必然漂移 |
 | **不重复 module-15 的内容** | 只写增量 | 重复的代价是「两份文档描述同一批文件」，改一处必漏一处。执行顺序明确为「先 15，后本模块」 |
-| **`CandidateInterviewDetail` 缺 `resume_id`** | 由**本模块**声明并实现该后端改动（§2.3） | 没有它，关联选择器无法回显当前值（打开永远显示「未选择」）。按 module-13 的既有惯例，**改动跟着需要它的模块走** |
+| **候选人的面试响应缺 `resume_id`** | 由**本模块**声明并实现该后端改动（§2.3），**列表与详情两个模型都要** | 没有它，关联选择器无法回显当前值（打开永远显示「未选择」），解除关联也无从判断。关联入口在简历页 ⇒ 要跨面试看，故列表也需要。按 module-13 的既有惯例，**改动跟着需要它的模块走** |
 | **正文字段绝不能加 `maxlength`** | 用「计数 + 超限禁用提交」 | `maxlength` 会让浏览器**静默截断粘贴**——候选人以为整份存好了，尾部已丢。**无提示的数据丢失是最糟的一类故障** |
 | **20000 常量前后端各写一份** | 各写一份 + 守门断言 + 注释指明对齐 | 前端无法 import 后端配置。与既有 `PASS_THRESHOLD = 6.5` 前后端各一份同一处理方式，是本项目已有的先例 |
 | **编辑弹窗整体提交四字段（而非只交脏字段）** | 整体提交 | 四个字段在弹窗里全部可编辑且都有值，整体提交语义更直白，省掉「哪些字段是脏的」状态管理。**唯一例外**：可选字段空输入提交空串（不是 null，否则等于「不改」） |

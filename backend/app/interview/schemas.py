@@ -104,7 +104,12 @@ class InvitationAcceptRequest(BaseModel):
 
 
 class CandidateInterviewItem(BaseModel):
-    """「我参与的面试」列表项。"""
+    """「我参与的面试」列表项。
+
+    `resume_id` **必须下发**（PRD §4.13）：候选人端要在「我的简历」页一次列出
+    「我每一场用的是哪一份」，缺了它就只能盲勾、也判断不出该不该给「解除」。
+    关联状态是他自己的数据 —— **能写就必须能读**。
+    """
 
     id: int
     position_name: str
@@ -112,6 +117,7 @@ class CandidateInterviewItem(BaseModel):
     question_count: int
     answered_count: int
     submitted: bool
+    resume_id: int | None = None
     created_at: datetime
 
 
@@ -130,7 +136,11 @@ class CandidateQuestionItem(BaseModel):
 
 
 class CandidateInterviewDetail(BaseModel):
-    """面试详情 —— 刻意不含 HR 的评语、评分、其他候选人的作答与 created_by。"""
+    """面试详情 —— 刻意不含 HR 的评语、评分、其他候选人的作答与 created_by。
+
+    `resume_id` 与列表项同义（PRD §4.13）：候选人要能看出这场关联了哪一份简历。
+    它**不是**敏感信息 —— 它指的是候选人自己的简历。
+    """
 
     id: int
     position_name: str
@@ -138,6 +148,7 @@ class CandidateInterviewDetail(BaseModel):
     created_at: datetime
     submitted: bool
     submitted_at: datetime | None
+    resume_id: int | None = None
     questions: list[CandidateQuestionItem]
 
 
