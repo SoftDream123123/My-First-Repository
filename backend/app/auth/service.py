@@ -171,14 +171,26 @@ def create_candidate_account(db: Session, username: str, password: str) -> User:
     该开关控制的是「开放注册」，不是「凭邀请建号」—— 关闭自助注册后，
     邀请码仍是候选人的唯一入口，必须可用。
 
-    已存在同名 candidate 时**复用**该账号（候选人可能已注册了刷题账号，
-    不应被迫换用户名）。已存在同名 hr/admin 时**硬拒绝** —— 否则 HR 账号会被
+    已存在同名 candidate 时**校验密码后复用**该账号（候选人可能已注册了刷题账号，
+    不应被迫换用户名）。**密码不符即拒绝**，见函数体里的说明。
+
+    已存在同名 hr/admin 时**硬拒绝** —— 否则 HR 账号会被
     写进 interview_invitation.candidate_user_id，从而获得候选人才有的
     「查看脱敏反馈」通道，且身份语义自相矛盾。这是越权入口。
     """
     existing = repository.get_by_username(db, username)
     if existing is not None:
         if existing.role == ROLE_CANDIDATE:
+            # 复用已有账号**必须比对密码**（PRD §4.1/§7、module-09 §5.2）。
+            #
+            # 少了这一步，「知道对方用户名」就等于能把自己的邀请码绑到对方账号上，
+            # 进而读到对方的面试 —— 比它原先要防的「凭码重置他人密码」更严重。
+            # 账号已存在时这个 password 是**身份凭据**而非新密码，因此只比对、不写库。
+            #
+            # 文案复用登录失败的那一句：不新增可区分的信号。残余的「该用户名是否
+            # 存在」可探测性只对**持有有效邀请码**的人成立，而邀请码一次性、高熵、私发。
+            if not verify_password(password, existing.password_hash):
+                raise UnauthorizedError(_LOGIN_FAILED_MESSAGE)
             return existing
         raise BusinessError("用户名已被占用")
 

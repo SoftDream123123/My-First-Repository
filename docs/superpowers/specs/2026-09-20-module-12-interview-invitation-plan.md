@@ -186,11 +186,24 @@ PRD §5.1 把 `expired` 列为邀请状态机的一个状态。本设计**不把
 
 > **不用 204**：撤销后前端需要展示该条的最终状态（`revoked`），返回更新后的对象比空响应更有用。与既有 `DELETE /questions/{id}` 的 204 不同，此处有明确的响应内容。
 
-**候选人侧（守卫 `require_roles("candidate")`，前缀 `/api/candidate`）**
+**公开（无守卫）**
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/api/candidate/invitations/{code}/accept` | 凭邀请码激活并绑定面试 |
+
+> ⚠️ **本端点是公开的，不要求 JWT**（PRD §4.1 / §8）：拿码的人往往**还没有账号**，
+> 要求他先登录才能激活会让邀请链自相矛盾 —— 没有账号就拿不到 token，没有 token 就激活不了。
+> 关闭自助注册（`CANDIDATE_SELF_REGISTER=false`）时它是新人的**唯一入口**，必须可用。
+>
+> 它虽然挂在 `/api/candidate` 前缀下，但**不属于**下面那组 `candidate` 守卫端点 ——
+> 前缀是给人看的分类，守卫是逐个端点挂的。**权限扫测必须把它排除**（见
+> [module-16](./2026-09-20-module-16-permission-guard-plan.md) §3.1）。
+
+**候选人侧（守卫 `require_roles("candidate")`，前缀 `/api/candidate`）**
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
 | GET | `/api/candidate/interviews` | 我参与的面试列表 |
 | GET | `/api/candidate/interviews/{id}` | 面试详情（仅题目与我自己的作答） |
 | POST | `/api/candidate/interviews/{id}/answers` | 保存 / 更新我的作答（交卷后拒绝） |
@@ -373,7 +386,8 @@ get_interview_for_candidate(db, user, interview_id) -> Interview
        → BusinessError（409）「邀请码无效或已失效」   ← 四种情况同一文案，见下
 2. 调 auth.service.create_candidate_account(db, username, password)
      新用户名 → 创建 role='candidate' 账号
-     已有同名 candidate → 复用该账号（密码参数被忽略）
+     已有同名 candidate → **校验 password 一致**才复用；不符 → UnauthorizedError（401）
+                          「用户名或密码错误」（与登录失败同一文案）
      已有同名 hr/admin → BusinessError（409）「用户名已被占用」
 3. 若该候选人此前已有一条 accepted 邀请指向同一面试
        → BusinessError（409）「你已接受过该面试的邀请」
@@ -384,7 +398,8 @@ get_interview_for_candidate(db, user, interview_id) -> Interview
 | 设计决策 | 说明 |
 |---|---|
 | **四种失效原因同一文案** | 「邀请码无效或已失效」。区分「不存在」与「已过期」等于提供一个码探测接口（PRD §7 明确「不泄露面试是否存在」）。**注意**：这不适用于「用户名已被占用」「已接受过该面试」这两条——它们发生在码校验**之后**，此时码已确定有效，泄露面为零 |
-| **密码参数在复用账号时被忽略** | 避免「凭邀请码就能重置他人账号密码」这一越权路径。若候选人忘记密码，走后续的改密能力（PRD 未要求，属 V1.1） |
+| **复用账号时必须校验密码**（2026-09-21 修正） | 原先是「忽略密码」，理由是不让「凭邀请码重置他人密码」。但它换来的是**更糟的一条**：知道对方用户名就能把自己的邀请码绑到对方账号上，进而读到对方的面试。改为「密码一致才复用」后**两个风险同时消掉**。密码不符返回 401「用户名或密码错误」（与登录失败同一文案），不新增可区分信号；残余的「用户名是否存在」可探测性只对**持有有效邀请码**的人成立，而邀请码一次性、高熵、私发，无法规模化（PRD §7） |
+| **本端点为公开端点**（2026-09-21 修正） | 见 §4.1 的说明：新人没有账号就拿不到 token，要求先登录会让邀请链自相矛盾 |
 | **账号创建委托给 auth** | 不在 interview 里复制「用户名唯一性 / 密码哈希 / 角色约束」规则（[module-09 §5.2](./2026-09-20-module-09-auth-plan.md)） |
 | 不接受 `pending` 之外的状态 | 一次性接受：同一码第二次接受必然落在「已 accepted」分支并报错 |
 | 第 3 步的必要性 | 否则同一候选人可用第二条码重复接受同一面试，产生两条绑定记录，候选人端列表出现重复项 |

@@ -100,7 +100,8 @@ const list = await fetch('/api/interviews', {
 
 ### 1.3 前端需要知道的三件事
 
-1. **除了登录、健康检查、候选人自助注册这三个，所有接口都要 `Authorization: Bearer <token>`**。
+1. **除了下面这四个，所有接口都要 `Authorization: Bearer <token>`**：
+   `/api/health`、`/api/auth/login`、`/api/auth/register`、`/api/candidate/invitations/{code}/accept`。
    两个端的 token **不能混用**（HR 的 token 调候选人接口是 403，反之亦然）。
 2. **所有错误响应结构完全一致**（`{code, message, detail}`），写一个统一拦截器即可。
 3. **评估进度是 SSE 流，且必须带 `Authorization` 头** —— 所以**不能用浏览器原生
@@ -127,8 +128,9 @@ const list = await fetch('/api/interviews', {
 
 ### 2.2 认证
 
-**只有三个接口不需要认证**：`GET /api/health`、`POST /api/auth/login`、
-`POST /api/auth/register`（候选人自助注册）。其余全部需要：
+**只有四个接口不需要认证**：`GET /api/health`、`POST /api/auth/login`、
+`POST /api/auth/register`（候选人自助注册）、
+`POST /api/candidate/invitations/{code}/accept`（凭邀请码激活）。其余全部需要：
 
 ```http
 Authorization: Bearer <token>
@@ -138,11 +140,14 @@ Authorization: Bearer <token>
 
 | 路径前缀 | 允许的角色 | 不符合时 |
 |---|---|---|
-| `/api/health`、`/api/auth/login`、`/api/auth/register` | **公开** | — |
+| `/api/health`、`/api/auth/login`、`/api/auth/register`、`/api/candidate/invitations/{code}/accept` | **公开** | — |
 | `/api/auth/me` | 任意已登录角色 | 401 |
 | `/api/users*` | **仅 `admin`** | 403 |
 | `/api/positions*`、`/api/questions*`、`/api/interviews*`（含 `report` / `export` / `stream`） | `admin` · `hr` | 403 |
-| `/api/candidate/*`、`/api/practice/*` | **仅 `candidate`** | 403 |
+| `/api/candidate/*`、`/api/practice/*`（**`accept` 除外**） | **仅 `candidate`** | 403 |
+
+> ⚠️ **`accept` 是 `/api/candidate` 前缀下唯一的公开端点**（见 [§10.2](#102-接受邀请码)）。
+> **不要按前缀推断权限** —— 前缀只是分类，守卫是逐个端点挂的。
 
 > ⚠️ **`admin` 不通过候选人端的守卫**。`require_roles` 是集合精确匹配，不是「admin 通吃」。
 > 反之 `candidate` 调 HR 端接口也是 403。两个方向都是 `403 FORBIDDEN`，
@@ -357,7 +362,7 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 | 37 | `GET` | `/api/interviews/{interview_id}/report/export` | `admin` `hr` | **导出报告为 DOCX**（文件流） | [§9.4](#94-导出报告为-docx) |
 | 38 | `GET` | `/api/candidate/interviews/{interview_id}/feedback` | `candidate` | 候选人**脱敏**反馈 | [§9.5](#95-候选人脱敏反馈) |
 | 39 | `GET` | `/api/candidate/positions` | `candidate` | 刷题岗位筛选项（有题目的岗位） | [§10.1](#101-刷题岗位筛选项) |
-| 40 | `POST` | `/api/candidate/invitations/{code}/accept` | `candidate` | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
+| 40 | `POST` | `/api/candidate/invitations/{code}/accept` | **公开** | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
 | 41 | `GET` | `/api/candidate/interviews` | `candidate` | 我参与的面试列表 | [§10.3](#103-我的面试列表) |
 | 42 | `GET` | `/api/candidate/interviews/{interview_id}` | `candidate` | 面试详情（仅题目与我的作答） | [§10.4](#104-面试详情候选人视图) |
 | 43 | `POST` | `/api/candidate/interviews/{interview_id}/answers` | `candidate` | 保存 / 更新我的作答 | [§10.5](#105-保存--更新我的作答) |
@@ -1998,7 +2003,12 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 |---|---|
 | 提交方式 | `POST` |
 | URL | `/api/candidate/invitations/{code}/accept` |
-| 鉴权 | `candidate`（**调用者必须已经是登录中的候选人** —— 见下面的已知偏差） |
+| 鉴权 | **不需要**（公开端点，全项目第四个 —— 见 [§2.2](#22-认证)） |
+
+> ⚠️ **这是唯一挂在 `/api/candidate` 前缀下、却不要求 `candidate` 角色的接口。**
+> 拿码的人往往**还没有账号**，要求他先登录才能激活会让邀请链自相矛盾
+> （没有账号 → 拿不到 token → 激活不了）。关闭自助注册时它是新人的**唯一入口**，
+> 必须可用。**前缀只是分类，守卫是逐个端点挂的** —— 前端别按前缀推断权限。
 
 **路径参数**
 
@@ -2011,15 +2021,24 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 | 字段 | 类型 | 必填 | 约束 | 说明 |
 |---|---|---|---|---|
 | `username` | string | 是 | 1–50 字符 | **由请求体决定绑定哪个账号** |
-| `password` | string | 是 | **最少 8 字符**，最多 128 | 账号**已存在且是 candidate** 时会被**忽略** |
+| `password` | string | 是 | **最少 8 字符**，最多 128 | 账号不存在时用作**新密码**；账号已存在时用作**身份凭据**（见下） |
 
 ```json
 { "username": "cand_li", "password": "cand12345678" }
 ```
 
-> **绑定到哪个账号由 body 里的 `username` 决定，与调用者身份无关。**
-> 若该用户名已存在且角色是 `candidate`，**直接复用它，并且不校验 `password`** ——
-> 候选人可能已经有一个刷题账号，不该强迫他换用户名（见下面的已知偏差）。
+**绑定到哪个账号由 body 里的 `username` 决定，与调用者身份无关**（公开端点，本来也没有调用者身份）。
+三种情况：
+
+| 该用户名的现状 | 行为 |
+|---|---|
+| 不存在 | 按请求体里的密码**创建** `candidate` 账号，绑定 |
+| 已存在且角色是 `candidate` | **校验密码一致**后复用该账号绑定；**密码不符 → 401** |
+| 已存在且角色是 `hr` / `admin` | 拒绝（409 `用户名已被占用`） |
+
+> ⚠️ **复用已有账号必须密码对得上**（2026-09-21 修正）。缺了这条校验，
+> 「知道对方用户名」就等于能把自己的邀请码绑到对方账号上，进而读到对方的面试。
+> 密码不符时的 401 文案与 [§5.1 登录](#51-登录) 失败**完全相同**，不新增可区分的信号。
 
 **响应 `200`** —— 绑定结果（[§13.14](#1314-invitationacceptresult)）。
 
@@ -2043,6 +2062,7 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 | HTTP | code | 触发场景 | message |
 |---|---|---|---|
 | 400 | `VALIDATION_ERROR` | 密码少于 8 位 / 用户名非法 | `请求参数不合法` |
+| 401 | `UNAUTHORIZED` | 用户名已是 `candidate`，但**密码不符** | `用户名或密码错误` |
 | 409 | `BUSINESS_ERROR` | 邀请码**不存在 / 已过期 / 已撤销 / 已被接受** | `邀请码无效或已失效` |
 | 409 | `BUSINESS_ERROR` | 用户名已被 `hr` / `admin` 占用 | `用户名已被占用` |
 | 409 | `BUSINESS_ERROR` | 已接受过该面试的邀请 | `你已接受过该面试的邀请` |
@@ -2050,24 +2070,8 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 > **四种失效原因返回完全相同的文案与状态码** —— 候选人不应该能从错误信息里推断出
 > 「这场面试是否存在」「邀请是不是被人先用了」。
 >
-> **失败不留半成品**：若因用户名被 HR 占用而失败，邀请**保持 `pending`**，
-> 不产生任何部分写入，候选人换个用户名可以重试。
-
-#### ⚠️ 两处已知偏差（后端与计划书不一致，尚未修复）
-
-计划书描述的流程是「新人凭码**一步**激活」，**当前后端实现与之有两处不符**。
-接真实后端时一定会撞上，因此如实记录（发现于 2026-09-21）：
-
-| # | 偏差 | 影响 |
-|:--:|---|---|
-| 1 | **本端点要求调用者已经是登录中的 `candidate`**（守卫是 `require_roles("candidate")`）。新人没有账号、也就拿不到 token，**根本无法调用** | `CANDIDATE_SELF_REGISTER=false` 时**邀请链整条断掉**：新人既注册不了，也没有 token 来 accept。开关为 `true`（默认）时，只能「先自助注册一个刷题账号 → 登录 → 再 accept」，多绕一步 |
-| 2 | **绑定账号取自请求体 `username`，且对已存在的 candidate 不校验 `password`** | 拿到**任意一张有效邀请码**的人，只要知道某候选人的用户名，就能把码绑到**对方**账号上，进而进入对方的面试 |
-
-> 前端**不要在客户端绕过**（比如先偷偷注册一个空账号再 accept）—— 那会把一个后端问题
-> 变成两个。正确修法是先补 PRD，再改 router 守卫与 `auth` 的绑定逻辑。
->
-> 原型（`frontend/standalone.html`）在这两点上**刻意跟计划书、不跟后端**，
-> 所以在 mock 数据下是通的；切到真实后端才会暴露上面两条。
+> **失败不留半成品**：若因用户名被 HR 占用、或密码不符而失败，邀请**保持 `pending`**，
+> 不产生任何部分写入，换个用户名/密码可以重试。
 
 ### 10.3 我的面试列表
 
@@ -3415,7 +3419,7 @@ await api.post(`/interviews/${interview.id}/answers`, {
 ### 14.3 候选人端流程（在线作答）
 
 从「HR 发邀请」到「候选人看到反馈」的完整一遍（`PROVIDER_NAME=mock`）。
-**注意第 2 步多绕了一下** —— 那是 [§10.2 已知偏差 1](#102-接受邀请码) 导致的，不是笔误。
+第 2 步是**一步激活** —— `accept` 是公开端点，不需要事先注册或登录。
 
 ```bash
 # ── 1. HR：给某场 ongoing 的面试生成邀请码 ──────────────────────────
@@ -3424,24 +3428,19 @@ curl -s -X POST http://localhost:8000/api/interviews/3/invitations \
 # → {"id":1,"code":"hT9rQ2xLm4ZbN1vCk8sPwA","status":"pending", ...}
 CODE="hT9rQ2xLm4ZbN1vCk8sPwA"
 
-# ── 2. 候选人：先注册一个刷题账号，再登录，再 accept ────────────────
-#     （偏差 1：accept 要求调用者已经是登录中的 candidate）
-curl -s -X POST http://localhost:8000/api/auth/register \
+# ── 2. 候选人：凭码一步激活（**公开端点，不带 token**）──────────────
+curl -s -X POST "http://localhost:8000/api/candidate/invitations/$CODE/accept" \
   -H 'Content-Type: application/json' \
   -d '{"username":"cand_li","password":"cand12345678"}'
-# → 201，注意响应里**没有 token**
+# → 200 {"interview_id":3,"interview":{...}}，邀请状态变 accepted
+#    账号不存在 → 按这个密码建出来；cand_li 已存在 → 密码必须与它一致，否则 401
 
+# 接受邀请**不签发 token**，所以要单独登录一次
 curl -s -X POST http://localhost:8000/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"cand_li","password":"cand12345678"}'
 # → {"token":"eyJ...","user":{"role":"candidate", ...}}
 CAND_TOKEN="eyJ..."
-
-curl -s -X POST "http://localhost:8000/api/candidate/invitations/$CODE/accept" \
-  -H "Authorization: Bearer $CAND_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"cand_li","password":"cand12345678"}'
-# → 200 {"interview_id":3,"interview":{...}}，邀请状态变 accepted
 
 # ── 3. 候选人：建一份简历，并关联到这场面试 ──────────────────────────
 curl -s -X POST http://localhost:8000/api/candidate/resumes \
@@ -3763,8 +3762,7 @@ python -c "from app.main import app; \
 | # | 项 | 位置 |
 |:--:|---|---|
 | 1 | 简历正文超长保留 **422**（全项目唯一的 422） | [§11.1](#111-新建简历) |
-| 2 | 邀请码激活要求调用者**已是登录中的候选人** | [§10.2 偏差 1](#102-接受邀请码) |
-| 3 | `accept` 的绑定账号取自请求体，且对已存在的 candidate **不校验密码** | [§10.2 偏差 2](#102-接受邀请码) |
-| 4 | 刷题取题**不按 `created_by` 过滤题库**（有意的隔离放宽） | [§2.5](#25-数据隔离规则) |
-| 5 | 撤销邀请返回 **200 带体**，而其他 `DELETE` 是 204 | [§8.11](#811-撤销邀请) |
-| 6 | 导出 DOCX **不含雷达图**（需要图形走前端打印 PDF） | [§9.4](#94-导出报告为-docx) |
+| 2 | **`accept` 是 `/api/candidate` 前缀下唯一的公开端点**（**别按前缀推断权限**） | [§10.2](#102-接受邀请码) |
+| 3 | 刷题取题**不按 `created_by` 过滤题库**（有意的隔离放宽） | [§2.5](#25-数据隔离规则) |
+| 4 | 撤销邀请返回 **200 带体**，而其他 `DELETE` 是 204 | [§8.11](#811-撤销邀请) |
+| 5 | 导出 DOCX **不含雷达图**（需要图形走前端打印 PDF） | [§9.4](#94-导出报告为-docx) |

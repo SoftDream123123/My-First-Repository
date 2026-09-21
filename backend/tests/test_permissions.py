@@ -32,6 +32,15 @@ HR_PATH_PREFIXES = (
 # 一旦放行，admin 的调用会污染候选人的练习数据与作答归属。
 CANDIDATE_PATH_PREFIXES = ("/api/candidate", "/api/practice")
 
+# 挂在候选人前缀下、但**没有守卫**的公开端点。扫测必须把它们排除。
+#
+# 用「公开端点白名单」而不是放宽前缀断言：前缀只是分类，守卫是逐个端点挂的
+# （module-16 §3.1）。放宽断言会让这个前缀下**真被漏挂守卫**的端点也一起漏过。
+#
+# 目前只有这一个（2026-09-21 修正）：拿邀请码的人可能还没有账号，
+# 要求先登录才能激活会让邀请链自相矛盾（PRD §4.1/§8、module-12 §4.1）。
+PUBLIC_ROUTES = frozenset({("POST", "/api/candidate/invitations/{code}/accept")})
+
 _HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 _PATH_PARAM = re.compile(r"\{[^}]+\}")
 
@@ -68,14 +77,18 @@ def _all_api_routes() -> set[tuple[str, str]]:
     return found
 
 
-def _iter_routes(prefixes: tuple[str, ...]):
+def _iter_routes(prefixes: tuple[str, ...], exclude: frozenset = frozenset()):
     """产出 (method, 已替换路径参数的路径)。
 
     路径参数统一替换为 999999：这些路由的守卫在依赖阶段就应生效，
     因此不需要真实资源存在。
+
+    `exclude` 用于跳过公开端点（见 `PUBLIC_ROUTES`）。
     """
     for method, path in sorted(_all_api_routes()):
         if not path.startswith(prefixes):
+            continue
+        if (method, path) in exclude:
             continue
         yield method, _PATH_PARAM.sub("999999", path)
 
@@ -145,7 +158,7 @@ def test_no_candidate_route_reachable_by_hr_side(client, request, actor):
 
     reachable = []
     checked = 0
-    for method, path in _iter_routes(CANDIDATE_PATH_PREFIXES):
+    for method, path in _iter_routes(CANDIDATE_PATH_PREFIXES, exclude=PUBLIC_ROUTES):
         resp = client.request(method, path, json={}, headers=headers)
         checked += 1
         if resp.status_code != 403:
@@ -155,6 +168,22 @@ def test_no_candidate_route_reachable_by_hr_side(client, request, actor):
     assert not reachable, (
         f"以下候选人侧路由对 {actor} 可达：\n  " + "\n  ".join(reachable)
     )
+
+
+def test_public_route_whitelist_is_not_stale(client, hr_headers):
+    """公开端点白名单里每一条都必须**仍然真实存在**，而且**确实公开**。
+
+    少了这条，白名单会变成一张长期的免检证：哪天 `accept` 被改名或顺手挂上守卫，
+    扫测都会安静地跳过它 —— 那正是本文件要防的「静默漏掉一处」。
+    """
+    routes = _all_api_routes()
+
+    for method, path in PUBLIC_ROUTES:
+        assert (method, path) in routes, f"白名单里的 {method} {path} 已不存在，需更新白名单"
+
+        # 「公开」的可观测形式：不带任何 token 也不该得到 401
+        resp = client.request(method, _PATH_PARAM.sub("999999", path), json={})
+        assert resp.status_code != 401, f"{method} {path} 已不再是公开端点（返回 401）"
 
 
 # ---------------------- B. 角色矩阵 ----------------------

@@ -4,6 +4,11 @@
 里容易在新增端点时挂错守卫 —— 而「挂错守卫」正是权限守卫补全要修的那类问题。
 按守卫分文件，让「这个文件里的端点都是同一类角色」成为可读的事实。
 
+**唯一的例外是 `accept`**：它**没有守卫（公开端点）**。拿邀请码的人往往还没有
+账号，要求他先登录才能激活会让邀请链自相矛盾（没有账号 → 没有 token → 激活不了）。
+它挂在本文件下只是因为路径前缀同属 `/api/candidate`，**守卫是逐个端点挂的，不是按文件挂的**
+（PRD §4.1/§8、module-12 §4.1）。权限扫测必须把它排除。
+
 面试状态的推进不在这里：候选人交卷**不改面试状态**，仍需 HR 手动 /complete
 （PRD §5.1 的明确取舍）。
 """
@@ -41,9 +46,11 @@ def accept_invitation(
     code: str,
     payload: InvitationAcceptRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(_candidate_guard),
 ) -> InvitationAcceptResult:
-    """账号不存在则创建（role=candidate），已存在且为 candidate 则复用。
+    """**公开端点：不要求 JWT**（本文件里唯一一个）。
+
+    账号不存在则创建（role=candidate），已存在且为 candidate 时**校验密码后**复用
+    （密码不符 → 401「用户名或密码错误」，见 `auth.service.create_candidate_account`）。
 
     **响应不含 token** —— 与自助注册一致，登录态由 /auth/login 单独获取。
     四种失效原因（码不存在 / 已撤销 / 已接受 / 已过期）返回同一文案，

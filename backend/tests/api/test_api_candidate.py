@@ -216,15 +216,15 @@ def test_accept_short_password_is_400(client, hr_headers, candidate_headers, pos
     assert resp.status_code == 400
 
 
-def test_accept_requires_a_logged_in_candidate_token(client, hr_headers, position):
-    """⚠️ 记录**已知偏差 1**（后端与计划书不一致，尚未修复）。
+def test_accept_is_public_and_activates_a_brand_new_candidate(client, hr_headers, position):
+    """⚠️ `accept` 是**公开端点**：不带任何 token 也能完成激活（PRD §4.1/§8）。
 
-    计划书描述的是「新人凭码**一步**激活」，但本端点挂的是
-    `require_roles("candidate")` —— 调用者必须**已经是**登录中的候选人。
-    新人没有账号、也就拿不到 token，因此这里只能返回 401。
+    这是 2026-09-21 的修正。原先它挂着 `require_roles("candidate")`，于是
+    「新人凭码激活」这条主链路是断的 —— 没有账号就拿不到 token，没有 token 就激活不了；
+    关闭自助注册（`CANDIDATE_SELF_REGISTER=false`）时更是完全无法进入。
 
-    这条用例的作用是把现状钉住：哪天守卫改成公开端点，它会变红，提醒同步更新
-    `docs/apis/API接口文档.md` §10.2 的偏差说明。
+    断言链条刻意走到「新账号**能登录**」为止：只断言 `200` 无法区分
+    「真的建了账号」与「返回了个成功但什么都没发生」。
     """
     interview = client.post(
         "/api/interviews",
@@ -237,8 +237,110 @@ def test_accept_requires_a_logged_in_candidate_token(client, hr_headers, positio
 
     anonymous = _accept(client, {}, invitation["code"], username="brand_new_person")
 
-    assert anonymous.status_code == 401, "现状：新人无法凭码直接激活"
-    assert anonymous.json()["code"] == "UNAUTHORIZED"
+    assert anonymous.status_code == 200, anonymous.text
+    assert anonymous.json()["interview_id"] == interview["id"]
+    assert "token" not in anonymous.json(), "接受邀请不等于登录"
+
+    # 新账号真的建出来了，而且能登录
+    logged_in = client.post(
+        "/api/auth/login",
+        json={"username": "brand_new_person", "password": "cand12345678"},
+    )
+    assert logged_in.status_code == 200
+    assert logged_in.json()["user"]["role"] == "candidate"
+
+    # 邀请已被消费
+    assert (
+        client.get(f"/api/interviews/{interview['id']}/invitations", headers=hr_headers).json()[0][
+            "status"
+        ]
+        == "accepted"
+    )
+
+
+def test_accept_works_even_when_self_register_is_disabled(
+    client, hr_headers, position, monkeypatch
+):
+    """关闭自助注册时，邀请码是候选人的**唯一**入口，必须可用。"""
+    from app.core.config import get_settings
+
+    interview = client.post(
+        "/api/interviews",
+        json={"position_id": position.id, "candidate_name": "张三"},
+        headers=hr_headers,
+    ).json()
+    invitation = client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+    monkeypatch.setenv("CANDIDATE_SELF_REGISTER", "false")
+    get_settings.cache_clear()
+    try:
+        # 自助注册被关掉了
+        assert (
+            client.post(
+                "/api/auth/register", json={"username": "blocked", "password": "cand12345678"}
+            ).status_code
+            == 409
+        )
+
+        # 但凭邀请码照样能建号
+        resp = _accept(client, {}, invitation["code"], username="invited_only")
+        assert resp.status_code == 200, resp.text
+    finally:
+        get_settings.cache_clear()
+
+
+def test_accept_rejects_wrong_password_for_an_existing_candidate(
+    client, hr_headers, candidate_user, candidate_headers, position
+):
+    """⚠️ 复用已有候选人账号**必须校验密码**（PRD §4.1/§7）。
+
+    缺这条守卫时，「知道对方用户名」就等于能把自己的邀请码绑到对方账号上，
+    进而读到对方的面试 —— 比它原先要防的「凭码重置他人密码」更严重。
+
+    文案与登录失败**完全一致**，不新增可区分信号；失败后邀请**保持 pending**。
+    """
+    interview = client.post(
+        "/api/interviews",
+        json={"position_id": position.id, "candidate_name": "张三"},
+        headers=hr_headers,
+    ).json()
+    invitation = client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+    resp = _accept(client, {}, invitation["code"], username=candidate_user.username, password="wrong-password")
+
+    assert resp.status_code == 401
+    body = resp.json()
+    assert body["code"] == "UNAUTHORIZED"
+    assert body["message"] == "用户名或密码错误", "与登录失败同一文案"
+
+    still_pending = client.get(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()[0]
+    assert still_pending["status"] == "pending", "校验失败不能消费掉邀请码"
+
+
+def test_accept_reuses_existing_candidate_with_the_correct_password(
+    client, hr_headers, candidate_user, position
+):
+    """密码对得上就照常复用（不能因为加了校验就把这条正常路径堵死）。"""
+    interview = client.post(
+        "/api/interviews",
+        json={"position_id": position.id, "candidate_name": "张三"},
+        headers=hr_headers,
+    ).json()
+    invitation = client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+    resp = _accept(
+        client, {}, invitation["code"], username=candidate_user.username, password="cand12345678"
+    )
+
+    assert resp.status_code == 200, resp.text
 
 
 # ===========================================================================

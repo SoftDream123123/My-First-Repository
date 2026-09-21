@@ -147,11 +147,11 @@ class TestCreateCandidateAccount:
         assert user.username == "invitee"
 
     def test_create_candidate_account_reuses_candidate(self, db, candidate_user):
-        """已存在同名 candidate → 复用，不新建、密码不变。"""
+        """已存在同名 candidate 且**密码一致** → 复用，不新建、密码不变。"""
         before_hash = candidate_user.password_hash
 
         reused = service.create_candidate_account(
-            db, candidate_user.username, "a-different-password"
+            db, candidate_user.username, "cand12345678"
         )
 
         assert reused.id == candidate_user.id
@@ -160,6 +160,28 @@ class TestCreateCandidateAccount:
         from app.auth import repository
 
         assert repository.get_by_username(db, candidate_user.username) is not None
+
+    def test_create_candidate_account_rejects_wrong_password(self, db, candidate_user):
+        """⚠️ 已存在同名 candidate 但**密码不符** → 401，且不得复用该账号。
+
+        这条守卫是 2026-09-21 补上的（PRD §4.1/§7、module-09 §5.2）：缺了它，
+        「知道对方用户名」就等于能把自己的邀请码绑到对方账号上，进而读到对方的面试。
+        文案与登录失败**完全一致**，以免成为「该用户名是否存在」的探测器。
+        """
+        from app.core.exceptions import UnauthorizedError
+
+        before_hash = candidate_user.password_hash
+
+        with pytest.raises(UnauthorizedError) as excinfo:
+            service.create_candidate_account(db, candidate_user.username, "wrong-password")
+
+        assert excinfo.value.status_code == 401
+        assert excinfo.value.message == "用户名或密码错误"
+        # 失败不能改动任何东西
+        from app.auth import repository
+
+        unchanged = repository.get_by_username(db, candidate_user.username)
+        assert unchanged.password_hash == before_hash
 
     def test_create_candidate_account_rejects_hr(self, db, hr_user):
         """绝不允许把 HR / admin 账号绑到候选人邀请上 —— 这是越权入口。"""

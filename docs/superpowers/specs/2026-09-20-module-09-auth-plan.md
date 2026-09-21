@@ -225,12 +225,14 @@ auth ✗→ interview / practice（本模块不得反向依赖任何业务模块
 
 ### 5.2 凭邀请创建 / 复用候选人账号（供 interview 调用，对应 PRD §4.8）
 
-`interview` 在接受邀请码时调用 `auth.service.create_candidate_account`。该方法的语义与开关无关，但**必须守住两条规则**：
+`interview` 在接受邀请码时调用 `auth.service.create_candidate_account`。该方法的语义与开关无关，但**必须守住三条规则**：
 
 ```
 1. 按 username 查用户
 2. 不存在            → 创建 role='candidate' 的新账号，返回
-3. 存在且 role='candidate'  → 直接返回该账号（复用已有刷题账号，不报错、不改密码）
+3. 存在且 role='candidate'  → **校验 password 是否一致**：
+                            一致 → 复用该账号并返回（不报错、不改密码）
+                            不符 → UnauthorizedError（401）「用户名或密码错误」
 4. 存在且 role 为 admin/hr → BusinessError（409）「用户名已被占用」
                                ← 绝不允许把 HR / admin 账号绑定到候选人邀请上
 ```
@@ -238,9 +240,11 @@ auth ✗→ interview / practice（本模块不得反向依赖任何业务模块
 | 规则 | 为何必要 |
 |---|---|
 | 第 3 步复用而非报错 | 候选人可能已自助注册了刷题账号，再用邀请码时不应被迫换用户名 |
+| **第 3 步必须校验密码**（2026-09-21 修正） | 原先「直接复用、不看密码」等于**知道对方用户名就能把自己的邀请码绑到对方账号上**，进而进入对方的面试。加上密码校验后，「不能重置他人密码」与「不能绑他人账号」两个风险一起消掉 |
+| 第 3 步密码不符返回 **401** | 用与登录失败**完全相同**的文案「用户名或密码错误」，不新增可区分的信号。残余的「该用户名是否存在」可探测性只对**持有有效邀请码**的人成立，而邀请码一次性、高熵、私发，无法规模化（PRD §7） |
 | 第 4 步硬拒绝 | 若允许，HR 账号会被写进 `interview_invitation.candidate_user_id`，从而获得候选人才有的「查看脱敏反馈」通道，且身份语义自相矛盾——这是**越权入口** |
 | 不校验 `CANDIDATE_SELF_REGISTER` | 该开关控制的是「开放注册」，不是「凭邀请建号」。关闭自助注册后，邀请码仍是候选人的唯一入口，必须可用 |
-| 密码由调用方传入 | 由 `interview` 的接受邀请端点决定（候选人在该请求中提交 username + password） |
+| 密码由调用方传入 | 由 `interview` 的接受邀请端点决定（候选人在该请求中提交 username + password）。**账号已存在时它的角色是「身份凭据」而不是「新密码」** —— 这正是上面那条校验的含义 |
 
 ### 5.3 多角色守卫语义（`require_roles`）
 
@@ -303,7 +307,8 @@ require_roles(*roles):
 | `test_candidate_can_call_me` | 用 candidate token 调 `/auth/me` → 200，返回自身信息 |
 | `test_candidate_cannot_call_users` | 用 candidate token 调 `GET /users` → 403 `FORBIDDEN` |
 | `test_create_candidate_account_new` | service 直调：新用户名 → 创建 `role=candidate` |
-| `test_create_candidate_account_reuses_candidate` | 已存在 candidate → **返回同一账号**，不报错、不新建、密码不变 |
+| `test_create_candidate_account_reuses_candidate` | 已存在 candidate 且**密码一致** → **返回同一账号**，不报错、不新建、密码不变 |
+| `test_create_candidate_account_rejects_wrong_password` | 已存在 candidate 但**密码不符** → 401 `UNAUTHORIZED`「用户名或密码错误」（§5.2 第 3 步，2026-09-21 新增） |
 | `test_create_candidate_account_rejects_hr` | 已存在 hr（或 admin）同名账号 → 409 `BUSINESS_ERROR`（§5.2 第 4 步） |
 | `test_create_candidate_account_ignores_self_register_flag` | 开关关闭时仍可凭邀请建号（§5.2） |
 | `test_admin_cannot_assign_candidate_role` | `POST /users` 传 `role="candidate"` → 400 `VALIDATION_ERROR`（`RoleLiteral` 不含 candidate） |

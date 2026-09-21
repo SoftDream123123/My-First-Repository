@@ -19,6 +19,11 @@ from app.interview.models import (
 )
 
 
+# `candidate_user` 夹具用的密码。接受邀请时若用户名已存在，**必须**填这个值 ——
+# 复用已有候选人账号现在要校验密码（PRD §4.1/§7，2026-09-21 修正）。
+CANDIDATE_PASSWORD = "cand12345678"
+
+
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
@@ -179,12 +184,14 @@ class TestRevokeInvitation:
         """
         interview = _create_interview(client, hr_headers, position.id)
         invitation = _create_invitation(client, hr_headers, interview["id"])
-        # 用 candidate_user 自己的用户名接受，绑定才会落在 candidate_headers 对应的账号上
+        # 用 candidate_user 自己的用户名接受，绑定才会落在 candidate_headers 对应的账号上。
+        # 密码必须是该账号的真实密码 —— 复用已有账号要校验（2026-09-21 修正）；
+        # 此前这里填的是一个不相关的密码，能过**正是因为密码被忽略了**。
         client.post(
             f"/api/candidate/invitations/{invitation['code']}/accept",
             json={
                 "username": candidate_user.username,
-                "password": "acceptor12345",
+                "password": CANDIDATE_PASSWORD,
             },
             headers=candidate_headers,
         )
@@ -307,7 +314,7 @@ class TestAcceptInvitation:
     def test_reuses_existing_candidate_account(
         self, client, db, hr_headers, candidate_headers, candidate_user, position
     ):
-        """已存在同名 candidate → 复用同一 id，不新建、密码不变。"""
+        """已存在同名 candidate 且**密码一致** → 复用同一 id，不新建、密码不变。"""
         interview, invitation = self._interview_with_invitation(
             client, hr_headers, position
         )
@@ -315,7 +322,7 @@ class TestAcceptInvitation:
 
         resp = client.post(
             f"/api/candidate/invitations/{invitation['code']}/accept",
-            json={"username": candidate_user.username, "password": "a-totally-different-pw"},
+            json={"username": candidate_user.username, "password": CANDIDATE_PASSWORD},
             headers=candidate_headers,
         )
         assert resp.status_code == 200

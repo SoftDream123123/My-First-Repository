@@ -108,6 +108,7 @@
 | `/api/interviews*`（HR 动作） | `require_roles("admin","hr")` | 本模块新增 |
 | `/api/interviews/{id}/report` | `require_roles("admin","hr")` | 在 evaluation 包内注册，勿漏 |
 | `/api/candidate/*`、`/api/practice/*` | `require_roles("candidate")` | 属 module-12/13，本模块不实现 |
+| **例外**：`POST /api/candidate/invitations/{code}/accept` | **无守卫（公开）** | 见 [module-12 §4.1](./2026-09-20-module-12-interview-invitation-plan.md)（2026-09-21 修正）：拿码的人可能**还没有账号**，要求先登录会让邀请链自相矛盾。它挂在 `/api/candidate` 前缀下，**但不属于上面那组守卫** —— 前缀是分类，守卫是逐个端点挂的 |
 
 > **本表是规则，不是端点清单。** 执行时必须用 `app.routes` 枚举出当前真实路由（§7.1 的自维护不变量测试会做这件事），逐个核对。手抄端点清单在端点增删后必然失效——这正是本模块要修的那类「静默漏掉一处」的问题。
 
@@ -193,6 +194,17 @@
 | `test_no_hr_route_reachable_by_hr` | 同样遍历，但只针对路径以 `/api/users` 开头的路由，用 **hr token** 断言恒为 403（admin 专属） |
 
 > 这两条测试的价值在于**它随路由自动扩展**：将来任何人新增 HR 端点而忘记挂守卫，测试立刻失败。若写成手抄端点清单，同样的疏漏不会被发现——那与本模块要修的缺口是同一类错误。
+
+**A2. 候选人侧的对称扫测（`test_no_candidate_route_reachable_by_hr_side`，后补）**
+
+| 测试 | 断言 |
+|---|---|
+| `test_no_candidate_route_reachable_by_hr_side[hr\|admin]` | 遍历路径以 `/api/candidate`、`/api/practice` 开头的全部路由，用 **hr / admin token** 发起请求，断言恒为 403 |
+
+> ⚠️ **必须排除 `POST /api/candidate/invitations/{code}/accept`**（2026-09-21 修正）：
+> 它是公开端点（§3.1 的例外），hr / admin 拿到它不会得到 403。
+> 扫测里要维护一份**公开端点白名单**，而不是「凡 `/api/candidate` 前缀必 403」——
+> 后者会把「前缀」误当成「守卫」，正是本模块 §3.1 开头警告的那种硬编码。
 
 **B. 角色矩阵（存量端点，逐组断言）**
 
