@@ -283,12 +283,20 @@ practice ✗→ interview / position / evaluation（**无反向依赖，且与 i
 | `question_id` | — |
 | `content` | 题干（**取最近一次练习的 `content_snapshot`**） |
 | `options` | 选项快照 |
+| `dimension` | 维度（取最近一次的 `dimension_snapshot`） |
+| `question_type` | 题型（取最近一次的 `question_type`） |
 | `reference_answer` / `explanation` | 参考答案与解析 |
 | `my_wrong_answer` | 最近一次的错误作答 |
 | `wrong_count` | **累计判错次数** |
 | `last_wrong_at` | 最近判错时间 |
 
 > **按 `question_id` 去重**：同一道题练错多次只出现一行，并给出 `wrong_count`。逐条罗列会让错题本被同一道题刷屏，失去「该复习哪些题」的作用。
+
+> ⚠️ **`dimension` / `question_type` 必须下发**（2026-09-21 补）：该端点**接受**
+> 这两个筛选参数（见下方查询参数），若不下发对应字段，前端就既取不到筛选下拉的候选值、
+> 也没法在条目上标出维度与题型 —— 两个筛选项会沦为只有「不限」一项的空壳。
+> **下发值与筛选读的是同一列**（`dimension_snapshot` / `question_type`），因此
+> 「筛出来的」与「标出来的」必然一致，不会出现「下拉里有它、选了却没结果」。
 
 **GET `/api/practice/stats`** → ：
 
@@ -473,7 +481,8 @@ rescore_item(db, user, item_id):
 | 要点 | 说明 |
 |---|---|
 | **`is_correct IS FALSE` 而非 `NOT is_correct`** | SQL 中 `NOT NULL` 的结果是 NULL（不成立），看似安全，但写成 `is_correct = false` 或 `is_correct IS FALSE` 才是显式意图。**必须显式排除 NULL**，否则未判分的题会混入错题本 |
-| 展示内容取「最近一次」的快照 | 同一题在不同会话中的题干可能已被 HR 修改；展示最近一次的版本最贴合记忆 |
+| 展示内容取「最近一次」的快照 | 同一题在不同会话中的题干可能已被 HR 修改；展示最近一次的版本最贴合记忆。**`dimension` / `question_type` 同样取最近一次**，与 `content` 同源，避免一行的题干来自 A 次、维度来自 B 次 |
+| **筛选与下发同源** | 两个筛选参数走 `dimension_snapshot` / `question_type` 两列，下发的 `dimension` / `question_type` 也读这两列。**同源是这条修正的关键**：前端据此填出的下拉候选值，必然能筛出结果 |
 | 不做 `wrong_book` 表 | PRD §4.7 明确「不单独建表」。派生查询的成本由 `ix_practice_item_correct` 索引承担 |
 | 已删除的题目 | `question_id` 外键为 `RESTRICT`，题目被练习引用后不可删除（与既有题目删除规则一致），因此不存在「错题指向已删题」的情形 |
 
@@ -612,6 +621,9 @@ list_my_sessions(db, user, status, limit):
 | `test_wrong_book_excludes_unscored` | 未判分（`is_correct IS NULL`）的题**不出现**在错题本 |
 | `test_wrong_book_dedupes_by_question` | 同一题错 3 次 → **1 行**，`wrong_count == 3` |
 | `test_wrong_book_uses_latest_snapshot` | 题干被改后再次练错 → 展示最近一次的题干 |
+| `test_wrong_book_returns_dimension_and_type` | 条目带 `dimension` 与 `question_type`，且值与 `dimension_snapshot` / `question_type` 一致 |
+| `test_wrong_book_filter_values_come_from_response` | 用响应里出现过的 `dimension` 再筛一次 → **结果非空**（钉住「筛选与下发同源」，这是空壳下拉的直接反例） |
+| `test_wrong_book_filters_by_dimension_and_type` | 两个筛选参数各自生效 |
 | `test_wrong_book_isolated_by_candidate` | 候选人 A 看不到 B 的错题 |
 | `test_wrong_book_ordered_by_last_wrong_at` | 按最近判错时间倒序 |
 | `test_stats_accuracy_denominator_is_scored` | 答 3 题、2 题判分、其中 1 题对 → `accuracy == 0.5`（分母 2 而非 3） |
@@ -781,6 +793,7 @@ list_my_sessions(db, user, status, limit):
 - [ ] 参考答案「快照优先，为空回退题库当前值并回填」
 - [ ] 会话计数用**重算**而非累加：重复提交同一题不超计
 - [ ] 错题本**排除未判分**、按题去重并给出 `wrong_count`
+- [ ] 错题本条目**下发** `dimension` / `question_type`，且**与两个筛选参数同源**（拿响应里的值再筛，必然非空）
 - [ ] 统计正确率的分母是**已判分**数；全部未判分时 `accuracy` 为 `null`
 - [ ] 结束练习幂等；结束后不可再作答
 - [ ] 重判仅对未判分项生效；已判分项重判幂等且不重复调用 AI

@@ -109,20 +109,24 @@ function sessionDetail(over = {}) {
 }
 
 const WRONG_BOOK = [
-  {   // 单选的错题：options 非空 → 判为单选并渲染复盘
+  {   // 单选的错题：options 非空 → 渲染复盘（标出正确答案与我选错的）
     question_id: 21,
     content: 'HTTP 状态码 403 表示什么？',
     options: ['未认证', '无权限', '资源不存在', '服务器错误'],
+    dimension: '专业能力',
+    question_type: 'single_choice',
     reference_answer: '无权限',
     explanation: '403 是已认证但没有权限。',
     my_wrong_answer: '未认证',
     wrong_count: 2,
     last_wrong_at: '2026-09-21T14:30:00',
   },
-  {   // 简答的错题：options 为空数组 → 判为简答
+  {   // 简答的错题：options 为空数组，且题型来自 question_type 字段
     question_id: 22,
     content: '说说你对幂等性的理解。',
     options: [],
+    dimension: '沟通能力',
+    question_type: 'short_answer',
     reference_answer: '同一请求重复执行，结果一致。',
     explanation: null,
     my_wrong_answer: '',
@@ -239,7 +243,19 @@ function handlers() {
       },
     }),
 
-    'GET /practice/wrong-book': () => ({ status: 200, body: flags.wrongBook }),
+    // 两个筛选参数**真的过滤**（后端就是这么做），这样「下拉里给出的值必然筛得出结果」
+    // 这条断言才测的是真行为
+    'GET /practice/wrong-book': ({ query }) => {
+      const params = new URLSearchParams(query);
+      const dimension = params.get('dimension');
+      const questionType = params.get('question_type');
+      return {
+        status: 200,
+        body: flags.wrongBook.filter((row) =>
+          (!dimension || row.dimension === dimension)
+          && (!questionType || row.question_type === questionType)),
+      };
+    },
     'GET /practice/stats': () => ({ status: 200, body: flags.stats }),
   };
 }
@@ -580,16 +596,58 @@ report.run(async () => {
     itemAt(0).querySelector('.option-list')?.textContent);
   check('简答题的错题显示我的作答与参考答案',
     itemAt(1).textContent.includes('同一请求重复执行，结果一致'));
-  check('题型由 options 是否为空判定（简答题的 options 必为空数组）',
-    itemAt(0).querySelector('.tag--off')?.textContent === '单选'
+
+  /* ---------- 15b. 维度 / 题型：下发得出来，也筛得动 ---------- */
+  // 这两条以前做不到：`WrongBookItem` 不下发 dimension / question_type，
+  // 于是下拉只有「不限」一项、条目上是一排空标签
+  const wrongDim = [...page().querySelectorAll('.filterbar .select')][0];
+  const wrongType = [...page().querySelectorAll('.filterbar .select')][1];
+  check('维度下拉的候选值取自**响应本身**（不是写死的清单）',
+    [...wrongDim.options].map((o) => o.textContent.trim()).join(',') === '不限维度,沟通能力,专业能力',
+    [...wrongDim.options].map((o) => o.textContent.trim()).join(','));
+  check('题型下拉同样取自响应，用候选人侧的短名，且**按显示文案排序**',
+    // 按原始枚举排会得到「简答、单选」（s-h < s-i），在中文界面里看不出道理；
+    // 按文案排才与刷题页的题型下拉一致
+    [...wrongType.options].map((o) => o.textContent.trim()).join(',') === '不限题型,单选,简答',
+    [...wrongType.options].map((o) => o.textContent.trim()).join(','));
+  check('条目上标出了维度与题型（不再是空标签）',
+    itemAt(0).querySelector('.tag--dim')?.textContent === '专业能力'
+      && itemAt(0).querySelector('.tag--off')?.textContent === '单选'
       && itemAt(1).querySelector('.tag--off')?.textContent === '简答',
-    `${itemAt(0).querySelector('.tag--off')?.textContent} / ${itemAt(1).querySelector('.tag--off')?.textContent}`);
-  check('错题本**不渲染空的维度/题型下拉**（WrongBookItem 没有这两个字段，无从取值）',
-    !has('.filterbar'), has('.filterbar') ? '仍在渲染筛选栏' : 'ok');
+    `${itemAt(0).querySelector('.tag--dim')?.textContent} / ${itemAt(0).querySelector('.tag--off')?.textContent}`);
+  check('首次渲染不算筛选，计数直接给出总数',
+    page().querySelector('.filterbar .meta')?.textContent === '共 2 道',
+    page().querySelector('.filterbar .meta')?.textContent);
+
+  backend.reset();
+  wrongDim.value = '专业能力';
+  wrongDim.dispatchEvent(new Event('change'));
+  await settle();
+  await settle();
+  check('筛选走后端：请求带上 dimension 参数（带前端的过滤会与「共几道」各说各话）',
+    (lastCall('GET', '/practice/wrong-book')?.query ?? '').includes('dimension=%E4%B8%93%E4%B8%9A%E8%83%BD%E5%8A%9B'),
+    String(lastCall('GET', '/practice/wrong-book')?.query));
+  check('筛「专业能力」→ 只剩那道单选，且计数跟着变',
+    all('.practice-item').length === 1
+      && page().querySelector('.filterbar .meta')?.textContent === '共 1 道',
+    `${all('.practice-item').length} / ${page().querySelector('.filterbar .meta')?.textContent}`);
+
+  backend.reset();
+  wrongType.value = 'short_answer';
+  wrongType.dispatchEvent(new Event('change'));
+  await settle();
+  await settle();
+  check('两个筛选条件是 AND 关系（维度=专业能力 且 题型=简答 → 没有交集）',
+    text().includes('当前筛选条件下没有错题'), text().includes('当前筛选条件下没有错题') ? 'ok' : '缺空态');
+  check('筛空时计数不显示数字（不是「共 0 道」这种容易被读成「你没有错题」的说法）',
+    page().querySelector('.filterbar .meta')?.textContent === '',
+    page().querySelector('.filterbar .meta')?.textContent);
 
   flags.wrongBook = [];
   await go('#/candidate/wrong-book');
-  check('没有错题 → 空态给「去刷题」', text().includes('还没有错题') && buttonIn(page(), '去刷题') !== undefined);
+  check('一道错题都没有 → 空态给「去刷题」，且**不渲染筛选栏**',
+    text().includes('还没有错题') && !has('.filterbar'),
+    has('.filterbar') ? '仍在渲染筛选栏' : 'ok');
   flags.wrongBook = WRONG_BOOK;
 
   /* ---------- 16. 练习统计 ---------- */

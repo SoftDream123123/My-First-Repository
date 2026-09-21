@@ -701,6 +701,9 @@ def list_wrong_book(
             question_id=item.question_id,
             content=item.content_snapshot,
             options=list(item.options_snapshot or []),
+            # 与两个筛选参数读的是同两列，所以「筛出来的」与「标出来的」必然一致
+            dimension=item.dimension_snapshot,
+            question_type=item.question_type,
             reference_answer=item.reference_answer_snapshot,
             explanation=item.explanation,
             my_wrong_answer=item.user_answer or "",

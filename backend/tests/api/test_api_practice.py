@@ -677,6 +677,90 @@ def test_wrong_book_lists_wrong_answers_with_content(client, candidate_headers, 
     assert row["last_wrong_at"] is not None
 
 
+def _wrong_once(client, headers, session, monkeypatch, question_type):
+    """把会话里指定题型的第一道题答错，返回 (题目 id, item_id)。
+
+    注意 `session` 是 `PracticeSessionDetail`（夹具返回的是 schema，不是 ORM 行），
+    会话 id 在 `session.session.id` 上。
+    """
+    _use_provider(
+        monkeypatch,
+        _GradingProvider(grade=PracticeGradeResult(score=0.0, is_correct=False, explanation="答错了")),
+    )
+    item = next(i for i in _items_of(client, headers, session.session.id)
+                if i["question"]["question_type"] == question_type)
+    _submit(client, headers, session.session.id, item["item_id"], "一定不对的作答")
+    return item["question"]["id"], item["item_id"]
+
+
+def test_wrong_book_returns_dimension_and_type(client, candidate_headers, practice_session, monkeypatch):
+    """⚠️ 条目必须带 `dimension` / `question_type`（2026-09-21 补）。
+
+    端点的两个筛选参数就是它们。不下发的话，前端既取不到筛选下拉的候选值、
+    也没法在条目上标出维度与题型 —— 两个筛选项会沦为只有「不限」一项的空壳。
+    """
+    question_id, _ = _wrong_once(client, candidate_headers, practice_session, monkeypatch, "single_choice")
+
+    rows = client.get("/api/practice/wrong-book", headers=candidate_headers).json()
+
+    row = next(r for r in rows if r["question_id"] == question_id)
+    assert row["dimension"] == "沟通能力"
+    assert row["question_type"] == "single_choice"
+
+
+def test_wrong_book_filter_values_are_filterable(client, candidate_headers, practice_session, monkeypatch):
+    """⚠️ 钉住**「筛选与下发同源」** —— 拿响应里给出的值再筛一次，结果必须非空。
+
+    这一条是「空壳下拉」的直接反例：前端就是靠响应里的值去填那两个下拉的，
+    若下发值与筛选读的不是同一列，这里立刻会拿到空数组。
+    """
+    _wrong_once(client, candidate_headers, practice_session, monkeypatch, "single_choice")
+
+    rows = client.get("/api/practice/wrong-book", headers=candidate_headers).json()
+    dimension = rows[0]["dimension"]
+    question_type = rows[0]["question_type"]
+
+    by_dimension = client.get(
+        "/api/practice/wrong-book", params={"dimension": dimension}, headers=candidate_headers
+    ).json()
+    by_type = client.get(
+        "/api/practice/wrong-book", params={"question_type": question_type}, headers=candidate_headers
+    ).json()
+
+    assert by_dimension, f"用响应里给出的 dimension（{dimension}）筛出了空结果"
+    assert by_type, f"用响应里给出的 question_type（{question_type}）筛出了空结果"
+
+
+def test_wrong_book_filters_by_dimension_and_question_type(
+    client, candidate_headers, practice_session, monkeypatch
+):
+    """两个筛选参数各自生效（此前**从未**有 HTTP 用例覆盖它们）。
+
+    题库夹具里单选属「沟通能力」、简答属「专业能力」，因此两个维度正好能区分开。
+    """
+    _wrong_once(client, candidate_headers, practice_session, monkeypatch, "single_choice")
+    _wrong_once(client, candidate_headers, practice_session, monkeypatch, "short_answer")
+
+    everything = client.get("/api/practice/wrong-book", headers=candidate_headers).json()
+    assert len(everything) == 2, "不筛时两道错题都在"
+
+    only_choice = client.get(
+        "/api/practice/wrong-book", params={"dimension": "沟通能力"}, headers=candidate_headers
+    ).json()
+    assert [r["dimension"] for r in only_choice] == ["沟通能力"]
+    assert [r["question_type"] for r in only_choice] == ["single_choice"]
+
+    only_short = client.get(
+        "/api/practice/wrong-book", params={"question_type": "short_answer"}, headers=candidate_headers
+    ).json()
+    assert [r["question_type"] for r in only_short] == ["short_answer"]
+
+    # 负例：筛一个不存在的维度 → 空数组（证明这个参数真的在起作用，而不是被忽略）
+    assert client.get(
+        "/api/practice/wrong-book", params={"dimension": "不存在的维度"}, headers=candidate_headers
+    ).json() == []
+
+
 def test_wrong_book_excludes_unscored_items(client, candidate_headers, practice_session, monkeypatch):
     """⚠️ **未判分的题不进错题本** —— `is_correct` 为 `null` 不等于答错。"""
     _use_provider(monkeypatch, _FailingGradeProvider())

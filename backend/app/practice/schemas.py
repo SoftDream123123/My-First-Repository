@@ -138,11 +138,17 @@ class WrongBookItem(BaseModel):
 
     按 question_id 去重：同一道题练错多次只出现一行，并给出 wrong_count。
     逐条罗列会让错题本被同一道题刷屏，失去「该复习哪些题」的作用。
+
+    dimension / question_type 是**2026-09-21 补的**：该端点一直接受这两个筛选参数，
+    却不下发对应字段，于是前端既取不到筛选下拉的候选值、也没法在条目上标出它们。
+    两者与筛选读的是同一列（快照列），因此「筛出来的」与「标出来的」必然一致。
     """
 
     question_id: int
     content: str
     options: list[str]
+    dimension: str
+    question_type: str
     reference_answer: str | None
     explanation: str | None
     my_wrong_answer: str

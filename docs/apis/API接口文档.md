@@ -2701,6 +2701,10 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 
 **查询参数**：`position_id`、`dimension`、`question_type`、`limit`（**≤200**，默认 `50`）。
 
+> **`dimension` 与 `question_type` 读的是题目快照列**，条目里下发的同名字段也读这两列 ——
+> **同源**，因此「下拉里给出的值」必然能筛出结果，不会出现选了却空的情形。
+> 只有 `position_id` 是实时口径（`practice_item` 未快照岗位），它也不在条目里下发。
+
 **响应 `200`** —— 错题数组（[§13.24](#1324-wrongbookitem)），按最后答错时间**降序**。
 
 ```json
@@ -2709,6 +2713,8 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
     "question_id": 12,
     "content": "HTTP 状态码 401 表示什么？",
     "options": ["未认证", "未授权", "资源不存在", "服务器错误"],
+    "dimension": "专业能力",
+    "question_type": "single_choice",
     "reference_answer": "未认证",
     "explanation": "…",
     "my_wrong_answer": "未授权",
@@ -3233,6 +3239,8 @@ HR 读到的候选人简历（[§8.16](#816-读取面试关联的简历)）。
 | `question_id` | integer | 去重键 |
 | `content` | string | 题干 |
 | `options` | string[] | |
+| `dimension` | string | 维度（取最近一次的 `dimension_snapshot`） |
+| `question_type` | string | `single_choice` \| `short_answer`（取最近一次的快照） |
 | `reference_answer` | string \| null | |
 | `explanation` | string \| null | |
 | `my_wrong_answer` | string | **最近一次**的错误作答 |
@@ -3240,6 +3248,14 @@ HR 读到的候选人简历（[§8.16](#816-读取面试关联的简历)）。
 | `last_wrong_at` | datetime \| null | 最后答错时间 |
 
 > **未判分的题不进错题本**（`is_correct` 为 `null` 不算错）。
+>
+> ⚠️ **`dimension` / `question_type` 是 2026-09-21 补的。** 该端点一直接受这两个筛选
+> 参数（§12.8），却不下发对应字段 —— 前端据此填不出筛选下拉，也没法在条目上标出
+> 维度与题型。**下发值与筛选读的是同两列**，因此拿响应里给出的值再筛一次必然非空
+> （由 `test_wrong_book_filter_values_are_filterable` 钉住）。
+>
+> 另：`options` 为空数组 ⟺ 简答题（题干创建时就不允许简答带选项，§7.1），
+> 因此题型也可以由它推出来 —— 但那是**备用**判据，以 `question_type` 为准。
 
 ### 13.25 PracticeStats
 
