@@ -1,9 +1,11 @@
 /**
- * 登录页（module-07 §5.1）。
+ * pages/login.js —— HR 工作台登录
  *
- * 不套用外壳。左侧是英雄区 —— 不用"大数字 + 渐变"的默认套路，
- * 而是直接展示产品真实产出的一个片段：一次评估的结论。
- * 这是最能说明"这东西干什么用"的东西。
+ * 不套用外壳。左栏展示产品的真实流程（出题 → 记录 → 评估 → 报告）——
+ * 这是最能说明「这东西干什么用」的东西，而且它本身就是产品的结构。
+ *
+ * ⚠️ **登录端点三个角色共用一个**（API 文档 §5.1）。返回的 `user.role` 决定该去
+ * 哪一端，因此这里必须按角色分流，不能默认来者都是 HR。
  */
 
 import { el, mount } from '../dom.js';
@@ -11,91 +13,63 @@ import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
 import { fieldError, fieldErrors } from '../components/form.js';
-import { navigate } from '../components/shell.js';
+import { navigate, defaultRoute } from '../router.js';
 
-const SAMPLE_BARS = [
-  { label: '沟通能力', score: 8.0 },
-  { label: '专业能力', score: 7.5 },
-  { label: '逻辑思维', score: 7.0 },
-  { label: '文化契合', score: 6.3 },
+const FLOW = [
+  { label: '出题', text: '选岗位，从题库按评估维度抽题，AI 再按 JD 补几道。' },
+  { label: '记录', text: '逐题录入候选人的回答；也可以发一张邀请码，让候选人自己在线作答。' },
+  { label: '评估', text: '逐题打分、按维度打分，结果流式返回，边评边看。' },
+  { label: '报告', text: '汇总总分、结论与优劣势，导出 DOCX，或打印成 PDF。' },
 ];
 
-function buildIntro() {
+function buildAside() {
   return el(
     'section',
-    { class: 'login-intro' },
-    el('div', { class: 'login-brand', text: '面试助手' }),
-
-    // 句式落到用户视角：AI 做的是出题、记录、评估；决定由人来做
-    el('h1', {
-      class: 'login-claim',
-      style: 'margin-bottom:0',
-    }, 'AI 出题、记录、评估，', el('em', { text: '你来决定' }), '。'),
-
+    { class: 'login-aside' },
+    el('div', { class: 'login-mark', text: '面试助手' }),
+    el('div', { class: 'login-mark-sub', text: 'HR 工作台' }),
+    el('h1', { class: 'login-claim' },
+      el('span', { text: '一场面试，从出题到报告，' }),
+      el('span', { text: '在同一处走完。' }),
+    ),
     el(
-      'div',
-      { class: 'login-sample' },
-      el(
-        'div',
-        { class: 'login-sample-head' },
-        el('span', { class: 'score score--hero', text: '7.2' }),
+      'ol',
+      { class: 'login-flow' },
+      FLOW.map((item, index) =>
         el(
-          'div',
-          {},
-          el('span', { class: 'login-sample-name', text: '张书宁' }),
-          el('span', { class: 'login-sample-note', text: '后端工程师，8 道题' }),
-        ),
-      ),
-      el(
-        'div',
-        { class: 'login-bars' },
-        SAMPLE_BARS.map((bar) =>
+          'li',
+          { class: 'login-flow-item' },
+          el('span', { class: 'login-flow-index', text: String(index + 1) }),
           el(
             'div',
-            { class: 'login-bar' },
-            el('span', { text: bar.label }),
-            el(
-              'div',
-              { class: 'login-bar-track' },
-              el('div', { class: 'login-bar-fill', style: `width:${bar.score * 10}%` }),
-            ),
-            el('span', { class: 'num', text: bar.score.toFixed(1) }),
+            {},
+            el('div', { class: 'login-flow-label', text: item.label }),
+            el('p', { class: 'login-flow-text', text: item.text }),
           ),
         ),
       ),
     ),
+    el('p', { class: 'login-aside-foot', text: '数据与模型调用都留在本机，不经过外部服务。' }),
   );
 }
 
-function buildForm(onSubmit) {
+function buildForm() {
   const username = el('input', {
-    class: 'input',
-    id: 'login-username',
-    name: 'username',
-    maxlength: '50',
-    autocomplete: 'username',
+    class: 'input', id: 'login-username', maxlength: '50', autocomplete: 'username',
   });
   const usernameError = fieldError();
 
   const password = el('input', {
-    class: 'input',
-    id: 'login-password',
-    name: 'password',
-    type: 'password',
-    maxlength: '128',
+    class: 'input', id: 'login-password', type: 'password', maxlength: '128',
     autocomplete: 'current-password',
   });
   const passwordError = fieldError();
 
   const errors = fieldErrors({ username: usernameError, password: passwordError });
 
-  const submit = el('button', {
-    class: 'btn btn--primary btn--wide',
-    type: 'submit',
-    text: '登录',
-  });
+  const submit = el('button', { class: 'btn btn--primary btn--wide', type: 'submit', text: '登录' });
 
-  const form = el(
+  return el(
     'form',
     {
       class: 'login-form',
@@ -103,23 +77,29 @@ function buildForm(onSubmit) {
         event.preventDefault();
         errors.clear();
 
-        if (!username.value.trim()) {
-          errors.show('username', '请填写用户名');
-          username.focus();
-          return;
-        }
-        if (!password.value) {
-          errors.show('password', '请填写密码');
-          password.focus();
-          return;
-        }
+        if (!username.value.trim()) { errors.show('username', '请填写用户名'); username.focus(); return; }
+        if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
 
         submit.disabled = true;
         submit.textContent = '登录中…';
         try {
-          await onSubmit(username.value, password.value);
+          const result = await api.post('/auth/login', {
+            username: username.value.trim(),
+            password: password.value,
+          });
+
+          // 候选人账号在 HR 登录页登录：本页只发 HR 工作台的入口。
+          // 这里**不保存登录态** —— 候选人端页面尚未落地，存下来也无处可去，
+          // 反而会让人以为自己已经进了某个界面。
+          if (result.user?.role === 'candidate') {
+            toast.error('这是 HR 工作台。候选人端尚未上线，暂时无法进入。');
+            return;
+          }
+
+          auth.saveToken(result.token, result.user);
+          navigate(defaultRoute('hr', auth.isAdmin()));
         } catch (error) {
-          // 400 落到字段；「用户名或密码错误」这类业务错误仍用后端文案提示
+          // 400 落到字段；「用户名或密码错误」这类业务错误用后端文案提示
           if (!errors.fromServer(error)) toast.error(error.message);
         } finally {
           submit.disabled = false;
@@ -127,9 +107,8 @@ function buildForm(onSubmit) {
         }
       },
     },
-    el('h2', { class: 'login-form-title', text: '登录' }),
-    el('p', { class: 'hint', style: 'margin-bottom:24px' }, '用管理员分配给你的账号登录。'),
-
+    el('h2', { text: '登录' }),
+    el('p', { class: 'login-card-lede', text: '用管理员分配给你的账号登录。' }),
     el(
       'div',
       { class: 'field' },
@@ -144,29 +123,14 @@ function buildForm(onSubmit) {
       password,
       passwordError,
     ),
-
     submit,
+    el('p', { class: 'note-box' }, '演示账号：admin / admin12345'),
   );
-
-  return form;
 }
 
 export function render(container) {
-  const root = el(
-    'div',
-    { class: 'login' },
-    buildIntro(),
-    el(
-      'section',
-      { class: 'login-form-side' },
-      // 错误交给 buildForm 统一处理：400 落到字段，其余用后端 message
-      buildForm(async (username, password) => {
-        const result = await api.post('/auth/login', { username, password });
-        auth.saveToken(result.token, result.user);
-        navigate('/interviews');
-      }),
-    ),
+  mount(
+    container,
+    el('div', { class: 'login' }, buildAside(), el('section', { class: 'login-main' }, el('div', { class: 'login-card' }, buildForm()))),
   );
-
-  mount(container, root);
 }

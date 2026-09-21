@@ -1,8 +1,7 @@
 /**
- * 用户管理（module-07 §5.7，仅 admin）。
+ * pages/users.js —— 用户管理（仅 admin）
  *
- * PRD §4.1 与 §8 定义了 /users 端点；若前端没有这个页面，
- * admin 就没有任何途径创建 HR 账号，该功能实际不可用。
+ * 若前端没有这个页面，admin 就没有任何途径创建 HR 账号，该功能实际不可用。
  */
 
 import { el, mount } from '../dom.js';
@@ -10,36 +9,24 @@ import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
 import { confirmModal, openModal } from '../components/modal.js';
-import {
-  contextTitle,
-  createShell,
-  emptyState,
-  formatDate,
-  loadingBlock,
-} from '../components/shell.js';
+import { contextTitle, createShell, emptyState, formatDate, loadingBlock } from '../components/shell.js';
 
 const ROLE_LABELS = { admin: '管理员', hr: 'HR' };
 
 function openCreateModal(onSaved) {
   const usernameInput = el('input', {
-    class: 'input',
-    id: 'user-username',
-    maxlength: '50',
-    autocomplete: 'off',
+    class: 'input', id: 'user-username', maxlength: '50', autocomplete: 'off',
   });
   const usernameError = el('p', { class: 'field-error', hidden: true });
 
   // maxlength 与后端的 8–128 对齐：超长输入在浏览器里就被挡住，
   // 而不是提交后才拿一个「请求参数不合法」——后者说不清是哪个字段。
   const passwordInput = el('input', {
-    class: 'input',
-    id: 'user-password',
-    type: 'password',
-    maxlength: '128',
-    autocomplete: 'new-password',
+    class: 'input', id: 'user-password', type: 'password', maxlength: '128', autocomplete: 'new-password',
   });
   const passwordError = el('p', { class: 'field-error', hidden: true });
 
+  // role 只接受 hr / admin —— candidate 不在枚举里（API 文档 §5.3）
   const roleSelect = el(
     'select',
     { class: 'select', id: 'user-role' },
@@ -48,34 +35,23 @@ function openCreateModal(onSaved) {
   );
   const roleError = el('p', { class: 'field-error', hidden: true });
 
-  // 字段名 → 错误节点。前端本地校验与后端 400 的 detail.fields 走同一条展示路径，
-  // 所以「哪个字段错了」这件事只有一个出口（API 文档 §12.1）。
-  const errorNodes = { username: usernameError, password: passwordError, role: roleError };
+  const errors = { username: usernameError, password: passwordError, role: roleError };
 
   function clearErrors() {
-    for (const node of Object.values(errorNodes)) {
-      node.textContent = '';
-      node.hidden = true;
-    }
+    for (const node of Object.values(errors)) { node.textContent = ''; node.hidden = true; }
   }
-
   function showError(field, message) {
-    const node = errorNodes[field];
+    const node = errors[field];
     if (!node) return false;
     node.textContent = message;
     node.hidden = false;
     return true;
   }
-
-  /** 后端 400 → 落到具体表单项。命中返回 true，调用方就不再弹通用 toast。 */
   function applyServerFieldErrors(error) {
     const fields = error.detail?.fields;
     if (error.code !== 'VALIDATION_ERROR' || !Array.isArray(fields)) return false;
-
     let matched = false;
-    for (const item of fields) {
-      if (showError(item.field, item.message)) matched = true;
-    }
+    for (const item of fields) if (showError(item.field, item.message)) matched = true;
     return matched;
   }
 
@@ -119,26 +95,13 @@ function openCreateModal(onSaved) {
 
   submit.addEventListener('click', async () => {
     clearErrors();
-
     const username = usernameInput.value.trim();
-    if (!username) {
-      showError('username', '请填写用户名');
-      usernameInput.focus();
-      return;
-    }
-    if (passwordInput.value.length < 8) {
-      showError('password', '密码长度不能少于 8 位');
-      passwordInput.focus();
-      return;
-    }
+    if (!username) { showError('username', '请填写用户名'); usernameInput.focus(); return; }
+    if (passwordInput.value.length < 8) { showError('password', '密码长度不能少于 8 位'); passwordInput.focus(); return; }
 
     handle.setBusy(true);
     try {
-      await api.post('/users', {
-        username,
-        password: passwordInput.value,
-        role: roleSelect.value,
-      });
+      await api.post('/users', { username, password: passwordInput.value, role: roleSelect.value });
       handle.close();
       toast.success('用户已创建');
       onSaved();
@@ -176,14 +139,12 @@ export async function render(container) {
   }
 
   /**
-   * 降级与禁用都先二次确认 —— 二者都会**立刻拿走对方已有的东西**：
-   * 降级后对方看不到他人的数据，禁用则当场把对方踢下线。误点的代价
-   * 由被操作的人承担，所以照项目里删除岗位 / 题目的做法先问一句。
-   * 升为管理员与启用不确认：它们是给回权限，不拿走任何东西。
+   * 降级与禁用都先二次确认 —— 二者都会立刻拿走对方已有的东西：
+   * 降级后对方看不到他人数据，禁用则当场把人踢下线。误点的代价由被
+   * 操作的人承担。升为管理员与启用不确认：它们是给回权限，不拿走东西。
    */
   async function changeRole(user) {
     const toHr = user.role === 'admin';
-
     if (toHr) {
       const ok = await confirmModal({
         title: `将「${user.username}」降为 HR？`,
@@ -192,7 +153,6 @@ export async function render(container) {
       });
       if (!ok) return;
     }
-
     mutate(user.id, { role: toHr ? 'hr' : 'admin' }, '角色已更新');
   }
 
@@ -205,18 +165,12 @@ export async function render(container) {
       });
       if (!ok) return;
     }
-
-    mutate(
-      user.id,
-      { is_active: !user.is_active },
-      user.is_active ? '账号已禁用' : '账号已启用',
-    );
+    mutate(user.id, { is_active: !user.is_active }, user.is_active ? '账号已禁用' : '账号已启用');
   }
 
   function buildRow(user) {
-    // 当前登录用户那一行禁用操作 —— 后端也会拒绝，前端提前避免误操作
+    // 当前登录用户那一行禁用操作 —— 后端也会拒绝（409），前端提前避免误操作
     const isSelf = user.id === me?.id;
-
     return el(
       'tr',
       {},
@@ -226,19 +180,11 @@ export async function render(container) {
         el('strong', { text: user.username }),
         isSelf ? el('span', { class: 'mine-badge', text: '（你自己）' }) : null,
       ),
-      el(
-        'td',
-        {},
-        el('span', { class: 'tag tag--dim', text: ROLE_LABELS[user.role] ?? user.role }),
-      ),
-      el(
-        'td',
-        {},
-        el('span', {
-          class: `tag ${user.is_active ? 'tag--evaluated' : 'tag--completed'}`,
-          text: user.is_active ? '已启用' : '已禁用',
-        }),
-      ),
+      el('td', {}, el('span', { class: 'tag tag--dim', text: ROLE_LABELS[user.role] ?? user.role })),
+      el('td', {}, el('span', {
+        class: `tag ${user.is_active ? 'tag--evaluated' : 'tag--off'}`,
+        text: user.is_active ? '已启用' : '已禁用',
+      })),
       el('td', { class: 'meta', text: formatDate(user.created_at) }),
       el(
         'td',
@@ -269,7 +215,7 @@ export async function render(container) {
       el(
         'div',
         {},
-        el('h1', { class: 'h-page', text: '用户管理' }),
+        el('h1', { text: '用户管理' }),
         el('p', { class: 'page-lede' }, 'HR 只能看到自己创建的岗位、题目和面试；管理员可以看到全部数据。'),
       ),
       el(
@@ -282,7 +228,6 @@ export async function render(container) {
         }),
       ),
     ),
-
     el(
       'div',
       { class: 'panel' },

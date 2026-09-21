@@ -1,654 +1,91 @@
 /* ==========================================================================
-   页面级布局
+   页面层
+   与组件层同一条规矩：只放**已经落地的页面**。评估报告、准备助手、候选人端
+   那几个页面的规则，在它们各自的模块里追加到本文件。
    ========================================================================== */
 
-/* ============================== 登录页 ============================== */
-/* 不套用外壳。左侧是"英雄"——不是大数字加渐变的默认套路，
-   而是产品真实产出的一个片段：一份迷你评估结论。 */
-
+/* ---- 登录页：左侧是产品的真实流程，右侧是表单 ---- */
 .login {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: minmax(500px, 46%) 1fr;
   min-height: 100vh;
 }
-
-.login-intro {
-  background: var(--ink);
+.login-aside {
+  background: var(--navy);
   color: #fff;
-  padding: var(--s8) var(--s7);
+  padding: var(--s9) var(--s8);
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
-
-.login-brand {
-  font-size: var(--t-lg);
-  font-weight: 600;
-  margin-bottom: var(--s3);
-}
-
-.login-claim {
+.login-mark {
   font-size: var(--t-xl);
-  font-weight: 400;
-  line-height: 1.5;
-  max-width: 18em;
-  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
-
-.login-claim em {
-  font-style: normal;
-  background: var(--marker);
-  color: var(--ink);
-  padding: 0 4px;
-}
-
-/* 产品真实产出的一份迷你片段 */
-.login-sample {
-  margin-top: var(--s7);
-  max-width: 380px;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-  padding-top: var(--s5);
-}
-
-.login-sample-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  margin-bottom: var(--s5);
-}
-
-.login-sample .score--hero {
-  color: var(--marker);
-}
-
-.login-sample-name {
-  display: block;
-  font-size: var(--t-base);
-  color: #fff;
-}
-
-.login-sample-note {
-  display: block;
-  font-size: var(--t-sm);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.login-bars {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-}
-
-.login-bar {
-  display: grid;
-  grid-template-columns: 5em 1fr 2.5em;
-  align-items: center;
-  gap: var(--s3);
-  font-size: var(--t-sm);
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.login-bar-track {
-  height: 3px;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.login-bar-fill {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.login-bar .num {
-  text-align: right;
-}
-
-.login-form-side {
-  display: flex;
-  align-items: center;
-  padding: var(--s8) var(--s7);
-  background: var(--surface);
-}
-
-.login-form {
-  width: 100%;
-  max-width: 340px;
-}
-
-.login-form-title {
-  font-size: var(--t-xl);
-  font-weight: 600;
-  margin-bottom: var(--s2);
-}
-
-/* ========================= 面试详情：两栏 ========================= */
-/* 真实面试是一题一题走的，长滚动列表是错的。
-   左侧定位"到哪了"，右侧专注当前一题。 */
-
-.detail-layout {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: var(--s5);
-  align-items: start;
-}
-
-.qnav {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-surface);
-  overflow: hidden;
-  position: sticky;
-  top: calc(var(--topbar-h) + var(--s5));
-}
-
-.qnav-head {
-  padding: var(--s3) var(--s4);
-  border-bottom: 1px solid var(--line);
-  font-size: var(--t-sm);
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.qnav-count {
-  margin-left: auto;
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-}
-
-.qnav-list {
-  list-style: none;
-  padding: var(--s2);
-  margin: 0;
-}
-
-.qnav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  width: 100%;
-  padding: var(--s2) var(--s3);
-  border: none;
-  background: none;
-  border-radius: var(--r-control);
-  cursor: pointer;
-  text-align: left;
-  border-left: 3px solid transparent;
-  color: var(--muted);
-  transition: background 120ms ease;
-}
-
-.qnav-item:hover {
-  background: var(--ground);
-}
-
-/* 序号在这里是真实顺序（seq 1..8），不是装饰 */
-.qnav-num {
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--t-sm);
-  color: var(--faint);
-  min-width: 1.2em;
-}
-
-.qnav-item.is-answered .qnav-num {
-  color: var(--pass);
-}
-
-.qnav-dim {
-  font-size: var(--t-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 当前题：荧光笔标记 */
-.qnav-item.is-current {
-  background: var(--marker-wash);
-  border-left-color: var(--marker);
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.qnav-item.is-current .qnav-num {
-  color: var(--ink);
-}
-
-.qnav-mark {
-  margin-left: auto;
-  font-size: var(--t-xs);
-  color: var(--faint);
-}
-
-.qnav-item.is-answered .qnav-mark {
-  color: var(--pass);
-}
-
-/* ---------------------------- 单题编辑器 ---------------------------- */
-
-.editor {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-surface);
-  padding: var(--s5);
-}
-
-.editor-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  margin-bottom: var(--s4);
-}
-
-.editor-seq {
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--t-lg);
-  color: var(--faint);
-}
-
-.editor-question {
-  font-size: var(--t-lg);
-  line-height: 1.7;
-  color: var(--ink);
-  max-width: var(--measure);
-  margin-bottom: var(--s5);
-  padding-bottom: var(--s5);
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.editor-answer-label {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  margin-bottom: var(--s2);
-}
-
-.editor-answer-label .field-label {
-  margin-bottom: 0;
-}
-
-.editor-answer-label .save-state {
-  margin-left: auto;
-}
-
-.editor .textarea {
-  min-height: 220px;
-}
-
-.editor-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  margin-top: var(--s4);
-}
-
-.editor-actions .hint {
-  margin-left: auto;
-}
-
-.editor-pager {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--s5);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--line-soft);
-}
-
-/* ============================ 评估报告 ============================ */
-
-.report-hero {
-  display: grid;
-  /* 雷达列给固定宽度，画布才能贴着列宽而不是在宽列里浮着 */
-  grid-template-columns: minmax(300px, 1fr) 400px;
-  gap: var(--s5);
-  align-items: center;
-  padding: var(--s5);
-}
-
-.report-verdict {
-  max-width: 24em;
-}
-
-.report-score-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s3);
-  margin-bottom: var(--s3);
-}
-
-.report-score-unit {
-  font-size: var(--t-base);
-  color: var(--faint);
-}
-
-.report-conclusion {
-  font-size: var(--t-lg);
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
-.report-radar {
-  display: flex;
-  justify-content: center;
-}
-
-/* 维度明细：横向条，颜色编码分数 */
-.dim-row {
-  display: grid;
-  grid-template-columns: 7em 1fr 3em;
-  align-items: center;
-  gap: var(--s4);
-  padding: var(--s3) 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.dim-row:last-child {
-  border-bottom: none;
-}
-
-.dim-name {
-  font-size: var(--t-base);
-}
-
-.dim-track {
-  height: 6px;
-  background: var(--ground);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.dim-fill {
-  height: 100%;
-  border-radius: 3px;
-}
-
-.dim-fill.is-pass {
-  background: var(--pass);
-}
-
-.dim-fill.is-watch {
-  background: var(--watch);
-}
-
-.dim-comment {
-  grid-column: 1 / -1;
-  font-size: var(--t-sm);
-  color: var(--muted);
-  margin-top: calc(var(--s2) * -1);
-}
-
-/* 优势 / 待改进 */
-.findings {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s5);
-}
-
-.findings-title {
-  font-size: var(--t-sm);
-  font-weight: 600;
-  margin-bottom: var(--s3);
-}
-
-.findings-title.is-pass {
-  color: var(--pass);
-}
-
-.findings-title.is-watch {
-  color: var(--watch);
-}
-
-.findings-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
-
-.findings-list li {
-  font-size: var(--t-base);
-  line-height: 1.6;
-  padding-left: var(--s4);
-  position: relative;
-  color: var(--ink-soft);
-}
-
-.findings-list li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.62em;
-  width: 6px;
-  height: 6px;
-  border-radius: 2px;
-}
-
-.findings-list--pass li::before {
-  background: var(--pass);
-}
-
-.findings-list--watch li::before {
-  background: var(--watch);
-}
-
-/* 逐题明细：可展开 */
-.qscore {
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.qscore:last-child {
-  border-bottom: none;
-}
-
-.qscore-head {
-  display: grid;
-  grid-template-columns: 2em 1fr auto;
-  align-items: center;
-  gap: var(--s4);
-  width: 100%;
-  padding: var(--s4) var(--s5);
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.qscore-head:hover {
-  background: #fafbfc;
-}
-
-.qscore-seq {
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-  color: var(--faint);
-}
-
-.qscore-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
-}
-
-.qscore-body {
-  padding: 0 var(--s5) var(--s5) calc(var(--s5) + 2em + var(--s4));
-}
-
-.qscore-block {
-  margin-bottom: var(--s3);
-}
-
-.qscore-block:last-child {
-  margin-bottom: 0;
-}
-
-.qscore-label {
-  font-size: var(--t-xs);
-  color: var(--faint);
-  margin-bottom: var(--s1);
-}
-
-.qscore-answer {
-  background: var(--ground);
-  border-radius: var(--r-control);
-  padding: var(--s3) var(--s4);
-  font-size: var(--t-base);
-  line-height: 1.7;
-  color: var(--ink-soft);
-  white-space: pre-wrap;
-}
-
-/* 评估进行中的实时进度 */
-.eval-progress {
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  margin-bottom: var(--s5);
-}
-
-.eval-progress .progress {
-  flex: 1;
-}
-
-.eval-progress-text {
-  font-size: var(--t-sm);
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.eval-notice {
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  padding: var(--s4) var(--s5);
-  border-radius: var(--r-surface);
-  margin-bottom: var(--s5);
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.eval-notice--warn {
-  border-color: var(--marker-line);
-  background: var(--marker-wash);
-}
-
-.eval-notice--error {
-  border-color: var(--danger);
-  background: var(--danger-wash);
-}
-
-.eval-notice-body {
-  flex: 1;
-}
-
-.eval-notice-title {
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-/* 逐题评分逐条出现的实时列表 */
-.live-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.live-row {
-  display: grid;
-  grid-template-columns: 2em 1fr auto;
-  align-items: center;
-  gap: var(--s4);
-  padding: var(--s3) 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.live-row:last-child {
-  border-bottom: none;
-}
-
-.live-row.is-pending {
-  opacity: 0.35;
-}
-
-.live-comment {
-  grid-column: 2 / -1;
-  font-size: var(--t-sm);
-  color: var(--muted);
+.login-mark-sub {
   margin-top: var(--s1);
-}
-
-/* ============================ 筛选栏 ============================ */
-
-.filterbar {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  flex-wrap: wrap;
-  padding: var(--s4) var(--s5);
-  border-bottom: 1px solid var(--line);
-}
-
-.filterbar .select,
-.filterbar .input {
-  width: auto;
-  min-width: 140px;
-}
-
-.filterbar-spacer {
-  margin-left: auto;
-}
-
-/* ======================= 岗位：维度编辑器 ======================= */
-
-.dim-editor {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
-
-.dim-editor-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.dim-editor-row .input {
-  flex: 1;
-}
-
-.dim-editor-remove {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  color: var(--faint);
-  font-size: var(--t-lg);
-  line-height: 1;
-}
-
-.dim-editor-remove:hover {
-  color: var(--danger);
-}
-
-/* JD 展开行 */
-.jd-expand {
-  padding: var(--s4) var(--s5);
-  background: var(--ground);
-  font-size: var(--t-base);
-  line-height: 1.7;
-  color: var(--ink-soft);
-  white-space: pre-wrap;
-  max-width: 70ch;
-}
-
-/* ============================ 登录态提示条 ============================ */
-
-.mine-badge {
-  margin-left: var(--s2);
   font-size: var(--t-xs);
-  color: var(--faint);
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.06em;
 }
+.login-claim {
+  margin-top: var(--s8);
+  font-size: var(--t-2xl);
+  line-height: 1.5;
+  color: #fff;
+}
+/* 换行位置是写死的，不让浏览器在「同一 / 处」之间断开 */
+.login-claim span { display: block; }
+.login-flow { margin-top: var(--s8); max-width: 34em; }
+.login-flow-item {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--s4);
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--navy-line);
+}
+.login-flow-item:last-child { border-bottom: 1px solid var(--navy-line); }
+.login-flow-index {
+  font-family: var(--font-num);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: var(--t-lg);
+  color: var(--brand-lift);
+  line-height: 1.4;
+}
+.login-flow-label { font-size: 14px; font-weight: 600; color: #fff; }
+.login-flow-text {
+  margin-top: var(--s1);
+  font-size: var(--t-sm);
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.7;
+}
+.login-aside-foot {
+  margin-top: auto;
+  padding-top: var(--s7);
+  font-size: var(--t-xs);
+  color: rgba(255, 255, 255, 0.42);
+}
+.login-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s8);
+  background: var(--paper);
+}
+.login-card { width: 100%; max-width: 372px; }
+.login-card > h2 { font-size: var(--t-xl); }
+.login-card-lede { margin: var(--s2) 0 var(--s7); font-size: 14px; color: var(--muted); }
+
+/* ---- 提示条：说明「接下来会发生什么」，既不是错误也不是警告 ---- */
+.note-box {
+  padding: var(--s3) var(--s4);
+  background: var(--brand-wash);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--r-control);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  color: var(--brand-deep);
+  /* 一句话的提示条不该横跨 1100px —— 那看着像空横幅 */
+  max-width: 46em;
+}
+.login-card .note-box { margin-top: var(--s6); }

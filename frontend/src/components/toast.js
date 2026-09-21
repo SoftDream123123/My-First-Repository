@@ -1,9 +1,9 @@
 /**
- * 消息提示（module-07 §6）。
+ * components/toast.js —— 消息提示
  * 文案一律来自后端 message，前端不重新编造。
  */
 
-import { el, mount } from '../dom.js';
+import { el } from '../dom.js';
 
 let stack = null;
 
@@ -18,7 +18,6 @@ function ensureStack() {
 function show(message, variant, duration) {
   const node = el('div', { class: `toast${variant ? ` toast--${variant}` : ''}` }, message);
   ensureStack().append(node);
-
   setTimeout(() => {
     node.style.opacity = '0';
     setTimeout(() => node.remove(), 200);
@@ -28,6 +27,5 @@ function show(message, variant, duration) {
 export const toast = {
   info: (message) => show(message, null, 3000),
   success: (message) => show(message, 'success', 3000),
-  // 失败留久一点，让人有时间读完
-  error: (message) => show(message, 'error', 5000),
+  error: (message) => show(message, 'error', 5000), // 失败留久一点，让人读完
 };
