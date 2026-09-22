@@ -1,7 +1,7 @@
-"""resume 模块业务逻辑：归属校验、长度校验，以及两个跨包供给口子。
+"""resume 模块业务逻辑：归属校验、长度校验、上传解析，以及两个跨包供给口子。
 
-**本模块不 import interview / practice** —— 删除保护完全交给外键 RESTRICT，
-因此不产生任何反向依赖（PRD §9）。
+**本模块不 import interview / practice / position** —— 删除保护完全交给外键
+RESTRICT，因此不产生任何反向依赖（PRD §9）。上传解析也不 import 任何 AI。
 """
 
 from sqlalchemy.orm import Session
@@ -10,7 +10,7 @@ from app.auth import service as auth_service
 from app.auth.models import User
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
-from app.resume import repository
+from app.resume import parser, repository
 from app.resume.models import Resume
 from app.resume.schemas import ResumeCreate, ResumeUpdate
 
@@ -126,6 +126,27 @@ def update_resume(
 def delete_resume(db: Session, user: User, resume_id: int) -> None:
     resume = get_my_resume(db, user, resume_id)
     repository.delete(db, resume)
+
+
+def parse_uploaded_resume(data: bytes, filename: str | None) -> str:
+    """把上传文件解析为纯文本 —— **不落库、不落盘**（PRD §4.10、§5.2）。
+
+    这一层刻意很薄：只承载体积校验（要读配置）与错误转译，解析算法全在
+    `parser.py`。这样 parser 能在不碰配置单例的前提下被单测直接调用。
+
+    调用方（router）按「上限 + 1」字节读后就交到这里，因此 `data` 至多比上限
+    多 1 个字节 —— 判定「超限」够用，且不必把整个大文件读进内存。
+    """
+    if not data:
+        raise ValidationError("文件是空的，请换一个文件再试")
+
+    limit = get_settings().resume_upload_max_bytes
+    if len(data) > limit:
+        raise ValidationError(
+            f"文件不能超过 {limit / (1024 * 1024):g} MB，请压缩后再上传"
+        )
+
+    return parser.parse_resume_file(data, filename)
 
 
 # ---------------------------- 跨包供给契约 ----------------------------

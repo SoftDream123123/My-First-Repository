@@ -63,3 +63,18 @@ class ResumeOut(BaseModel):
     candidate_contact: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class ResumeParseResult(BaseModel):
+    """上传解析结果（PRD §4.10，MVP-4）。
+
+    只有 `content` 一个字段，刻意不加 `filename` / `char_count` / `page_count`：
+    - `filename` 前端手里就有（`File.name`），回传是冗余；
+    - `char_count` 前端 `content.length` 即得；
+    - 解析统计没有产品用途，加了就要为它写文档与测试。
+
+    `content` **不截断**：超过正文上限时照样返回，由候选人按前端的字数计数
+    自行精简（与「不静默截断」的既有约定一致）。因此这里不做任何长度校验。
+    """
+
+    content: str

@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     # 长度绑死，将来换模型可能需要调，因此进配置而不是写死在 schema 里。
     resume_content_max_length: int = 20000
 
+    # 简历文件上传的体积上限（PRD §4.10，MVP-4）。它同时是资源护栏：
+    # 读上传文件时按 limit + 1 字节读，超限即拒，不必把整个大文件读进内存。
+    # 注意它拦不住「请求体已被 Starlette 收完」这件事（见 module-25 §9-1），
+    # 真正在请求发出前拦住大文件的是前端那道 file.size 预检。
+    resume_upload_max_bytes: int = 5 * 1024 * 1024
+
     # ---- 候选人可见的评估反馈（PRD §4.9）----
     # summary（默认）仅下发综合结论 / 优点 / 待改进；full 额外下发总分。
     # 逐题分与维度分在任何档位都不下发。

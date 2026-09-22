@@ -18,6 +18,9 @@
 
 import pytest
 
+from app.core.config import get_settings
+from tests.upload_helpers import docx_bytes
+
 RESUME_BODY = "五年 Python 后端开发经验，主导过服务拆分与性能优化。"
 
 
@@ -427,3 +430,102 @@ def test_resume_endpoints_reject_hr_and_admin(client, hr_headers, admin_headers,
             == 403
         )
         assert client.delete(f"/api/candidate/resumes/{resume.id}", headers=headers).status_code == 403
+
+
+# ===========================================================================
+# 11.6 上传解析（MVP-4，PRD §4.10）
+# ===========================================================================
+
+PARSE_PATH = "/api/candidate/resumes/parse"
+
+
+def test_parse_upload_returns_text(client, candidate_headers):
+    resp = client.post(
+        PARSE_PATH,
+        files={"file": ("简历.docx", docx_bytes(["张三", "五年后端经验"]), "application/octet-stream")},
+        headers=candidate_headers,
+    )
+
+    assert resp.status_code == 200
+    content = resp.json()["content"]
+    assert "张三" in content and "五年后端经验" in content
+
+
+def test_parse_upload_does_not_create_a_resume(client, candidate_headers):
+    """PRD §5.2 的「客户端点不落库」—— 直接断言库内简历数不变。"""
+    before = len(client.get("/api/candidate/resumes", headers=candidate_headers).json())
+
+    resp = client.post(
+        PARSE_PATH,
+        files={"file": ("简历.docx", docx_bytes(["正文"]), "application/octet-stream")},
+        headers=candidate_headers,
+    )
+
+    assert resp.status_code == 200
+    after = client.get("/api/candidate/resumes", headers=candidate_headers).json()
+    assert len(after) == before
+
+
+def test_parse_upload_extracts_table_text(client, candidate_headers):
+    """表格里的话必须被抠出来 —— 简历常把经历做成表格。"""
+    resp = client.post(
+        PARSE_PATH,
+        files={
+            "file": (
+                "简历.docx",
+                docx_bytes([[["某大学", "计算机"], ["某公司", "后端"]]]),
+                "application/octet-stream",
+            )
+        },
+        headers=candidate_headers,
+    )
+
+    assert resp.status_code == 200
+    assert "某大学" in resp.json()["content"]
+
+
+def test_parse_upload_rejects_unsupported_extension(client, candidate_headers):
+    resp = client.post(
+        PARSE_PATH,
+        files={"file": ("简历.doc", b"anything", "application/octet-stream")},
+        headers=candidate_headers,
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["code"] == "VALIDATION_ERROR"
+
+
+def test_parse_upload_rejects_oversize_file(client, candidate_headers):
+    limit = get_settings().resume_upload_max_bytes
+    resp = client.post(
+        PARSE_PATH,
+        files={"file": ("简历.pdf", b"%PDF-" + b"0" * limit, "application/pdf")},
+        headers=candidate_headers,
+    )
+
+    assert resp.status_code == 400
+    assert "5 MB" in resp.json()["message"]
+
+
+def test_parse_upload_requires_file_field(client, candidate_headers):
+    assert client.post(PARSE_PATH, headers=candidate_headers).status_code == 400
+
+
+def test_parse_upload_rejects_hr_and_admin(client, hr_headers, admin_headers):
+    """候选人侧守卫精确匹配：HR 与 admin 一律 403（admin 也不通）。"""
+    for headers in (hr_headers, admin_headers):
+        resp = client.post(
+            PARSE_PATH,
+            files={"file": ("简历.docx", docx_bytes(["x"]), "application/octet-stream")},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+
+def test_parse_upload_requires_authentication(client):
+    resp = client.post(
+        PARSE_PATH,
+        files={"file": ("简历.docx", docx_bytes(["x"]), "application/octet-stream")},
+    )
+
+    assert resp.status_code == 401

@@ -8,10 +8,11 @@
 而非 `/resumes`，是为了将来若出现 HR 侧端点时能落在 `/resumes/*` 上而不破坏前端。
 """
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
+from app.core.config import get_settings
 from app.core.deps import get_db, require_roles
 from app.resume import service
 from app.resume.schemas import (
@@ -19,6 +20,7 @@ from app.resume.schemas import (
     RESUME_LIST_MAX_LIMIT,
     ResumeCreate,
     ResumeOut,
+    ResumeParseResult,
     ResumeUpdate,
 )
 
@@ -39,6 +41,31 @@ def create_resume(
     user: User = Depends(_candidate_guard),
 ) -> ResumeOut:
     return ResumeOut.model_validate(service.create_resume(db, user, payload))
+
+
+@router.post(
+    "/parse",
+    response_model=ResumeParseResult,
+    summary="上传 DOCX / PDF 解析为纯文本（不落库）",
+)
+def parse_resume_upload(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(_candidate_guard),
+) -> ResumeParseResult:
+    """把上传的简历文件抠成纯文本返回 —— **不落库、不落盘**（PRD §4.10、§5.2）。
+
+    候选人在前端确认解析结果后才调 `POST` / `PUT` 保存，因此本端点不建简历、
+    不改简历、不在服务器上留下那个文件。
+
+    ⚠️ **声明位置必须在 `/{resume_id}` 那三条之前**：现在方法与路径都不撞
+    （这里是 POST、那三条是 GET/PUT/DELETE），但顺序写错在日后加
+    `POST /{resume_id}` 类端点时会立刻变成「parse 被当成 resume_id 解析」的 500。
+    """
+    # 按「上限 + 1」字节读：够判超限即可，不必把整个大文件读进内存
+    limit = get_settings().resume_upload_max_bytes
+    data = file.file.read(limit + 1)
+    return ResumeParseResult(content=service.parse_uploaded_resume(data, file.filename))
 
 
 @router.get("", response_model=list[ResumeOut], summary="我的简历列表")

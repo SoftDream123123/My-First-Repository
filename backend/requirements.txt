@@ -28,6 +28,16 @@ httpx>=0.27
 #    会把 python-docx 误解析到 2021 年的 0.8.11。见 README 的安装说明。
 python-docx>=1.1
 
+# --- 简历文件上传解析（MVP-4 新增两项）---
+# pypdf：读 PDF 的文字层。python-multipart：FastAPI 解析 multipart/form-data 的
+#        必需件 —— 缺它 UploadFile / File 直接报错。两者均纯 Python、无中间件。
+# DOCX 一路复用上面的 python-docx，**不引入第二个 DOCX 库**（它读文档时已默认
+# 关闭 XML 外部实体解析，故不必再包一层 XXE 防护）。
+# ⚠️ 安装同样必须走镜像：
+#    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pypdf python-multipart
+pypdf>=5.0
+python-multipart>=0.0.9
+
 # --- 测试 ---
 pytest>=8.3
 
