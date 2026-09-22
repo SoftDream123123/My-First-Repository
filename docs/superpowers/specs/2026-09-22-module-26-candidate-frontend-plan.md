@@ -8,7 +8,7 @@
 **上游 PRD**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
 **对应 PRD 章节**：§4.10（简历管理：上传解析、不截断、不静默覆盖）、§7（MVP-4 错误条目）、§9（安全边界）
 **前置依赖**：[module-25 resume 上传解析](./2026-09-22-module-25-resume-upload-plan.md)（端点必须已存在）、[module-22 候选人前端](./2026-09-21-module-22-candidate-frontend-plan.md)（本模块修改的文件由它建成）
-**本模块被谁依赖**：[module-27 e2e](./2026-09-22-module-27-e2e-plan.md)
+**本模块被谁依赖**：[module-30 e2e](./2026-09-22-module-30-e2e-plan.md)
 
 ---
 
@@ -28,7 +28,7 @@ module-22 的 Global Constraints 里写着：
 | module-22 的其余约束 | **全部继续有效**（无 UI 框架、仅 PC、`candidate.*` 键、不新增 CSS 文件、`standalone.html` 冻结、错误文案原样展示…） |
 | 执行本模块时的判据 | 遇到两份文档冲突，**一律以 PRD 为准**；PRD 未覆盖处回看 module-22 |
 
-> **同样需要作废的相邻表述**：`docs/manual/10-候选人-我的简历.md`、`docs/production/产品说明书.md`、`docs/apis/API接口文档.md` 中「不做文件上传」的段落——由 [module-27](./2026-09-22-module-27-e2e-plan.md) §3 统一回填。
+> **同样需要作废的相邻表述**：`docs/manual/10-候选人-我的简历.md`、`docs/production/产品说明书.md`、`docs/apis/API接口文档.md` 中「不做文件上传」的段落——由 [module-30](./2026-09-22-module-30-e2e-plan.md) §3 统一回填。
 
 ---
 
@@ -71,7 +71,7 @@ module-22 的 Global Constraints 里写着：
 | **前端解析文件**（绕过后端） | 同样是引依赖（PDF.js / mammoth）+ 把解析逻辑分散到两端。解析一律在后端（module-25） |
 | **在「我的简历」列表页加入口** | 上传属「录入正文」的一步，必须落在编辑表单里才有确认与改写的余地 |
 | **候选人面试页 / 刷题页加入口** | 同上；那两处只做「选用哪份简历」 |
-| **后端与端到端验证** | 属 module-25 / module-27 |
+| **后端与端到端验证** | 属 module-25 / module-30 |
 
 ### 1.3 交互形态（一句话）
 
@@ -261,7 +261,7 @@ content.dispatchEvent(new Event('input', { bubbles: true }));
 
 ---
 
-## 7. 遗留项与已知局限（交 module-27 汇总）
+## 7. 遗留项与已知局限（交 module-30 汇总）
 
 | # | 局限 | 性质 | 说明 |
 |---|---|---|---|

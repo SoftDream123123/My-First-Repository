@@ -8,7 +8,7 @@
 **上游 PRD**：[2026-09-15-ai-interview-assistant-mvp-design.md](./2026-09-15-ai-interview-assistant-mvp-design.md)
 **对应 PRD 章节**：§1.3（非目标：不保留原文件）、§2（新增依赖）、§4.10（简历管理）、§5.2（解析失败分支的边界）、§7（MVP-4 错误条目）、§8（候选人侧端点表）、§9（上传安全边界 + 依赖受控）、§10（测试策略）、§11（MVP-4 里程碑）
 **前置依赖**：[module-17 resume](./2026-09-21-module-17-resume-plan.md)（本模块是它的增量，**不重复其任何内容**）
-**本模块被谁依赖**：[module-26 候选人前端增量](./2026-09-22-module-26-candidate-frontend-plan.md)、[module-27 e2e](./2026-09-22-module-27-e2e-plan.md)
+**本模块被谁依赖**：[module-26 候选人前端增量](./2026-09-22-module-26-candidate-frontend-plan.md)、[module-30 e2e](./2026-09-22-module-30-e2e-plan.md)
 
 ---
 
@@ -49,7 +49,7 @@
 | **结构化解析**（技能、年限、项目经历等字段） | PRD §4.10 未要求；module-17 §1.2 已排除 |
 | **改动 `content` 的既有长度契约** | 20000 字符上限仍由 `POST/PUT` 的 service 层把关，本模块不重复实现 |
 | **前端** | 属 [module-26](./2026-09-22-module-26-candidate-frontend-plan.md) |
-| **端到端验证** | 属 [module-27](./2026-09-22-module-27-e2e-plan.md) |
+| **端到端验证** | 属 [module-30](./2026-09-22-module-30-e2e-plan.md) |
 
 ### 1.3 依赖方向（保持不变）
 
@@ -334,7 +334,7 @@ _parse_pdf(data):
 
 ---
 
-## 9. 遗留项与已知局限（交 module-27 汇总）
+## 9. 遗留项与已知局限（交 module-30 汇总）
 
 | # | 局限 | 性质 | 建议 |
 |---|---|---|---|
