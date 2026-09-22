@@ -125,6 +125,19 @@ class PracticeQuestionOut(BaseModel):
     tags: list[str]
 
 
+class PracticePreviewOut(BaseModel):
+    """刷题预览的响应。
+
+    **为什么不是裸数组**：预览要回答两个问题 —— 「一共有多少题可选」与
+    「筛选下拉里有哪些分类/维度」。前者必须是**真实题量**，而后者的数据源
+    （`items`）为了不一次拉全库是按 `limit` 截断的。两者装在一个对象里，
+    调用方就不必再拿被截断的长度去冒充题量。
+    """
+
+    total: int
+    items: list[PracticeQuestionOut]
+
+
 class PracticePositionOut(BaseModel):
     """候选人侧的刷题岗位筛选项。
 
@@ -147,6 +160,7 @@ class QuestionFilters:
     source: str | None = None
     keyword: str | None = None
     question_type: str | None = None
+    difficulty: str | None = None
 
 
 @dataclass

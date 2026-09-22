@@ -885,18 +885,32 @@ class TestRateLimit:
 
 class TestPreview:
     def test_preview_has_no_answer_fields(self, db, candidate_user, practice_questions):
-        items = practice_service.preview_questions(db, candidate_user, PracticeFilters(), None)
-        assert len(items) == 4
-        for item in items:
-            assert "reference_answer" not in item
-            assert "explanation" not in item
-            assert "source" not in item
-            assert "created_by" not in item
+        result = practice_service.preview_questions(db, candidate_user, PracticeFilters(), None)
+        assert len(result.items) == 4
+        assert result.total == 4, "未截断时 total 与 items 一致"
+        for item in result.items:
+            dumped = item.model_dump()
+            assert "reference_answer" not in dumped
+            assert "explanation" not in dumped
+            assert "source" not in dumped
+            assert "created_by" not in dumped
 
     def test_preview_keeps_options(self, db, candidate_user, practice_questions):
-        items = practice_service.preview_questions(db, candidate_user, PracticeFilters(), None)
-        single = next(i for i in items if i["question_type"] == "single_choice")
-        assert single["options"]
+        result = practice_service.preview_questions(db, candidate_user, PracticeFilters(), None)
+        single = next(i for i in result.items if i.question_type == "single_choice")
+        assert single.options
+
+    def test_preview_total_is_not_truncated_by_limit(
+        self, db, candidate_user, practice_questions
+    ):
+        """`total` 是真实题量 —— limit 只截断 `items`。
+
+        前端「符合条件 N 题」看的是 total；两者都跟着 limit 变小的话，
+        题库一多就会把题量说少。
+        """
+        result = practice_service.preview_questions(db, candidate_user, PracticeFilters(), 1)
+        assert len(result.items) == 1
+        assert result.total == 4
 
 
 # ============ MVP-3：按简历推荐取题（module-20 §7.1 – §7.4）============

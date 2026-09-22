@@ -82,21 +82,36 @@ def test_preview_returns_questions_without_answers(client, candidate_headers, pr
     resp = client.get("/api/practice/questions", headers=candidate_headers)
 
     assert resp.status_code == 200
-    rows = resp.json()
+    body = resp.json()
+    rows = body["items"]
     assert rows
+    assert body["total"] == len(rows), "未截断时 total 与 items 条数一致"
     for row in rows:
         assert "reference_answer" not in row
         assert "explanation" not in row
         assert "options" in row, "选项必须下发，否则单选框渲染不出来"
 
 
+def test_preview_total_survives_truncation(client, candidate_headers, practice_questions):
+    """`total` 报的是符合条件的**真实题量**，截断只作用于 `items`。
+
+    前端「符合条件 N 题」看的是 total —— 若它也按 limit 截断，题库一多就会
+    把题量说少（旧实现就是拿被截断的长度当计数）。
+    """
+    full = client.get("/api/practice/questions", headers=candidate_headers).json()
+    capped = client.get("/api/practice/questions?limit=1", headers=candidate_headers).json()
+
+    assert len(capped["items"]) == 1
+    assert capped["total"] == full["total"] == len(full["items"])
+
+
 def test_preview_filters_by_question_type_and_difficulty(client, candidate_headers, practice_questions):
     only_choice = client.get(
         "/api/practice/questions?question_type=single_choice", headers=candidate_headers
-    ).json()
+    ).json()["items"]
     only_short = client.get(
         "/api/practice/questions?question_type=short_answer", headers=candidate_headers
-    ).json()
+    ).json()["items"]
 
     assert only_choice and only_short
     assert all(r["question_type"] == "single_choice" for r in only_choice)
@@ -113,7 +128,7 @@ def test_preview_ignores_resume_id(client, candidate_headers, practice_questions
         f"/api/practice/questions?resume_id={resume.id}", headers=candidate_headers
     ).json()
 
-    assert [r["id"] for r in with_resume] == [r["id"] for r in plain]
+    assert [r["id"] for r in with_resume["items"]] == [r["id"] for r in plain["items"]]
 
 
 def test_preview_rejects_limit_over_max(client, candidate_headers, practice_questions):

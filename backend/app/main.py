@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -34,6 +35,55 @@ app.add_middleware(
 
 # ---------------------------- 全局异常处理器 ----------------------------
 
+# 字段级校验文案的中文对照表。
+#
+# 为什么要有它：pydantic 的词条是英文（`String should have at least 8 characters`），
+# 而它会经 `detail.fields[].message` **直接显示在表单那个字段的下方**
+# （前端 `components/form.js` 的 `fieldErrors().fromServer`）。所以不译的话，
+# 用户看到的是英文。约束值从 `err["ctx"]` 取，让人知道该改到多少。
+#
+# 未命中的 type 一律**保留原文**：宁可露出英文，也不要盖掉未知错误的细节。
+_VALIDATION_MESSAGES: dict[str, str] = {
+    "missing": "缺少必填字段",
+    "string_too_short": "长度不足，至少需要 {min_length} 个字符",
+    "string_too_long": "长度超出上限，最多 {max_length} 个字符",
+    "too_short": "数量不足，至少需要 {min_length} 项",
+    "too_long": "数量超出上限，最多 {max_length} 项",
+    "greater_than": "取值必须大于 {gt}",
+    "greater_than_equal": "取值不能小于 {ge}",
+    "less_than": "取值必须小于 {lt}",
+    "less_than_equal": "取值不能大于 {le}",
+    "int_parsing": "必须是整数",
+    "float_parsing": "必须是数字",
+    "bool_parsing": "必须是布尔值",
+    "string_type": "必须是字符串",
+    "list_type": "必须是数组",
+    "dict_type": "必须是对象",
+    "literal_error": "取值不在允许范围内",
+    "enum": "取值不在允许范围内",
+    "string_pattern_mismatch": "格式不符合要求",
+    "json_invalid": "不是合法的 JSON",
+}
+
+
+def _field_message(err: dict[str, Any]) -> str:
+    """把 pydantic 的一条错误译成可直接展示的中文（未命中则保留原文）。"""
+    # 自定义校验器 `raise ValueError("中文文案")` 走 value_error：pydantic 会给它
+    # 加上 `Value error, ` 前缀，剥掉即可 —— 文案本身已经是中文。
+    if err.get("type") == "value_error":
+        return str(err.get("msg", "")).removeprefix("Value error, ")
+
+    template = _VALIDATION_MESSAGES.get(err.get("type", ""))
+    if template is None:
+        return err.get("msg", "")
+
+    # ctx 里带约束值（min_length / max_length / ge …）。缺键时退回原文，
+    # 不要因为文案模板出错而丢掉整条错误信息。
+    try:
+        return template.format(**(err.get("ctx") or {}))
+    except (KeyError, IndexError, ValueError):
+        return err.get("msg", "")
+
 
 @app.exception_handler(AppError)
 async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
@@ -52,7 +102,7 @@ async def handle_validation_error(
     fields = [
         {
             "field": ".".join(str(p) for p in err.get("loc", []) if p != "body"),
-            "message": err.get("msg", ""),
+            "message": _field_message(err),
             "type": err.get("type", ""),
         }
         for err in exc.errors()

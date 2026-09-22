@@ -40,10 +40,32 @@ def list_filtered(
         stmt = stmt.where(Question.source == filters.source)
     if filters.question_type:
         stmt = stmt.where(Question.question_type == filters.question_type)
+    if filters.difficulty:
+        stmt = stmt.where(Question.difficulty == filters.difficulty)
     if filters.keyword:
         stmt = stmt.where(Question.content.like(f"%{filters.keyword}%"))
 
     return list(db.execute(stmt.order_by(Question.id)).scalars().all())
+
+
+def _practice_conditions(filters: PracticeFilters) -> list:
+    """刷题取题的筛选条件（不含排序与限量）。
+
+    **取题与计数必须共用同一份规则** —— 各写一遍的话，两者迟早对不上，
+    表现为「页面上报的题量与真正能取到的题量不一致」。
+    """
+    conditions = []
+    if filters.position_id is not None:
+        conditions.append(Question.position_id == filters.position_id)
+    if filters.category:
+        conditions.append(Question.category == filters.category)
+    if filters.dimension:
+        conditions.append(Question.dimension == filters.dimension)
+    if filters.difficulty:
+        conditions.append(Question.difficulty == filters.difficulty)
+    if filters.question_type:
+        conditions.append(Question.question_type == filters.question_type)
+    return conditions
 
 
 def list_practice_candidates(
@@ -57,22 +79,28 @@ def list_practice_candidates(
 
     恒按 id 升序，保证取题结果确定可复现。
     """
-    stmt = select(Question)
-
-    if filters.position_id is not None:
-        stmt = stmt.where(Question.position_id == filters.position_id)
-    if filters.category:
-        stmt = stmt.where(Question.category == filters.category)
-    if filters.dimension:
-        stmt = stmt.where(Question.dimension == filters.dimension)
-    if filters.difficulty:
-        stmt = stmt.where(Question.difficulty == filters.difficulty)
-    if filters.question_type:
-        stmt = stmt.where(Question.question_type == filters.question_type)
-
-    return list(
-        db.execute(stmt.order_by(Question.id).limit(limit)).scalars().all()
+    stmt = (
+        select(Question)
+        .where(*_practice_conditions(filters))
+        .order_by(Question.id)
+        .limit(limit)
     )
+    return list(db.execute(stmt).scalars().all())
+
+
+def count_practice_candidates(db: Session, filters: PracticeFilters) -> int:
+    """符合条件的**真实题量**（不受 limit 截断）。
+
+    为什么不直接 `len(list_practice_candidates(...))`：那条路会被 limit 截断，
+    而预览要报的是「一共有多少题可选」。用截断后的长度当计数，题库大时会把
+    数量说少。
+    """
+    stmt = (
+        select(func.count())
+        .select_from(Question)
+        .where(*_practice_conditions(filters))
+    )
+    return int(db.execute(stmt).scalar_one())
 
 
 def list_positions_with_questions(db: Session) -> list[dict]:

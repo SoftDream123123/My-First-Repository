@@ -9,7 +9,8 @@
 import { el, mount, clear } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
-import { confirmModal } from '../components/modal.js';
+import { confirmModal, openModal } from '../components/modal.js';
+import { fieldError, fieldErrors } from '../components/form.js';
 import {
   contextTitle, createShell, emptyState, formatDate, formatDateTime, loadingBlock,
   panelHead, sourceTag, dimTag, statusRail,
@@ -150,6 +151,72 @@ export async function render(container, params) {
   }
 
   const toEvaluation = () => navigate(`/interviews/${interviewId}/evaluation`);
+
+  // 候选人信息只在「评估中 / 已评估」两态不可改（API 文档 §8.5 的 409 条件）。
+  // 用与后端**同一个判据**，免得界面上给得出、点下去被拒。
+  const canEditCandidate = !['evaluating', 'evaluated'].includes(detail.status);
+
+  /**
+   * 编辑候选人信息（API 文档 §8.5）。
+   *
+   * 只改姓名与联系方式，**不改状态** —— 状态迁移一律走动词端点
+   * （`/complete`、`/rollback`），否则会绕过迁移的前置条件与副作用。
+   */
+  function openCandidateModal() {
+    const nameInput = el('input', {
+      class: 'input', id: 'edit-candidate-name', maxlength: '100',
+      placeholder: '候选人的姓名', value: detail.candidate_name ?? '',
+    });
+    const nameError = fieldError();
+    const contactInput = el('input', {
+      class: 'input', id: 'edit-candidate-contact', maxlength: '200',
+      placeholder: '邮箱或手机号（可不填）', value: detail.candidate_contact ?? '',
+    });
+    const contactError = fieldError();
+    const errors = fieldErrors({ candidate_name: nameError, candidate_contact: contactError });
+
+    const submit = el('button', { class: 'btn btn--primary', text: '保存' });
+    const handle = openModal({
+      title: '编辑候选人信息',
+      body: el('div', {},
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'edit-candidate-name', text: '候选人姓名' }),
+          nameInput, nameError),
+        el('div', { class: 'field' },
+          el('label', { class: 'field-label', for: 'edit-candidate-contact', text: '联系方式' }),
+          contactInput, contactError),
+        el('p', { class: 'field-note', text: '联系方式留空即清空。这里只改候选人信息，不影响面试进度。' })),
+      footer: [
+        el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+        submit,
+      ],
+    });
+
+    submit.addEventListener('click', async () => {
+      errors.clear();
+      const name = nameInput.value.trim();
+      if (!name) { errors.show('candidate_name', '请填写候选人姓名'); return; }
+
+      handle.setBusy(true);
+      submit.textContent = '保存中…';
+      try {
+        await api.patch(`/interviews/${interviewId}`, {
+          candidate_name: name,
+          // 留空 → 传 null（后端把 null 解释为「清空」；空串不是同一个意思）
+          candidate_contact: contactInput.value.trim() || null,
+        });
+        handle.close();
+        toast.success('候选人信息已更新');
+        if (!stillMine()) return;
+        render(container, params); // 重新拉详情，让页头与各处引用同步
+      } catch (error) {
+        handle.setBusy(false);
+        submit.textContent = '保存';
+        // 400 落到字段；409（状态不允许）等仍用后端文案
+        if (!errors.fromServer(error)) toast.error(error.message);
+      }
+    });
+  }
 
   function buildActions() {
     const buttons = [];
@@ -573,6 +640,13 @@ export async function render(container, params) {
       ),
       el('div', { class: 'page-head-actions' },
         el('button', { class: 'btn btn--ghost', text: '返回列表', onClick: () => navigate('/interviews') }),
+        el('button', {
+          class: 'btn btn--ghost',
+          text: '编辑候选人',
+          disabled: !canEditCandidate,
+          title: canEditCandidate ? '改姓名或联系方式。不影响面试进度。' : '评估中或已评估的面试不可修改候选人信息',
+          onClick: openCandidateModal,
+        }),
         // 准备提纲与面试状态机正交（PRD §5.1），因此不进下面那组状态动作
         el('button', {
           class: 'btn btn--ghost',

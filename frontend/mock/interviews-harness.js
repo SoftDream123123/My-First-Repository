@@ -124,6 +124,21 @@ function defaultHandlers() {
       DETAIL[id].completed_at = null;
       return { status: 200, body: DETAIL[id] };
     },
+    // 更新候选人信息（API 文档 §8.5）：只改姓名/联系方式、不改状态；
+    // evaluating / evaluated 下 409 —— 与后端同一条判据
+    'PATCH /interviews/:id': ({ path, body }) => {
+      const id = Number(path.split('/')[2]);
+      const target = DETAIL[id];
+      if (target.status === 'evaluating' || target.status === 'evaluated') {
+        return {
+          status: 409,
+          body: { code: 'BUSINESS_ERROR', message: '评估中或已评估的面试不可修改候选人信息', detail: null },
+        };
+      }
+      if (body.candidate_name !== undefined) target.candidate_name = body.candidate_name;
+      if (body.candidate_contact !== undefined) target.candidate_contact = body.candidate_contact;
+      return { status: 200, body: target };
+    },
     'GET /interviews/:id/resume': () => (RESUME
       ? { status: 200, body: RESUME }
       : { status: 404, body: { code: 'NOT_FOUND', message: '该面试尚未关联简历', detail: null } }),
@@ -646,4 +661,50 @@ report.run(async () => {
     `hash=${hash()} 详情编辑器=${page().querySelector('#answer-input') ? '被盖回来了' : '不在'}`);
   check('等待期间导航走 → 列表本身渲染正常',
     rows().length === LIST.length, `rows=${rows().length}`);
+
+  /* ---------- 28. 编辑候选人信息（PATCH /interviews/{id}） ---------- */
+  // API 文档 §8.5 + §8.1 操作矩阵：改候选人信息在 ongoing/completed 允许、
+  // evaluating/evaluated 拒绝。此前前端**没有任何入口** —— HR 把姓名打错
+  // 只能新建一场面试重来，丢掉已录的回答与已发的邀请码。
+  resetWorld();
+  backend.setHandlers(defaultHandlers());
+  await go('#/interviews/1');
+  const editButton = buttonIn(page().querySelector('.page-head-actions'), '编辑候选人');
+  check('面试详情页有「编辑候选人」入口', editButton !== undefined, String(editButton));
+
+  editButton.click();
+  await settle();
+  check('弹窗带出当前姓名与联系方式',
+    openOverlay()?.querySelector('#edit-candidate-name')?.value === '张三'
+      && openOverlay()?.querySelector('#edit-candidate-contact')?.value === '13800000000',
+    String(openOverlay()?.querySelector('#edit-candidate-name')?.value));
+
+  setInput(openOverlay().querySelector('#edit-candidate-name'), '张三丰');
+  setInput(openOverlay().querySelector('#edit-candidate-contact'), '');
+  backend.reset();
+  buttonIn(openOverlay(), '保存').click();
+  await settle();
+  await settle();
+
+  const patchCall = backend.find('PATCH', '/interviews/1');
+  check('保存 → PATCH /interviews/1', Boolean(patchCall),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(' | '));
+  check('提交的是姓名与联系方式',
+    patchCall?.body?.candidate_name === '张三丰', JSON.stringify(patchCall?.body));
+  check('联系方式留空 → 传 null（null 才是「清空」，空串不是）',
+    patchCall?.body?.candidate_contact === null, JSON.stringify(patchCall?.body));
+  check('保存后页头姓名已更新', page().querySelector('h1')?.textContent === '张三丰',
+    String(page().querySelector('h1')?.textContent));
+
+  // 评估中 / 已评估：入口禁用，且说明为什么（与后端 409 同一判据）
+  resetWorld();
+  DETAIL[1].status = 'evaluating';
+  await go('#/interviews/1');
+  const disabledEdit = buttonIn(page().querySelector('.page-head-actions'), '编辑候选人');
+  check('评估中 → 「编辑候选人」禁用', disabledEdit?.disabled === true, String(disabledEdit?.disabled));
+  check('评估中 → 按钮说明为什么不能改',
+    (disabledEdit?.title ?? '').includes('不可修改候选人信息'), String(disabledEdit?.title));
+
+  resetWorld();
+  backend.setHandlers(defaultHandlers());
 });

@@ -46,7 +46,11 @@ from app.practice.schemas import (
     WrongBookItem,
 )
 from app.question import service as question_service
-from app.question.schemas import PracticeFilters, PracticeQuestionOut
+from app.question.schemas import (
+    PracticeFilters,
+    PracticePreviewOut,
+    PracticeQuestionOut,
+)
 # practice → resume 是单向依赖（resume 不依赖任何业务模块）。
 # ⚠️ 只 import **service**：直接 import `resume.repository` 会跳过 service 层，
 #    而架构测试的层校验只统计同模块内引用，跨模块跳层无人监管。
@@ -382,11 +386,14 @@ def _pick_questions(
 
 def preview_questions(
     db: Session, user: User, filters: PracticeFilters, limit: int | None
-) -> list[dict]:
+) -> PracticePreviewOut:
     """无状态预览：有哪些题可练（不含答案）。
 
-    预览接口存在的意义是让前端在开始前显示「符合条件的题量」。它不创建会话、
-    不写快照，因此也不计入限流。
+    预览接口存在的意义是让前端在开始前显示「符合条件的题量」，同时给出分类 /
+    维度下拉的候选值。它不创建会话、不写快照，因此也不计入限流。
+
+    `items` 按 `limit` 截断（默认 practice_session_size_default），而 `total`
+    始终是**真实题量** —— 前端报数只看 `total`，因此题库再大也不会把题量说少。
     """
     settings = get_settings()
     size = limit if limit is not None else settings.practice_session_size_default
@@ -396,20 +403,23 @@ def preview_questions(
         )
 
     questions = question_service.list_practice_questions(db, filters, size)
-    return [
-        PracticeQuestionOut(
-            id=question.id,
-            position_id=question.position_id,
-            category=question.category,
-            dimension=question.dimension,
-            difficulty=question.difficulty,
-            content=question.content,
-            question_type=question.question_type,
-            options=list(question.options or []),
-            tags=list(question.tags or []),
-        ).model_dump()
-        for question in questions
-    ]
+    return PracticePreviewOut(
+        total=question_service.count_practice_candidates(db, filters),
+        items=[
+            PracticeQuestionOut(
+                id=question.id,
+                position_id=question.position_id,
+                category=question.category,
+                dimension=question.dimension,
+                difficulty=question.difficulty,
+                content=question.content,
+                question_type=question.question_type,
+                options=list(question.options or []),
+                tags=list(question.tags or []),
+            )
+            for question in questions
+        ],
+    )
 
 
 # ---------------------------- 开始练习 ----------------------------

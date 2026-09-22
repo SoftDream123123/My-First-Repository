@@ -76,3 +76,44 @@ class TestConfig:
         assert settings.question_count_from_ai == 3
         assert settings.ai_max_retries == 1
         assert settings.jwt_expire_minutes == 720
+
+
+class TestValidationFieldMessages:
+    """`_field_message` —— 把 pydantic 的英文词条译成可直接展示的中文。
+
+    它决定 `detail.fields[].message` 长什么样，而那句话会被前端原样写进表单
+    字段下方，所以译错/不译都是用户可见的。
+    """
+
+    def test_translates_known_types_with_constraints(self):
+        from app.main import _field_message
+
+        assert _field_message({"type": "missing", "msg": "Field required"}) == "缺少必填字段"
+        assert _field_message({
+            "type": "string_too_short",
+            "msg": "String should have at least 8 characters",
+            "ctx": {"min_length": 8},
+        }) == "长度不足，至少需要 8 个字符"
+        assert _field_message({
+            "type": "too_short",
+            "msg": "List should have at least 1 item after validation, not 0",
+            "ctx": {"min_length": 1},
+        }) == "数量不足，至少需要 1 项"
+
+    def test_custom_validator_chinese_survives(self):
+        """自定义校验器的文案本来就是中文，只剥掉 pydantic 加的英文前缀。"""
+        from app.main import _field_message
+
+        assert _field_message({
+            "type": "value_error", "msg": "Value error, 至少需要 1 个评估维度",
+        }) == "至少需要 1 个评估维度"
+
+    @pytest.mark.parametrize("err", [
+        {"type": "brand_new_type", "msg": "Some english text"},
+        # 模板要的键不在 ctx 里 → 退回原文。宁可露英文，也不能把这条错误吞掉
+        {"type": "string_too_short", "msg": "String should have at least 8 characters"},
+    ])
+    def test_falls_back_to_original(self, err):
+        from app.main import _field_message
+
+        assert _field_message(err) == err["msg"]

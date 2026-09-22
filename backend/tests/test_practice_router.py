@@ -163,7 +163,8 @@ class TestAuthAndIsolation:
         assert submitted["reference_answer"] is not None  # 提交后才下发
 
     def test_preview_response_has_no_answer_fields(self, client, candidate_headers, practice_questions):
-        items = client.get("/api/practice/questions", headers=candidate_headers).json()
+        body = client.get("/api/practice/questions", headers=candidate_headers).json()
+        items = body["items"]
         assert items
         for item in items:
             assert "reference_answer" not in item

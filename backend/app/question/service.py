@@ -341,6 +341,15 @@ def list_practice_questions(
     return repository.list_practice_candidates(db, filters, limit)
 
 
+def count_practice_candidates(db: Session, filters: PracticeFilters) -> int:
+    """符合条件的真实题量（供 practice 的预览报「符合条件 N 题」）。
+
+    与 `list_practice_questions` 共用同一份筛选规则，见
+    `repository._practice_conditions`。
+    """
+    return repository.count_practice_candidates(db, filters)
+
+
 def list_practice_positions(db: Session) -> list[PracticePositionOut]:
     """候选人端的刷题岗位筛选项。
 

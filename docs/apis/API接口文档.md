@@ -206,13 +206,18 @@ Authorization: Bearer <token>
   "message": "请求参数不合法",
   "detail": {
     "fields": [
-      { "field": "password", "message": "String should have at least 8 characters", "type": "string_too_short" }
+      { "field": "password", "message": "长度不足，至少需要 8 个字符", "type": "string_too_short" }
     ]
   }
 }
 ```
 
-`detail.fields[].field` 可直接用于把错误定位到具体表单项。
+`detail.fields[].field` 可直接用于把错误定位到具体表单项；
+`detail.fields[].message` 是**中文**，可直接显示在字段下方（约束值已带出，如「至少需要 8 个字符」）。
+`type` 是 pydantic 的机器可读错误码，仅供排查。
+
+> 顶层 `message` 恒为**通用**文案（`请求参数不合法`）—— 具体原因在 `detail.fields[]` 里。
+> 前端应把 `fields[]` 落到对应表单字段下方，而不是只弹顶层那句。
 
 **状态机非法迁移的 `detail`**：
 
@@ -934,13 +939,15 @@ Authorization: Bearer <token>
 | `position_id` | integer | 否 | 按岗位过滤 |
 | `category` | string | 否 | **精确**匹配 |
 | `dimension` | string | 否 | **精确**匹配 |
+| `question_type` | string | 否 | `single_choice` \| `short_answer` |
+| `difficulty` | string | 否 | `easy` \| `medium` \| `hard` |
 | `source` | string | 否 | `bank` \| `ai` |
 | `keyword` | string | 否 | 按 `content` 模糊匹配 |
 
 **请求示例**
 
 ```http
-GET /api/questions?position_id=1&dimension=沟通能力&source=bank HTTP/1.1
+GET /api/questions?position_id=1&dimension=沟通能力&difficulty=easy&source=bank HTTP/1.1
 Authorization: Bearer <token>
 ```
 
@@ -2471,7 +2478,15 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 **查询参数**（AND 关系）：`position_id`、`category`、`dimension`、`difficulty`、
 `question_type`、`limit`。
 
-**响应 `200`** —— 题目预览数组（[§13.19](#1319-practicequestionout)），**不含答案与解析**。
+**响应 `200`** —— `{ total, items }`（[§13.27 PracticePreviewOut](#1327-practicepreviewout)）：
+
+| 字段 | 说明 |
+|---|---|
+| `total` | 符合条件的**真实题量** —— **不受 `limit` 截断**。前端报「符合条件 N 题」看的是它 |
+| `items` | 题目预览数组（[§13.19 PracticeQuestionOut](#1319-practicequestionout)），按 `limit` 截断、**不含答案与解析**，供分类 / 维度下拉取候选值 |
+
+> `items` 的截断（默认 `practice_session_size_default`）是为了不一次拉全库；
+> 需要精确题量时读 `total`，**不要拿 `items` 的长度当计数**。
 
 > 这是**预览**用途（比如先看看能刷到哪些题）。真正开始练习请用
 > [§12.3](#123-开始一次练习)，由服务端取题并写快照。
@@ -3325,6 +3340,34 @@ HR 读到的候选人简历（[§8.16](#816-读取面试关联的简历)）。
 | `updated_at` | datetime | 每次更新刷新；HR 据此判断手上这份是不是最新的 |
 
 > **不含 `created_by`** —— 候选人不需要知道自己的 user id。
+
+---
+
+### 13.27 PracticePreviewOut
+
+刷题预览的响应（[§12.1](#121-刷题取题预览)）。**编号排在最后**，章节顺序仍是「十二、刷题练习」。
+
+> 为什么不是裸数组：预览要同时回答「一共有多少题可选」与「下拉框里有哪些分类 /
+> 维度」。前者必须是真实题量，而后者的数据源（`items`）为了不一次拉全库是按
+> `limit` 截断的 —— 两者装在同一个对象里，调用方就不必拿被截断的长度冒充题量。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `total` | integer | 符合条件的**真实题量**，不受 `limit` 截断 |
+| `items` | array | [§13.19 PracticeQuestionOut](#1319-practicequestionout) 数组，按 `limit` 截断 |
+
+```json
+{
+  "total": 15,
+  "items": [
+    {
+      "id": 12, "position_id": 1, "category": "基础", "dimension": "专业能力",
+      "difficulty": "easy", "content": "HTTP 状态码 401 表示什么？",
+      "question_type": "single_choice", "options": ["未认证", "未授权"], "tags": ["网络"]
+    }
+  ]
+}
+```
 
 ---
 

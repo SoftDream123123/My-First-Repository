@@ -293,21 +293,27 @@ def test_list_questions_filters_by_question_type(client, hr_headers, db, positio
     assert ids == [choice.id]
 
 
-def test_list_questions_does_not_support_difficulty_filter(client, hr_headers, db, position, hr_user):
-    """⚠️ 记录真实契约：**HR 列表接口没有 `difficulty` 参数**。
+def test_list_questions_filters_by_difficulty(client, hr_headers, db, position, hr_user):
+    """`difficulty` 参数**真的筛选**（PRD §4.3：题库支持按难度筛选）。
 
-    FastAPI 会静默忽略未知查询参数，所以传 `?difficulty=hard` 不会报错，
-    也**不会**真的筛选 —— 结果与不传完全一样。这一条存在的意义是防止
-    「测试里写了筛选、实际没筛」这种假覆盖（既有套件里就有这么一条）。
+    ⚠️ 这条必须断言「结果被收窄」，不能只断言请求成功 —— FastAPI 对**未知**查询
+    参数是静默忽略的，只断言 200 的话「参数没接上」也会过，那就成了假覆盖。
+    本文件历史上正是靠一条反向用例（`..._does_not_support_difficulty_filter`）
+    把「HR 列表没有 difficulty 参数」记成了既有契约；补上实现后改为正向断言。
     """
-    _seed(db, position, hr_user, difficulty="easy", content="简单题的题干内容描述")
+    easy = _seed(db, position, hr_user, difficulty="easy", content="简单题的题干内容描述")
     hard = _seed(db, position, hr_user, difficulty="hard", content="困难题的题干内容描述")
 
-    filtered = client.get("/api/questions?difficulty=hard", headers=hr_headers)
-    unfiltered = client.get("/api/questions", headers=hr_headers)
+    filtered = client.get("/api/questions?difficulty=hard", headers=hr_headers).json()
+    ids = [q["id"] for q in filtered]
 
-    assert filtered.json() == unfiltered.json(), "传了也不筛 —— 参数被忽略"
-    assert hard.id in [q["id"] for q in filtered.json()]
+    assert [q["difficulty"] for q in filtered] == ["hard"]
+    assert hard.id in ids
+    assert easy.id not in ids, "筛了难度却把别的难度也带回来 —— 参数被忽略了"
+
+    # 对照组：不传难度时两道题都在，证明上面收窄确实是筛选造成的
+    unfiltered = client.get("/api/questions", headers=hr_headers).json()
+    assert {easy.id, hard.id} <= {q["id"] for q in unfiltered}
 
 
 def test_list_questions_unknown_query_params_are_ignored(client, hr_headers, db, position, hr_user):

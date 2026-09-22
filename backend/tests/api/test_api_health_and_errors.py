@@ -147,6 +147,30 @@ def test_validation_error_detail_carries_field_list(client):
     assert {f["field"] for f in fields} == {"username", "password"}
 
 
+def test_validation_field_messages_are_chinese(client):
+    """`detail.fields[].message` 是**中文**，且带出约束值。
+
+    这条不是洁癖：前端 `components/form.js` 的 `fieldErrors().fromServer` 会把
+    `message` 原样写进那个字段下方的报错节点 —— 不译的话用户看到的就是
+    `String should have at least 8 characters`。译文还要说清该改到多少。
+    """
+    import re
+
+    resp = client.post(
+        "/api/auth/register", json={"username": "someone", "password": "short"}
+    )
+
+    assert resp.status_code == 400
+    field = next(
+        f for f in resp.json()["detail"]["fields"] if f["field"] == "password"
+    )
+    assert field["type"] == "string_too_short"
+    assert "8" in field["message"], field["message"]
+    assert re.search(r"[A-Za-z]", field["message"]) is None, (
+        f"字段级文案不该是英文原文：{field['message']}"
+    )
+
+
 def test_business_error_envelope_for_duplicate_username(client, admin_headers):
     """409 也是三字段信封（业务冲突不是 500）。"""
     payload = {"username": "dup_user", "password": "dup12345678", "role": "hr"}

@@ -4,10 +4,10 @@
  * 同样是「列表 + 案卷」：题干、选项、参考答案、解析都是成段内容，
  * 表格里放不下，而 HR 维护题库时恰恰要通读这几块。
  *
- * 筛选条只放**后端真的支持**的六项（position_id / category / dimension /
- * source / question_type / keyword）。PRD §4.3 提到「按难度筛选」，但
- * HR 的列表端点**并没有这个参数**（传了会被 FastAPI 静默忽略，见 API 文档 §7.2
- * 与测试报告 §8.3）—— 按接口来，不为没实现的能力造控件。
+ * 筛选条放**后端真的支持**的七项（position_id / category / dimension /
+ * source / question_type / difficulty / keyword）。`difficulty` 是补上的：
+ * PRD §4.3 要求题库可按难度筛，而此前后端不接该参数、前端也没有控件
+ * （传了会被 FastAPI 静默忽略）—— 缺的是实现，不是接口设计。
  */
 
 import { el, mount, clear, append } from '../dom.js';
@@ -418,7 +418,7 @@ export async function render(container) {
   let questions = [];
   let selectedId = null;
   let reloadNo = 0; // 并发请求的序号，用来丢弃过期响应
-  const filters = { position_id: '', question_type: '', dimension: '', category: '', source: '', keyword: '' };
+  const filters = { position_id: '', question_type: '', difficulty: '', dimension: '', category: '', source: '', keyword: '' };
 
   const listBody = el('div', { class: 'split-list-body' });
   const dossier = el('div', { class: 'panel' });
@@ -669,6 +669,11 @@ export async function render(container) {
         el('option', { value: 'single_choice', text: TYPE_LABELS.single_choice }),
         el('option', { value: 'short_answer', text: TYPE_LABELS.short_answer })),
       'question_type'),
+    selectFilter(
+      el('select', { class: 'select', 'aria-label': '按难度筛选' },
+        el('option', { value: '', text: '全部难度' }),
+        ['easy', 'medium', 'hard'].map((value) => el('option', { value, text: DIFFICULTY_LABELS[value] }))),
+      'difficulty'),
     selectFilter(
       el('select', { class: 'select', 'aria-label': '按维度筛选' },
         dimensionOptions.map(([value, text]) => el('option', { value, text }))),

@@ -88,10 +88,12 @@ export async function render(container) {
 
   let positions = [];
   let sessions = [];
-  let pool = [];
+  // 预览响应是 `{total, items}`：total 是符合条件的真实题量（不受截断），
+  // items 按 limit 截断、只用来派生分类/维度的下拉候选值
+  let preview = { total: 0, items: [] };
   let resumes = [];
   try {
-    [positions, sessions, pool, resumes] = await Promise.all([
+    [positions, sessions, preview, resumes] = await Promise.all([
       api.get('/candidate/positions'),
       api.get('/practice/sessions'),
       api.get('/practice/questions'),
@@ -102,6 +104,7 @@ export async function render(container) {
       el('button', { class: 'btn btn--primary', text: '重新加载', onClick: () => render(container) }))));
     return;
   }
+  const pool = preview.items;
 
   /* ---------------------------- 筛选栏 ---------------------------- */
 
@@ -135,8 +138,8 @@ export async function render(container) {
 
   // 「开始练习」的创建请求在飞时为真。**必须挡住晚到的计数响应**：
   // refreshCount 的 token 只保证「不用旧结果覆盖新文案」，它仍会执行
-  // setStartEnabled(rows.length > 0) 把按钮重新点亮 —— 于是用户能在
-  // 创建请求返回前再点一次，服务端各建一场会话，其中一场是空壳。
+  // setStartEnabled(total > 0) 把按钮重新点亮 —— 于是用户能在创建请求返回前
+  // 再点一次，服务端各建一场会话，其中一场是空壳。
   let starting = false;
 
   function currentFilters() {
@@ -157,13 +160,16 @@ export async function render(container) {
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&');
     try {
-      const rows = await api.get(`/practice/questions${query ? `?${query}` : ''}`);
+      const result = await api.get(`/practice/questions${query ? `?${query}` : ''}`);
       if (token !== countToken) return;
-      count.textContent = rows.length
-        ? `符合条件 ${rows.length} 题`
+      // 报的是 `total`（真实题量），不是 `items.length`（按 limit 截断过的）——
+      // 拿后者当计数会在题库大时把题量说少
+      const total = result.total;
+      count.textContent = total
+        ? `符合条件 ${total} 题`
         : '没有符合条件的题目，换一组筛选条件';
-      count.className = `practice-count${rows.length ? '' : ' is-none'}`;
-      if (!starting) setStartEnabled(rows.length > 0);
+      count.className = `practice-count${total ? '' : ' is-none'}`;
+      if (!starting) setStartEnabled(total > 0);
     } catch {
       if (token !== countToken) return;
       count.textContent = '';

@@ -42,6 +42,7 @@ def list_questions(
     question_type: str | None = Query(
         default=None, description="single_choice | short_answer"
     ),
+    difficulty: str | None = Query(default=None, description="easy | medium | hard"),
     keyword: str | None = Query(default=None, description="按题干模糊匹配"),
     db: Session = Depends(get_db),
     user: User = Depends(_hr_guard),
@@ -52,6 +53,7 @@ def list_questions(
         dimension=dimension,
         source=source,
         question_type=question_type,
+        difficulty=difficulty,
         keyword=keyword,
     )
     return [

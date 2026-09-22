@@ -57,7 +57,12 @@ function scoreSpan(className, value) {
   });
 }
 
-/** 右栏：3 维及以上画雷达；1–2 维围不成面积，改画横条 —— 别硬凑一个三角形。 */
+/**
+ * 右栏：3 维及以上画雷达；1–2 维围不成面积，改画横条 —— 别硬凑一个三角形。
+ *
+ * 1–2 维时**必须写明为什么没有雷达图**：不给一句话的话，读者只会看到一个
+ * 与报告其余部分长相不同的东西，不知道是「维度少」还是「图挂了」。
+ */
 function buildChartCell(dims, scores, notes) {
   if (!dims.length) {
     return el('div', { class: 'report-head-side' },
@@ -66,6 +71,7 @@ function buildChartCell(dims, scores, notes) {
 
   if (dims.length < 3) {
     return el('div', { class: 'report-head-side' },
+      el('p', { class: 'hint', text: '维度不足 3 个，无法绘制雷达图 —— 按维度列出得分。' }),
       el('div', { class: 'dim-bars' }, dims.map((dim) => {
         const value = scores[dim];
         return el('div', {},

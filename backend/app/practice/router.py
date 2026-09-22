@@ -21,7 +21,7 @@ from app.practice.schemas import (
     PracticeStats,
     WrongBookItem,
 )
-from app.question.schemas import PracticeFilters
+from app.question.schemas import PracticeFilters, PracticePreviewOut
 
 router = APIRouter(prefix="/practice", tags=["刷题（候选人）"])
 
@@ -30,7 +30,7 @@ _candidate_guard = require_roles("candidate")
 
 @router.get(
     "/questions",
-    response_model=list[dict],
+    response_model=PracticePreviewOut,
     summary="刷题取题（预览，不含答案）",
 )
 def preview_questions(
@@ -44,8 +44,13 @@ def preview_questions(
     limit: int | None = Query(default=None, ge=1),
     db: Session = Depends(get_db),
     user: User = Depends(_candidate_guard),
-) -> list[dict]:
-    """无状态预览 —— 不创建会话。响应用 PracticeQuestionOut，**不含参考答案**。"""
+) -> PracticePreviewOut:
+    """无状态预览 —— 不创建会话。
+
+    响应 `{total, items}`：`total` 是符合条件的**真实题量**（不受 limit 截断），
+    `items` 是截断后的题目预览（PracticeQuestionOut，**不含参考答案**），
+    供下拉框取分类 / 维度的候选值。
+    """
     filters = PracticeFilters(
         position_id=position_id,
         category=category,

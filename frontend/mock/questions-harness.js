@@ -3,7 +3,7 @@
  *
  * 重点在「提交出去的东西对不对」和「筛选真的发对参数了吗」：
  * 简答题必须传 `options: []`、参考答案留空要传 null、`source` 不由客户端决定、
- * 维度必须跟着岗位走、六个筛选参数名一字不差。这些在界面上都看不出来。
+ * 维度必须跟着岗位走、七个筛选参数名一字不差。这些在界面上都看不出来。
  *
  * 运行：npm run dev 后打开 /mock/questions-harness.html
  */
@@ -62,7 +62,7 @@ let nextId = 100;
 function defaultHandlers() {
   return {
     'GET /positions': () => ({ status: 200, body: POSITIONS }),
-    // 按 API 文档 §7.2：这些都是**精确/SQL LIKE** 过滤，AND 关系，无 difficulty 参数
+    // 按 API 文档 §7.2：这些都是**精确/SQL LIKE** 过滤，AND 关系
     'GET /questions': ({ query }) => {
       const params = new URLSearchParams(query);
       let rows = QUESTIONS;
@@ -75,6 +75,7 @@ function defaultHandlers() {
       eq('dimension', 'dimension');
       eq('source', 'source');
       eq('question_type', 'question_type');
+      eq('difficulty', 'difficulty');
       const keyword = params.get('keyword');
       if (keyword) rows = rows.filter((q) => q.content.includes(keyword));
       return { status: 200, body: rows };
@@ -246,11 +247,28 @@ report.run(async () => {
   check('筛到 0 条 → 空态而不是空列表', container.textContent.includes('没有匹配的题目'),
     container.textContent.slice(container.textContent.indexOf('题库'), container.textContent.indexOf('题库') + 40));
 
-  // 复位，再验关键词
+  // 复位，再验难度与关键词
   setSelect(filterSelect('按岗位筛选'), '');
   setSelect(filterSelect('按题型筛选'), '');
   setSelect(filterSelect('按维度筛选'), '');
   await settle();
+
+  /* 难度筛选 —— PRD §4.3/§8 要求题库可按难度筛。曾经既没有这个下拉、
+     后端也不接 difficulty 参数（一条反向用例把那个缺口记成了既有契约）。 */
+  const difficultyFilter = filterSelect('按难度筛选');
+  check('筛选栏有「按难度」下拉', difficultyFilter !== null, String(difficultyFilter));
+  if (difficultyFilter) {
+    backend.reset();
+    setSelect(difficultyFilter, 'hard');
+    await settle();
+    const hardCall = backend.calls.filter((c) => c.path === '/questions').at(-1);
+    check('按难度筛选 → 发出 difficulty 参数',
+      new URLSearchParams(hardCall?.query).get('difficulty') === 'hard', String(hardCall?.query));
+    check('按难度筛选后只剩该难度的题', listItems().length === 1, `实际 ${listItems().length}`);
+    setSelect(difficultyFilter, '');
+    await settle();
+  }
+
   backend.reset();
   setInput(filterInput(), '事务');
   await settle();

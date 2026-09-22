@@ -170,6 +170,9 @@ const flags = {
   // 人为延迟：用来把「先发的请求后返回」做成**确定状态**（见第 17b 节）
   countDelay: 0,
   startDelay: 0,
+  // 把 items 截断到 N 条（total 仍是真实题量）—— 用来钉住「报的是 total
+  // 而不是 items.length」（见第 17c 节）。null = 不截断。
+  itemsCap: null,
 };
 
 function handlers() {
@@ -183,14 +186,17 @@ function handlers() {
 
     'GET /practice/sessions': () => ({ status: 200, body: flags.sessions }),
 
-    // 按查询串真的过滤一下，好让「符合条件 N 题」这条断言测的是真行为
+    // 按查询串真的过滤一下，好让「符合条件 N 题」这条断言测的是真行为。
+    // 响应是 `{total, items}`：total 是真实题量，items 可能被 limit 截断 ——
+    // 真实后端默认截到 practice_session_size_default（10）。
     'GET /practice/questions': ({ query }) => {
       const params = new URLSearchParams(query);
       const difficulty = params.get('difficulty');
       const dimension = params.get('dimension');
       const rows = flags.pool.filter((q) =>
         (!difficulty || q.difficulty === difficulty) && (!dimension || q.dimension === dimension));
-      return { status: 200, body: rows, delay: flags.countDelay };
+      const items = flags.itemsCap === null ? rows : rows.slice(0, flags.itemsCap);
+      return { status: 200, body: { total: rows.length, items }, delay: flags.countDelay };
     },
 
     'POST /practice/sessions': ({ body }) => {
@@ -737,6 +743,20 @@ report.run(async () => {
   flags.startFails = false;
   flags.countDelay = 0;
   flags.startDelay = 0;
+  backend.reset();
+
+  /* ---------- 17c. 题量报的是 total，不是被截断的 items.length ---------- */
+  // 真实后端默认把预览截到 practice_session_size_default（10）条，前端若拿
+  // items.length 当计数，题库一多就会把题量说少。这里让 items 只有 1 条而
+  // total 仍是 3 —— 计数必须报 3。
+  flags.itemsCap = 1;
+  backend.reset();
+  await go('#/candidate/practice');
+  await wait(60);
+  check('items 被截断时，计数报的仍是真实题量（total）',
+    page().querySelector('.practice-count')?.textContent === '符合条件 3 题',
+    page().querySelector('.practice-count')?.textContent);
+  flags.itemsCap = null;
   backend.reset();
 
   /* ---------- 18. 收尾 ---------- */

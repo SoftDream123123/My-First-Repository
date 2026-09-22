@@ -304,6 +304,27 @@ report.run(async () => {
   check('状态行显示逐题进度 1 / 3', page().querySelector('.stream-count')?.textContent === '1 / 3',
     String(page().querySelector('.stream-count')?.textContent));
 
+  /* ---------- 10b. 岗位只定义 1–2 个维度：不画雷达 + 说明原因 ---------- */
+  // module-07 §4.4/§10 要求「维度 < 3 时不绘制并显示降级文案」。不给一句话的话，
+  // 读者只会看到一个与报告其余部分长相不同的东西，不知道是「维度少」还是「图挂了」。
+  reset('evaluated');
+  backend.setHandlers({
+    ...defaultHandlers(),
+    'GET /interviews/:id': () => ({
+      status: 200,
+      body: { ...detail(), evaluation_dimensions: ['专业能力'] },
+    }),
+  });
+  await go('#/interviews/1/evaluation');
+  await waitFor(() => page().querySelector('.dim-bars') !== null);
+  check('维度不足 3 个 → 不画雷达多边形（两点围不成面积）',
+    page().querySelector('.radar-area') === null);
+  check('维度不足 3 个 → 改画横条，信息不丢', page().querySelector('.dim-bars') !== null);
+  check('维度不足 3 个 → **写出为什么没有雷达图**',
+    page().textContent.includes('维度不足 3 个，无法绘制雷达图'),
+    page().textContent.slice(0, 140));
+  backend.setHandlers(defaultHandlers());
+
   /* ---------- 11. 阶段文案随已到的东西推进 ---------- */
   reset('evaluating');
   STREAM = sseText([

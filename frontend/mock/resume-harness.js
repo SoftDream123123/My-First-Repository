@@ -114,7 +114,12 @@ function handlers() {
 
     'GET /candidate/positions': () => ({ status: 200, body: POSITIONS }),
     'GET /practice/sessions': () => ({ status: 200, body: [] }),
-    'GET /practice/questions': () => ({ status: 200, body: [{ id: 12, category: '基础', dimension: '专业能力' }] }),
+    // 预览响应是 `{total, items}`（§13.27）：本页只借它派生岗位/分类/维度下拉，
+    // 但形状必须与真实后端一致 —— 否则页面读 `items` 会拿到 undefined
+    'GET /practice/questions': () => ({
+      status: 200,
+      body: { total: 1, items: [{ id: 12, category: '基础', dimension: '专业能力' }] },
+    }),
     'POST /practice/sessions': () => ({ status: 201, body: sessionDetail() }),
     'GET /practice/sessions/:id': () => ({ status: 200, body: flags.detail ?? sessionDetail() }),
   };
