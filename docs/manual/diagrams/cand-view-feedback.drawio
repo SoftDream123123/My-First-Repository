@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="cand-view-feedback">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n_s" value="在「我的记录」里点「查看反馈」&#xa;（或作答页上的「查看反馈」）" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="370" y="40" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ready" value="招聘方评估完了吗？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="370" y="190" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ok" value="页面按脱敏规则只给出&#xa;「综合结论」「优点」「待改进」" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="220" y="340" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_notready" value="看到「反馈还没出来」，&#xa;过一阵再来看看" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="340" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_full" value="开放了更多内容时，&#xa;页面上会多一块「总分」" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="490" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e_0" value="" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_s" target="n_ready">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_1" value="评估完了" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=none;exitX=0.25;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_ready" target="n_ok">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_2" value="还没评估" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=none;exitX=0.75;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_ready" target="n_notready">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_3" value="" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_ok" target="n_full">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

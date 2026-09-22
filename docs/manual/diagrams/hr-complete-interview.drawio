@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="hr-complete-interview">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n_s" value="打开一场「进行中」的&#xa;面试详情页" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="370" y="40" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="n_warn" value="题目还没记完也没关系 ——&#xa;没记回答的题，评估时按 0 分算" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="190" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_click" value="点页头右上角的「标记完成」" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="370" y="340" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_done" value="成功了吗？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="370" y="490" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ok" value="看到「已标记完成」，&#xa;进度走到「已完成」" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="220" y="640" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_fail" value="看到「不允许从「进行中」迁移到&#xa;「已完成」」时，说明状态已被改过，&#xa;刷新页面看看" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="520" y="640" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e_0" value="" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_s" target="n_warn">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_1" value="" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_warn" target="n_click">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_2" value="" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_click" target="n_done">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_3" value="成功" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=none;exitX=0.25;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_done" target="n_ok">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_4" value="失败" style="rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;edgeStyle=none;exitX=0.75;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_done" target="n_fail">
+          <mxGeometry relative="1" as="geometry">
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
