@@ -16,7 +16,9 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from app.ai.base import FEEDBACK_LEVEL_FULL
 from app.auth.models import User
+from app.core.config import get_settings
 from app.core.deps import get_db, require_roles
 from app.interview import service
 from app.interview.schemas import (
@@ -24,6 +26,7 @@ from app.interview.schemas import (
     CandidateAnswerView,
     CandidateInterviewDetail,
     CandidateInterviewItem,
+    CandidateResumeReviewView,
     InterviewResumeOut,
     InvitationAcceptRequest,
     InvitationAcceptResult,
@@ -131,3 +134,35 @@ def link_my_resume(
     仅 `ongoing` 允许变更；只能关联属于本人的简历（403）/ 存在的简历（404）。
     """
     return service.link_resume(db, user, interview_id, payload.resume_id)
+
+
+@router.post(
+    "/interviews/{interview_id}/resume-review",
+    response_model=CandidateResumeReviewView,
+    summary="评估我的简历与该场岗位的匹配度（不落库）",
+)
+def review_my_resume(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_candidate_guard),
+) -> CandidateResumeReviewView:
+    """**无请求体**；按 `CANDIDATE_FEEDBACK_LEVEL` 脱敏，`summary` 档不下发分数。
+
+    脱敏发生在**这一层（router）**，不在 service、也不在 ai：它是「谁在看」的
+    问题 —— service 拿到的是与调用者身份无关的 AI 结果，只有 router 知道这是
+    候选人端。这与 `generate_candidate_feedback` 把 `level` 传进 ai 层刻意不同：
+    那里档位改变的是**文案本身**（两档是两份不同的文本），这里只决定分数发不发，
+    是纯视图裁剪（module-27 §5.4）。
+
+    `strengths` / `gaps` **不脱敏**：分数是评估结果，文案是可照做的建议（§4.15）。
+    `conclusion` 也不改写 —— 后端生成的结论从来就不含去留判断（§4.9 的红线），
+    无需为候选人另写一版。
+    """
+    result = service.review_resume_for_candidate(db, user, interview_id)
+    level = get_settings().candidate_feedback_level
+    return CandidateResumeReviewView(
+        match_score=result.match_score if level == FEEDBACK_LEVEL_FULL else None,
+        conclusion=result.conclusion,
+        strengths=result.strengths,
+        gaps=result.gaps,
+    )

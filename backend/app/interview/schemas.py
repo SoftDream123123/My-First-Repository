@@ -290,3 +290,37 @@ class PrepUpdate(BaseModel):
     outline: list[PrepOutlineStageOut]
     focus_points: list[PrepFocusPointOut]
     question_plan: list[PrepQuestionItemOut]
+
+
+# ==================== 简历 AI 评估（PRD §4.15）====================
+
+
+class ResumeReviewView(BaseModel):
+    """HR 侧的简历评估视图。
+
+    `match_score` **恒非空** —— HR 看全部评分（§4.9 的既有口径），档位只作用于
+    候选人侧。因此与候选人那个 schema **分开写**而不是共用一个可空字段：共用会把
+    「HR 也可能拿到 null」写进类型里，让前端对 HR 侧写一段永远不触发的空值分支。
+    """
+
+    match_score: float
+    conclusion: str
+    strengths: list[str]
+    gaps: list[str]
+
+
+class CandidateResumeReviewView(BaseModel):
+    """候选人侧的简历评估视图（§4.15、§9）。
+
+    `match_score` 在 `summary` 档为 `null`、`full` 档为 0–10；`conclusion` /
+    `strengths` / `gaps` **任何档位都下发** —— 分数是评估结果，文案是可照做的建议。
+
+    字段保留为可空而非「结构上不存在」，与 `generate_candidate_feedback` 的
+    `overall_score` 同一形态（PRD §10）。**不下发档位本身**：候选人不需要知道
+    部署配了哪一档。
+    """
+
+    match_score: float | None
+    conclusion: str
+    strengths: list[str]
+    gaps: list[str]

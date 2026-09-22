@@ -1,6 +1,6 @@
 """API 接口测试 —— 模块 6/9：interview（面试，HR 侧）。
 
-覆盖 15 个 method-route：
+覆盖 16 个 method-route：
     POST   /api/interviews
     GET    /api/interviews
     GET    /api/interviews/{interview_id}
@@ -16,6 +16,7 @@
     PUT    /api/interviews/{interview_id}/prep
     POST   /api/interviews/{interview_id}/questions/match
     GET    /api/interviews/{interview_id}/resume
+    POST   /api/interviews/{interview_id}/resume-review
 
 （评估相关的 `evaluate` / `evaluation/stream` / `report` / `report/export` 属模块 7。）
 
@@ -23,6 +24,7 @@
     docs/superpowers/specs/2026-09-15-module-05-interview-plan.md §4 / §5.4 / §6
     docs/superpowers/specs/2026-09-20-module-12-interview-invitation-plan.md §4 / §6
     docs/superpowers/specs/2026-09-21-module-19-interview-plan.md §4 / §5 / §6
+    docs/superpowers/specs/2026-09-22-module-28-interview-resume-review-plan.md §3 / §6 / §7
     docs/apis/API接口文档.md §8.1–§8.16
 
 ⚠️ 三处容易搞混、本文件专门分开测的「同名不同物」：
@@ -970,3 +972,106 @@ def test_candidate_cannot_read_hr_resume_endpoint(client, candidate_headers, lin
 
 def test_hr_reads_nonexistent_interview_resume_is_404(client, hr_headers):
     assert client.get("/api/interviews/424242/resume", headers=hr_headers).status_code == 404
+
+
+# ===========================================================================
+# 简历 AI 评估（MVP-4，PRD §4.15）
+# ===========================================================================
+
+REVIEW_PATH = "/api/interviews/{interview_id}/resume-review"
+
+
+def _review(client, interview_id: int, headers):
+    return client.post(REVIEW_PATH.format(interview_id=interview_id), headers=headers)
+
+
+def test_resume_review_returns_four_fields(client, hr_headers, linked_interview):
+    resp = _review(client, linked_interview["interview_id"], hr_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {"match_score", "conclusion", "strengths", "gaps"}
+    assert 0.0 <= body["match_score"] <= 10.0
+    assert body["conclusion"].strip()
+    assert body["strengths"]
+
+
+def test_resume_review_needs_no_request_body(client, hr_headers, linked_interview):
+    """无请求体：岗位来自面试、简历来自关联、档位来自配置（传 body 也不该报错）。"""
+    resp = client.post(
+        REVIEW_PATH.format(interview_id=linked_interview["interview_id"]),
+        headers=hr_headers,
+    )
+
+    assert resp.status_code == 200
+
+
+def test_resume_review_without_linked_resume_is_409(client, hr_headers, accepted_interview):
+    resp = _review(client, accepted_interview["interview_id"], hr_headers)
+
+    assert resp.status_code == 409
+    assert resp.json()["code"] == "BUSINESS_ERROR"
+    assert "尚未关联简历" in resp.json()["message"]
+
+
+def test_resume_review_is_allowed_on_completed_interview(
+    client, hr_headers, linked_interview, db
+):
+    """评估**不写数据**，因此 `completed` 也能评 —— 与「按简历补题」要求
+    `ongoing` 刻意相反。这条防的是「照抄补题那条 status 判定」。"""
+    from app.interview.models import Interview
+
+    db.rollback()
+    interview = db.get(Interview, linked_interview["interview_id"])
+    interview.status = "completed"
+    db.commit()
+
+    assert _review(client, linked_interview["interview_id"], hr_headers).status_code == 200
+
+
+def test_resume_review_is_unaffected_by_candidate_feedback_level(
+    client, hr_headers, linked_interview, monkeypatch
+):
+    """HR 看全部评分：默认档 `summary` 只作用于候选人侧那个端点。"""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("CANDIDATE_FEEDBACK_LEVEL", "summary")
+    get_settings.cache_clear()
+    try:
+        body = _review(client, linked_interview["interview_id"], hr_headers).json()
+
+        assert body["match_score"] is not None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_resume_review_ai_failure_is_502(client, hr_headers, linked_interview, monkeypatch):
+    """**不降级**：评估的产出就是它的全部意义，失败即 502，由用户重试。"""
+    from app.core.exceptions import AIProviderError
+    from app.interview import service as interview_service
+
+    class _Boom:
+        def evaluate_resume(self, **_kwargs):
+            raise AIProviderError("上游失败")
+
+    monkeypatch.setattr(interview_service, "get_provider", lambda: _Boom())
+
+    resp = _review(client, linked_interview["interview_id"], hr_headers)
+
+    assert resp.status_code == 502
+    assert resp.json()["code"] == "AI_PROVIDER_ERROR"
+
+
+def test_resume_review_is_403_for_candidate_and_401_without_token(
+    client, candidate_headers, linked_interview
+):
+    interview_id = linked_interview["interview_id"]
+
+    assert _review(client, interview_id, candidate_headers).status_code == 403
+    assert _review(client, interview_id, {}).status_code == 401
+
+
+def test_resume_review_of_another_hrs_interview_is_403(client, other_hr_headers, linked_interview):
+    resp = _review(client, linked_interview["interview_id"], other_hr_headers)
+
+    assert resp.status_code == 403

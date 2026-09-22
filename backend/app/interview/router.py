@@ -24,6 +24,7 @@ from app.interview.schemas import (
     PrepOut,
     PrepUpdate,
     QuestionItem,
+    ResumeReviewView,
 )
 
 router = APIRouter(prefix="/interviews", tags=["面试"])
@@ -208,6 +209,36 @@ def match_questions_by_resume(
         else get_settings().resume_match_count
     )
     return service.match_questions_by_resume(db, user, interview_id, count)
+
+
+@router.post(
+    "/{interview_id}/resume-review",
+    response_model=ResumeReviewView,
+    summary="评估简历与该场岗位的匹配度（不落库）",
+)
+def review_interview_resume(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(_hr_guard),
+) -> ResumeReviewView:
+    """**无请求体**：岗位来自面试、简历来自关联、档位来自配置，没有可传的参数。
+
+    与 `POST /interviews/{id}/invitations` 同一形态（module-12 已开此先例）——
+    可传的参数只有「岗位」与「简历」，让调用方传等于给了越权的口子。
+
+    **不落库、不缓存、且不限面试状态**：评估不写任何数据，因此 draft 与
+    completed 都能评（与「按简历补题」要求 ongoing 相反，PRD §4.15）。
+
+    HR 侧**不受 `CANDIDATE_FEEDBACK_LEVEL` 影响**：HR 看全部评分（§4.9 口径），
+    档位只作用于候选人侧那个端点。
+    """
+    result = service.review_resume(db, user, interview_id)
+    return ResumeReviewView(
+        match_score=result.match_score,
+        conclusion=result.conclusion,
+        strengths=result.strengths,
+        gaps=result.gaps,
+    )
 
 
 # ------------------------- 面试前准备助手 -------------------------

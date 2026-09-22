@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.ai.base import QAPair, QuestionBrief
+from app.ai.base import QAPair, QuestionBrief, ResumeReviewResult
 from app.ai.factory import get_provider
 from app.auth import service as auth_service
 from app.auth.models import User
@@ -547,6 +547,70 @@ def match_questions_by_resume(
         added_count=len(created),
         added=[_added_view(entry) for entry in created],
         total_questions=len(existing_ids) + len(created),
+    )
+
+
+# -------------------------- 简历 AI 评估 --------------------------
+# 评估落在 interview 包而不是 resume 包：它要同时读岗位（JD + 评估维度）与该场
+# 关联的简历，而 `resume` 包**禁止依赖 position**（PRD §3.3、§4.15）。
+# interview 已同时依赖 position / resume / ai，因此本功能**不新增任何依赖边**。
+
+
+def review_resume(db: Session, user: User, interview_id: int) -> ResumeReviewResult:
+    """HR 侧简历评估（PRD §4.15）。
+
+    **不落库、不缓存，且不限面试状态** —— 评估不写任何数据，因此 draft 与
+    completed 都能评。这与 §4.14 补题要求 `ongoing` **刻意相反**（补题会追加
+    题目）。**照抄补题那条 status 判定是错的**，会让一大半面试评不了。
+    """
+    interview = _get_visible(db, user, interview_id)
+    return _build_resume_review(db, interview)
+
+
+def review_resume_for_candidate(
+    db: Session, user: User, interview_id: int
+) -> ResumeReviewResult:
+    """候选人侧简历评估。判据与其余候选人端点一致：本人已接受该场邀请。
+
+    这里**不做脱敏** —— 分数发不发是 router 的事（它才知道调用者是候选人）。
+    """
+    interview = get_interview_for_candidate(db, user, interview_id)
+    return _build_resume_review(db, interview)
+
+
+def _build_resume_review(db: Session, interview: Interview) -> ResumeReviewResult:
+    """两条路径共用的前置校验与取数组装。
+
+    抽出来是为了让「未关联简历」「岗位无维度」这两条前置**只有一处实现** ——
+    否则两条路径会各自漂移，出现「HR 侧报 409、候选人侧报 500」这种差异。
+
+    步骤 1–3 与 AI 调用之间没有任何写操作，因此 AI 失败时**数据库零改动**，
+    不需要任何补偿（与 §4.14 补题同一形态）。
+    """
+    resume_id = repository.get_resume_id_of_interview(db, interview.id)
+    if resume_id is None:
+        # ⚠️ 文案与 §4.14 补题**逐字一致**：前端在面试详情页同时挂着「按简历补题」
+        # 与「评估匹配度」两个按钮，据同一句话决定「该引导用户去关联简历」。
+        # 文案漂移会让其中一个按钮的引导失效。
+        raise BusinessError("该面试尚未关联简历")
+
+    resume = resume_service.load_unchecked(db, resume_id)
+    if resume is None:
+        # 防御性分支：resume_id 存在但行已不在（外键 RESTRICT 理论上挡住了）
+        raise BusinessError("关联的简历已不可用")
+
+    position = repository.get_position(db, interview.position_id)
+    dims = list(position.evaluation_dimensions) if position else []
+    if not dims:
+        raise BusinessError("岗位未定义评估维度，无法评估简历")
+
+    # **不 catch AIProviderError**：全局处理器已把它转成 502 AI_PROVIDER_ERROR。
+    # 在这里 catch 会把 502 变成一个自制的 500。
+    return get_provider().evaluate_resume(
+        position_name=position.name,
+        jd=position.jd,
+        dims=dims,
+        resume_text=resume.content,
     )
 
 

@@ -1,6 +1,6 @@
 """API 接口测试 —— 模块 8/9：候选人端（在线作答）。
 
-覆盖 7 个 method-route（`GET .../feedback` 属模块 7）：
+覆盖 8 个 method-route（`GET .../feedback` 属模块 7）：
     GET  /api/candidate/positions                          刷题岗位筛选项
     POST /api/candidate/invitations/{code}/accept          凭邀请码激活并绑定
     GET  /api/candidate/interviews                         我参与的面试
@@ -8,10 +8,12 @@
     POST /api/candidate/interviews/{interview_id}/answers  保存 / 更新我的作答
     POST /api/candidate/interviews/{interview_id}/submit   交卷
     PUT  /api/candidate/interviews/{interview_id}/resume   关联 / 解除关联简历
+    POST /api/candidate/interviews/{interview_id}/resume-review  简历 AI 评估（脱敏）
 
 契约来源：
     docs/superpowers/specs/2026-09-20-module-12-interview-invitation-plan.md §4 / §5
     docs/superpowers/specs/2026-09-21-module-19-interview-plan.md §4 / §5
+    docs/superpowers/specs/2026-09-22-module-28-interview-resume-review-plan.md §3 / §5.2 / §7
     docs/apis/API接口文档.md §10.1–§10.7
 
 ⚠️ 本文件的断言目标是**候选人视图的字段边界**，不是值：
@@ -832,3 +834,80 @@ def test_candidate_endpoints_reject_hr_side(client, request, headers_name, accep
         ).status_code
         == 403
     )
+
+
+# ===========================================================================
+# 简历 AI 评估（MVP-4，PRD §4.15）
+# ===========================================================================
+
+REVIEW_PATH = "/api/candidate/interviews/{interview_id}/resume-review"
+
+
+def _review(client, interview_id: int, headers):
+    return client.post(REVIEW_PATH.format(interview_id=interview_id), headers=headers)
+
+
+def test_candidate_resume_review_hides_score_by_default(
+    client, candidate_headers, linked_interview
+):
+    """默认档 `summary`：**不下发**匹配度分，但文案三块照常下发。
+
+    注意这里与文件开头那条「结构上不存在」的脱敏形态不同：`match_score` 字段
+    **保留为 null**，与 `CandidateFeedbackResult.overall_score` 同一处理
+    （PRD §10）—— 分数是「有没有」的问题，不是「要不要给这个字段」的问题。
+    """
+    resp = _review(client, linked_interview["interview_id"], candidate_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["match_score"] is None
+    assert body["conclusion"].strip()
+    assert body["strengths"]
+    assert isinstance(body["gaps"], list)
+
+
+def test_candidate_resume_review_returns_score_in_full_level(
+    client, candidate_headers, linked_interview, monkeypatch
+):
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("CANDIDATE_FEEDBACK_LEVEL", "full")
+    get_settings.cache_clear()
+    try:
+        body = _review(client, linked_interview["interview_id"], candidate_headers).json()
+
+        assert 0.0 <= body["match_score"] <= 10.0
+    finally:
+        get_settings.cache_clear()
+
+
+def test_candidate_resume_review_does_not_leak_the_level(
+    client, candidate_headers, linked_interview
+):
+    """候选人不需要知道部署配了哪一档 —— 响应里不得出现档位字段。"""
+    body = _review(client, linked_interview["interview_id"], candidate_headers).json()
+
+    assert set(body) == {"match_score", "conclusion", "strengths", "gaps"}
+
+
+def test_candidate_resume_review_needs_linked_resume_with_the_same_message(
+    client, candidate_headers, accepted_interview
+):
+    """409 文案必须与 HR 侧**逐字一致** —— 前端两条链路据同一句话做引导。"""
+    resp = _review(client, accepted_interview["interview_id"], candidate_headers)
+
+    assert resp.status_code == 409
+    assert resp.json()["code"] == "BUSINESS_ERROR"
+    assert "尚未关联简历" in resp.json()["message"]
+
+
+def test_candidate_resume_review_rejects_hr(client, hr_headers, linked_interview):
+    assert _review(client, linked_interview["interview_id"], hr_headers).status_code == 403
+
+
+def test_candidate_resume_review_of_unaccepted_interview_is_403(
+    client, other_candidate_headers, linked_interview
+):
+    resp = _review(client, linked_interview["interview_id"], other_candidate_headers)
+
+    assert resp.status_code == 403
