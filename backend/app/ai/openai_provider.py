@@ -22,6 +22,7 @@ from app.ai.base import (
     FEEDBACK_LEVELS,
     PASS_THRESHOLD,
     QUESTION_TYPE_SINGLE_CHOICE,
+    RESUME_REVIEW_MAX_ITEMS,
     SCORE_MAX,
     SCORE_MIN,
     SOURCE_AI,
@@ -40,6 +41,7 @@ from app.ai.base import (
     QuestionScoreResult,
     ReferenceAnswerResult,
     ReportResult,
+    ResumeReviewResult,
 )
 from app.core.config import get_settings
 from app.core.exceptions import AIProviderError
@@ -61,6 +63,11 @@ _PREP_DEFAULT_DURATION_MIN = 5
 # 有简历，产出「针对简历中提到的…」这类引用不存在内容的提纲。
 _NO_RESUME_TEXT = "（候选人未提供简历）"
 _NO_QUESTIONS_TEXT = "（无）"
+
+# 简历评估：岗位名缺失时的兜底，以及模型没给结论时的兜底句。
+# 兜底句只陈述「没产出结论这件事」，**不得**退回任何含去留判断的说法（PRD §4.9）。
+_REVIEW_DEFAULT_POSITION = "该岗位"
+_REVIEW_NO_CONCLUSION = "已按岗位评估维度完成匹配度评估，详见亮点与差距两条列表。"
 
 
 def _clamp_score(value: Any) -> float:
@@ -668,6 +675,61 @@ class OpenAIProvider(AIProvider):
 
         return InterviewPrepResult(
             outline=outline, focus_points=focus_points, question_plan=question_plan
+        )
+
+    # -------------------- 简历与岗位匹配度评估 --------------------
+
+    def evaluate_resume(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        resume_text: str,
+    ) -> ResumeReviewResult:
+        resume = (resume_text or "").strip()
+        if not resume:
+            # 调用方本应判出「未关联简历」并整条路都不调用本方法
+            raise AIProviderError("缺少简历内容，无法评估简历与岗位的匹配度")
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法评估简历与岗位的匹配度")
+
+        system = (
+            "你是一位资深招聘顾问，负责评估候选人的简历与目标岗位要求的匹配程度。"
+            "你只描述**简历与岗位要求的重合度**：哪些对得上、哪些还缺。"
+            "**不得**给出录用与否的建议，也不得评价候选人是否应该进入下一轮，"
+            "措辞只针对简历本身。"
+        )
+        user = (
+            f"岗位名称：{(position_name or '').strip() or _REVIEW_DEFAULT_POSITION}\n"
+            f"岗位描述（JD）：\n{(jd or '').strip() or '（未提供）'}\n\n"
+            f"评估维度：{json.dumps(dims, ensure_ascii=False)}\n\n"
+            f"候选人简历：\n{resume}\n\n"
+            "请评估该简历与这个岗位的匹配度，输出 JSON 对象，字段：\n"
+            '- "match_score"：0–10 的数值，可带 1 位小数\n'
+            '- "conclusion"：一段综合结论，只说重合度，**不得**含录用建议\n'
+            f'- "strengths"：简历与岗位对得上的点，1–{RESUME_REVIEW_MAX_ITEMS} 条'
+            "字符串，**不得为空**\n"
+            f'- "gaps"：简历中缺失、建议补充的点，0–{RESUME_REVIEW_MAX_ITEMS} 条字符串\n'
+            "只输出 JSON，不要任何解释文字。"
+        )
+
+        raw = self._request_json(system, user, temperature=0.2, expect_list=False)
+        if not isinstance(raw, dict):
+            raise AIProviderError("AI 返回的简历评估不是 JSON 对象")
+
+        strengths = self._str_list(raw.get("strengths"))[:RESUME_REVIEW_MAX_ITEMS]
+        if not strengths:
+            # 与 Mock 同款前置（module-27 §3）：亮点为空说明这次评估没有产出可用
+            # 内容。**不能**静默返回一份「没有亮点」的结论 —— 那会让「模型没答好」
+            # 与「简历真的没有亮点」不可区分
+            raise AIProviderError("AI 未给出任何简历亮点，本次评估不可用")
+
+        return ResumeReviewResult(
+            match_score=_clamp_score(raw.get("match_score")),
+            conclusion=str(raw.get("conclusion") or "").strip()
+            or _REVIEW_NO_CONCLUSION,
+            strengths=strengths,
+            gaps=self._str_list(raw.get("gaps"))[:RESUME_REVIEW_MAX_ITEMS],
         )
 
     @staticmethod

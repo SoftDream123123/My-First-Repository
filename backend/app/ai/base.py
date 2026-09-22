@@ -46,6 +46,10 @@ CANDIDATE_FEEDBACK_LEAD = "感谢你参与本次面试。以下是本次面试�
 # 别的值，必须同步改前端，否则会出现「刷题判你答对了，报告页却显示需关注」。
 PASS_THRESHOLD = 6.5
 
+# 简历评估的亮点 / 差距条目上限（PRD §4.15）。上限由调用方与两个 Provider 共用，
+# 不各自写一个数字 —— 前端据「最多 5 条」排布区块。
+RESUME_REVIEW_MAX_ITEMS = 5
+
 
 @dataclass
 class QAPair:
@@ -197,13 +201,36 @@ class InterviewPrepResult:
     question_plan: list[PrepQuestionItem]
 
 
+@dataclass
+class ResumeReviewResult:
+    """简历与岗位的匹配度评估结果（PRD §4.15）。
+
+    **不复用 `ReportResult` / `CandidateFeedbackResult`**：三者语义不同 ——
+    报告是面试后的总分结论、候选人反馈是报告的脱敏重写、本结果是岗位匹配度。
+    共用会让 `match_score` 与 `overall_score` 的区别失去含义。
+
+    `match_score` 恒为 float（不用 `float | None`）：「候选人看不到分数」是
+    **端点层**的视图行为，不是 AI 层的产出差异 —— 让能力层返回 None 等于把
+    授权逻辑混进能力层（module-27 §5.2）。
+
+    `strengths` **不允许为空**：一条亮点都找不到意味着评估本身出了问题，
+    允许为空会让「评分坏了」与「简历真的差」不可区分。`gaps` 允许为空 ——
+    「这份简历没什么明显差距」是正当结论。
+    """
+
+    match_score: float
+    conclusion: str
+    strengths: list[str] = field(default_factory=list)
+    gaps: list[str] = field(default_factory=list)
+
+
 class AIProvider(ABC):
     """AI 能力抽象基类。
 
-    九个方法覆盖三条业务线：
+    十个方法覆盖三条业务线：
       · HR 侧：出题 → 逐题评分 → 多维评分 → 汇总报告
       · 候选人侧：补参考答案 / 刷题判分 / 候选人脱敏反馈
-      · 简历驱动：按简历匹配题目 / 生成面试前准备提纲
+      · 简历驱动：按简历匹配题目 / 生成面试前准备提纲 / 简历与岗位匹配度评估
 
     全部方法**只接收原始值**（str / list[str] / float / 本模块的 dataclass），
     不接收 ORM 对象。
@@ -343,4 +370,32 @@ class AIProvider(ABC):
         全由评估维度生成。
 
         一次生成即整批返回，**不做流式**（PRD §4.11）。
+        """
+
+    @abstractmethod
+    def evaluate_resume(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        resume_text: str,
+    ) -> ResumeReviewResult:
+        """评估简历与该岗位的匹配度（PRD §4.15）。
+
+        ⚠️ `resume_text` 为空或全空白时**抛 `AIProviderError`**，与
+        `match_questions_by_resume` 同款；调用方本应先判出「未关联简历」而整条路
+        都不调用本方法。`dims` 为空同样抛错 —— 没有维度就没有评估依据。
+
+        与 `match_questions_by_resume` 的**分工**：那个吃题库候选池、**挑题**；
+        那个不吃题库、**评人**。不要为了「复用」把两者合并。
+
+        `jd` 与 `position_name` **允许为空**（岗位可以不填 JD，或名字缺失时用
+        「该岗位」兜底）—— 简历是被评估的对象，JD 只是评估依据之一，二者必填性
+        不同，**不要顺手统一**。
+
+        **只评不挑**：不接触题库，不返回任何题目 id。结果**不落库**。
+
+        本方法**不做脱敏**：分数发不发是端点层按调用者身份决定的事
+        （module-27 §5.2）。返回的 `conclusion` 在任何情况下都**不得含去留判断**
+        （「建议进入下一轮 / 不建议继续推进」这类），这是 PRD §4.9 红线的沿用。
         """

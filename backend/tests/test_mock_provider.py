@@ -546,11 +546,15 @@ class TestGenerateCandidateFeedback:
 # ========================= 契约一致性 =========================
 
 
-def test_mock_provider_implements_all_nine_methods():
-    """守门测试：漏实现任何抽象方法时，MockProvider() 会以 TypeError 失败。"""
+def test_mock_provider_implements_all_ten_methods():
+    """守门测试：漏实现任何抽象方法时，MockProvider() 会以 TypeError 失败。
+
+    这个数字必须随 `AIProvider` 新增能力一起改 —— 它就是「两个实现类都补齐了」
+    这件事的锚点（module-27 §2：新增抽象方法会立刻让两个实现类编译不过）。
+    """
     from app.ai.base import AIProvider
 
-    assert len(AIProvider.__abstractmethods__) == 9
+    assert len(AIProvider.__abstractmethods__) == 10
     assert not MockProvider.__abstractmethods__
 
 
@@ -781,3 +785,123 @@ class TestGenerateInterviewPrep:
             for item in result.question_plan
             for text in item.follow_ups
         )
+
+
+# ========================= 简历与岗位匹配度评估 =========================
+
+# 去留判断红线（PRD §4.9 的沿用，§4.15 明确要求）：结论里**任何档位**都不得
+# 出现这些词。判定用「不含关键词」而非「等于某句文案」—— 文案会随输入变化，
+# 写死等于把测试绑在文案上；而去留判断是红线，只关心它不出现。
+FORBIDDEN_REVIEW_WORDS = ("下一轮", "不建议", "淘汰", "录用", "推荐通过", "建议录用")
+
+REVIEW_DIMS = ["沟通能力", "专业能力", "逻辑思维"]
+REVIEW_JD = "负责后端服务的设计与开发，需要良好的沟通能力与逻辑思维。"
+
+# 三个维度全都提到
+FULL_RESUME = (
+    "沟通能力：主导跨部门沟通，推动三个团队协同交付。"
+    "专业能力：五年 Python 后端开发，主导过服务拆分与性能优化。"
+    "逻辑思维：负责复杂问题的拆解与方案设计。"
+)
+# 只提到其中一个维度
+PARTIAL_RESUME = "沟通能力：主导跨部门沟通与协同交付。"
+# 与任何维度名都没有字符重合
+UNRELATED_REVIEW_RESUME = "甲乙丙丁戊己庚辛壬癸"
+
+
+class TestEvaluateResume:
+    @staticmethod
+    def _review(provider, resume=FULL_RESUME, dims=REVIEW_DIMS, jd=REVIEW_JD, position="后端开发"):
+        return provider.evaluate_resume(
+            position_name=position, jd=jd, dims=dims, resume_text=resume
+        )
+
+    def test_is_deterministic(self, provider):
+        assert self._review(provider) == self._review(provider)
+
+    @pytest.mark.parametrize("resume", ["", "   ", "\n\t "])
+    def test_blank_resume_is_rejected(self, provider, resume):
+        with pytest.raises(AIProviderError):
+            self._review(provider, resume=resume)
+
+    def test_empty_dims_is_rejected(self, provider):
+        with pytest.raises(AIProviderError):
+            self._review(provider, dims=[])
+
+    def test_more_dimension_hits_score_higher(self, provider):
+        full = self._review(provider, resume=FULL_RESUME).match_score
+        partial = self._review(provider, resume=PARTIAL_RESUME).match_score
+        unrelated = self._review(provider, resume=UNRELATED_REVIEW_RESUME).match_score
+
+        assert unrelated < partial < full
+
+    def test_score_is_clamped_and_rounded(self, provider):
+        for resume in (FULL_RESUME, PARTIAL_RESUME, UNRELATED_REVIEW_RESUME):
+            score = self._review(provider, resume=resume).match_score
+            assert 0.0 <= score <= 10.0
+            assert round(score, 1) == score
+
+    def test_strengths_are_never_empty(self, provider):
+        """一个维度都没命中时也要给一条兜底 —— 空 strengths 会让「评分坏了」
+        与「简历真的差」不可区分（module-27 §3）。"""
+        result = self._review(provider, resume=UNRELATED_REVIEW_RESUME)
+
+        assert result.strengths
+        assert all(text.strip() for text in result.strengths)
+
+    def test_strengths_list_the_hit_dimensions(self, provider):
+        result = self._review(provider, resume=PARTIAL_RESUME)
+
+        assert any("沟通能力" in text for text in result.strengths)
+        assert not any("专业能力" in text for text in result.strengths)
+
+    def test_gaps_list_the_missed_dimensions(self, provider):
+        result = self._review(provider, resume=PARTIAL_RESUME)
+
+        joined = " ".join(result.gaps)
+        assert "专业能力" in joined and "逻辑思维" in joined
+        assert "沟通能力" not in joined
+
+    def test_shared_suffix_does_not_fake_a_hit(self, provider):
+        """「沟通能力」与「专业能力」共享「能力」二字：只提了前者时，后者必须
+        仍然落在 gaps 里，不能被二元组覆盖率算成「部分命中」。"""
+        result = self._review(provider, resume=PARTIAL_RESUME)
+
+        assert any("专业能力" in text for text in result.gaps)
+
+    def test_no_gaps_when_all_dimensions_are_covered(self, provider):
+        assert self._review(provider, resume=FULL_RESUME).gaps == []
+
+    def test_items_are_capped(self, provider):
+        many = [f"维度{i}" for i in range(1, 21)]
+        result = self._review(provider, resume="维度1维度2", dims=many, jd="")
+
+        assert len(result.strengths) <= 5
+        assert len(result.gaps) <= 5
+
+    def test_conclusion_avoids_hire_judgement_in_every_band(self, provider):
+        for score in (10.0, 8.0, 7.0, 6.5, 5.0, 4.0, 2.0, 0.0):
+            conclusion = MockProvider._review_conclusion(score)
+            assert conclusion.strip()
+            assert not any(word in conclusion for word in FORBIDDEN_REVIEW_WORDS)
+
+    def test_band_texts_avoid_hire_judgement(self):
+        from app.ai.mock_provider import _REVIEW_BANDS
+
+        for _threshold, text in _REVIEW_BANDS:
+            assert not any(word in text for word in FORBIDDEN_REVIEW_WORDS)
+
+    def test_generated_conclusion_avoids_hire_judgement(self, provider):
+        for resume in (FULL_RESUME, PARTIAL_RESUME, UNRELATED_REVIEW_RESUME):
+            conclusion = self._review(provider, resume=resume).conclusion
+            assert not any(word in conclusion for word in FORBIDDEN_REVIEW_WORDS)
+
+    def test_blank_position_name_and_jd_are_tolerated(self, provider):
+        """岗位名与 JD 都允许为空（简历是被评估的对象，JD 只是依据之一）。"""
+        result = self._review(provider, position="", jd="")
+
+        assert result.conclusion.strip()
+        assert result.strengths
+
+    def test_jd_absent_still_scores_by_dimensions(self, provider):
+        assert self._review(provider, resume=FULL_RESUME, jd="").match_score == 10.0

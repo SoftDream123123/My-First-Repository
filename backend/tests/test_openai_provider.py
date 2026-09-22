@@ -740,3 +740,133 @@ class TestGenerateInterviewPrep:
             return _json_reply(_prep_payload())
 
         assert _prep(handler, resume=None).outline
+
+
+# ---------------------- 简历与岗位匹配度评估 ----------------------
+
+REVIEW_DIMS = ["沟通能力", "专业能力", "逻辑思维"]
+REVIEW_RESUME = "沟通能力：主导跨部门沟通。专业能力：五年 Python 后端开发。"
+REVIEW_JD = "负责后端服务的设计与开发。"
+
+
+def _review_payload(**overrides):
+    payload = {
+        "match_score": 7.4,
+        "conclusion": "简历与岗位要求有较好重合，个别维度可再补充。",
+        "strengths": ["沟通能力相关经历清晰"],
+        "gaps": ["专业能力缺少可核对的项目数据"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+class TestEvaluateResume:
+    def _review(
+        self,
+        handler,
+        resume=REVIEW_RESUME,
+        dims=REVIEW_DIMS,
+        jd=REVIEW_JD,
+        position="后端开发",
+    ):
+        return _provider(handler).evaluate_resume(
+            position_name=position, jd=jd, dims=dims, resume_text=resume
+        )
+
+    def test_parses_all_fields(self):
+        result = self._review(lambda request: _json_reply(_review_payload()))
+
+        assert result.match_score == 7.4
+        assert result.conclusion == "简历与岗位要求有较好重合，个别维度可再补充。"
+        assert result.strengths == ["沟通能力相关经历清晰"]
+        assert result.gaps == ["专业能力缺少可核对的项目数据"]
+
+    @pytest.mark.parametrize(
+        "raw,expected", [(42, 10.0), (-3, 0.0), ("6.75", 6.8), ("不是数字", 0.0)]
+    )
+    def test_score_is_clamped_and_rounded(self, raw, expected):
+        result = self._review(
+            lambda request: _json_reply(_review_payload(match_score=raw))
+        )
+
+        assert result.match_score == expected
+
+    def test_items_are_capped(self):
+        payload = _review_payload(
+            strengths=[f"亮点{i}" for i in range(1, 10)],
+            gaps=[f"差距{i}" for i in range(1, 10)],
+        )
+        result = self._review(lambda request: _json_reply(payload))
+
+        assert len(result.strengths) == 5
+        assert len(result.gaps) == 5
+
+    def test_empty_strengths_raises(self):
+        """与 Mock 同款前置：亮点为空说明这次评估没有可用产出，不能静默给差评。"""
+        payload = _review_payload(strengths=[])
+
+        with pytest.raises(AIProviderError):
+            self._review(lambda request: _json_reply(payload))
+
+    def test_non_object_response_raises(self):
+        with pytest.raises(AIProviderError):
+            self._review(lambda request: _json_reply([1, 2, 3]))
+
+    def test_missing_conclusion_falls_back_without_hire_judgement(self):
+        payload = _review_payload(conclusion="")
+
+        conclusion = self._review(lambda request: _json_reply(payload)).conclusion
+
+        assert conclusion.strip()
+        for word in ("下一轮", "不建议", "淘汰", "录用"):
+            assert word not in conclusion
+
+    def test_blank_resume_raises_without_calling_api(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply(_review_payload())
+
+        for resume in ("", "   "):
+            with pytest.raises(AIProviderError):
+                self._review(handler, resume=resume)
+        assert calls["n"] == 0
+
+    def test_empty_dims_raises_without_calling_api(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return _json_reply(_review_payload())
+
+        with pytest.raises(AIProviderError):
+            self._review(handler, dims=[])
+        assert calls["n"] == 0
+
+    def test_blank_position_name_and_jd_are_tolerated(self):
+        """岗位名与 JD 允许为空：简历是被评估的对象，JD 只是依据之一。"""
+        result = self._review(
+            lambda request: _json_reply(_review_payload()), position="", jd=""
+        )
+
+        assert result.strengths
+
+    def test_input_validation_matches_mock_provider(self):
+        """两个 Provider 的入参校验必须一致，否则「同输入不同行为」会在换
+        Provider 时暴露成线上故障（module-27 §5.5 用例 10）。"""
+        from app.ai.mock_provider import MockProvider
+
+        mock = MockProvider()
+        handler = lambda request: _json_reply(_review_payload())  # noqa: E731
+
+        for kwargs in ({"resume": ""}, {"resume": "  "}, {"dims": []}):
+            with pytest.raises(AIProviderError):
+                mock.evaluate_resume(
+                    position_name="后端开发",
+                    jd=REVIEW_JD,
+                    dims=kwargs.get("dims", REVIEW_DIMS),
+                    resume_text=kwargs.get("resume", REVIEW_RESUME),
+                )
+            with pytest.raises(AIProviderError):
+                self._review(handler, **kwargs)

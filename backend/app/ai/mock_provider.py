@@ -15,6 +15,7 @@ from app.ai.base import (
     FEEDBACK_LEVELS,
     PASS_THRESHOLD,
     QUESTION_TYPE_SINGLE_CHOICE,
+    RESUME_REVIEW_MAX_ITEMS,
     SCORE_MAX,
     SCORE_MIN,
     SOURCE_AI,
@@ -33,6 +34,7 @@ from app.ai.base import (
     QuestionScoreResult,
     ReferenceAnswerResult,
     ReportResult,
+    ResumeReviewResult,
 )
 from app.core.exceptions import AIProviderError
 
@@ -186,6 +188,27 @@ def _resume_overlap(question_text: str, resume_text: str) -> float:
     if not question_grams:
         return 0.0
     return len(question_grams & _bigrams(resume_text)) / len(question_grams)
+
+
+# 简历评估的结论分档。四档说的**都是「简历与岗位的重合度」，不是「要不要这个人」**
+# —— 任何档位都不得出现去留判断（PRD §4.9 的红线，§4.15 明确沿用）。
+# 档位边界用 PASS_THRESHOLD，与 summarize_report 同一把尺，避免出现
+# 「面试 6.5 算过、简历 6.5 算不过」这种内部不一致。
+_REVIEW_BANDS = (
+    (8.0, "简历与岗位要求的重合度高，多个评估维度都能在简历中找到对应的经历。"),
+    (
+        PASS_THRESHOLD,
+        "简历与岗位要求有较好重合，个别维度可以再补一些具体事例与成果。",
+    ),
+    (4.0, "简历与岗位要求部分重合，若干维度还缺少可对应的经历描述。"),
+    (SCORE_MIN, "简历与该岗位要求的重合较少，建议按岗位维度补充相关经历与成果。"),
+)
+
+_REVIEW_STRENGTH_TEMPLATE = "简历中体现了「{dim}」相关经历"
+_REVIEW_GAP_TEMPLATE = "简历中未见「{dim}」相关经历，建议补充具体事例"
+# strengths 不允许为空（PRD §4.15）：一个维度都没命中时兜这一条，
+# 否则「评分坏了」与「简历真的差」会不可区分
+_REVIEW_FALLBACK_STRENGTH = "简历整体表述完整、可读性良好"
 
 
 class MockProvider(AIProvider):
@@ -690,3 +713,69 @@ class MockProvider(AIProvider):
             index += 1
 
         return plan
+
+    # -------------------- 简历与岗位匹配度评估 --------------------
+
+    def evaluate_resume(
+        self,
+        position_name: str,
+        jd: str,
+        dims: list[str],
+        resume_text: str,
+    ) -> ResumeReviewResult:
+        resume = (resume_text or "").strip()
+        if not resume:
+            # 调用方本应判出「未关联简历」并整条路都不调用本方法
+            raise AIProviderError("缺少简历内容，无法评估简历与岗位的匹配度")
+        if not dims:
+            raise AIProviderError("缺少评估维度，无法评估简历与岗位的匹配度")
+
+        # 命中判定用**子串**（与 `match_questions_by_resume` 的维度命中同一惯用法），
+        # 而不是 `_resume_overlap > 0`：三个维度常共享后缀（「沟通能力」「专业能力」
+        # 共享「能力」二字），按二元组覆盖率判，没提到「专业能力」的简历也会拿到
+        # 1/3 的「假命中」，gaps 就永远列不出这一条。先去空白再判，免得维度名被
+        # 简历里的换行拆开而漏掉。
+        compact = re.sub(r"\s+", "", resume)
+        hits = [(dim, dim in compact) for dim in dims]
+        hit_count = sum(1 for _dim, hit in hits if hit)
+        dim_ratio = hit_count / len(dims)
+
+        # JD 作为补充语境参与打分，权重 1/3：**评估依据的主体是评估维度**
+        # （PRD §4.15 的前置条件正是「岗位已定义评估维度」）。JD 里与简历重合的
+        # 词天然偏少，给它同等权重会把分数结构性地压低。JD 为空时只用维度。
+        basis = (jd or "").strip()
+        if basis:
+            ratio = (dim_ratio * 2 + _resume_overlap(basis, resume)) / 3
+        else:
+            ratio = dim_ratio
+
+        score = _round1(SCORE_MIN + ratio * (SCORE_MAX - SCORE_MIN))
+        score = min(max(score, SCORE_MIN), SCORE_MAX)
+
+        # 命中与未命中都按**岗位维度的原有顺序**列出（不排序），这样两份输出
+        # 对同一岗位总是同一个次序，读起来可逐条对照
+        strengths = [
+            _REVIEW_STRENGTH_TEMPLATE.format(dim=dim)
+            for dim, hit in hits
+            if hit
+        ][:RESUME_REVIEW_MAX_ITEMS] or [_REVIEW_FALLBACK_STRENGTH]
+        gaps = [
+            _REVIEW_GAP_TEMPLATE.format(dim=dim)
+            for dim, hit in hits
+            if not hit
+        ][:RESUME_REVIEW_MAX_ITEMS]
+
+        return ResumeReviewResult(
+            match_score=score,
+            conclusion=self._review_conclusion(score),
+            strengths=strengths,
+            gaps=gaps,
+        )
+
+    @staticmethod
+    def _review_conclusion(score: float) -> str:
+        for threshold, text in _REVIEW_BANDS:
+            if score >= threshold:
+                return text
+        # _REVIEW_BANDS 的最后一档以 SCORE_MIN 收口，此分支不可达
+        return _REVIEW_BANDS[-1][1]
