@@ -197,6 +197,11 @@ npm run dev        # → http://127.0.0.1:5173（localhost 也可），/api 被�
 |---|---|---|
 | `CANDIDATE_SELF_REGISTER` | **true** | 候选人自助注册开关 |
 | `RESUME_MATCH_COUNT` | **3** | 按简历补题的**默认**追加题数（请求体可覆盖，上限 20） |
+| `RESUME_CONTENT_MAX_LENGTH` | **20000** | 简历正文长度上限（字符）。超限返回 **422** —— 全项目唯一一处 422 |
+| `RESUME_UPLOAD_MAX_BYTES` | **5242880** | 简历文件上传的体积上限（字节，即 5 MB）。超限返回 400 |
+
+> **简历文件上传只取文字**：支持 `.docx` / `.pdf`，解析出的纯文本回填正文框、由候选人确认后再保存。
+> 上传**不落库、不落盘、不存原文件** —— 解析完文件即丢弃，服务器上不留副本。
 
 其余 MVP-3 旋钮是**实现内部常量，不进配置**：刷题推荐的候选池 = `min(size*4, 100)`、
 准备助手的问题预案上限 = 4。它们调的是 prompt 大小与挑选空间，不是产品语义。
@@ -259,10 +264,8 @@ python scripts/smoke_e2e.py http://127.0.0.1:5173/api
 
 > 📖 **完整接口文档（前端对接版）**：[`docs/apis/API接口文档.md`](docs/apis/API接口文档.md)
 > —— 各接口的提交方式 / URL / 参数 / 响应 / 示例，以及 SSE 与错误处理的实现代码。
-> 本节只是速查表。
->
-> ⚠️ 该文档目前只覆盖 HR 侧接口；候选人侧（`/api/candidate/*`、`/api/practice/*`）
-> 尚未补入，以 `GET /api/openapi.json` 为准。
+> 本节只是速查表，且**只列 HR 侧**；候选人侧（`/api/candidate/*`、`/api/practice/*`）
+> 与刷题端点见完整文档，或 `GET /api/openapi.json`。
 
 统一前缀 `/api`，除登录与候选人自助注册外均需 `Authorization: Bearer <token>`。
 
@@ -302,6 +305,7 @@ python scripts/smoke_e2e.py http://127.0.0.1:5173/api
 | GET | `/interviews/{id}/invitations` | 邀请列表与状态（含派生出的 `expired`） |
 | DELETE | `/interviews/{id}/invitations/{inv_id}` | 撤销邀请 |
 | GET | `/interviews/{id}/resume` | 读取**本场关联的**候选人简历（未关联 → **404**） |
+| POST | `/interviews/{id}/resume-review` | **评估简历与本场岗位的匹配度**（不落库、不限状态） |
 | POST | `/interviews/{id}/questions/match` | **按简历补题**（追加、不重复；会累加） |
 | POST | `/interviews/{id}/prep` | 生成 / 重新生成**面试前准备提纲**（整体覆盖） |
 | GET | `/interviews/{id}/prep` | 查看准备提纲（未生成 → 404） |

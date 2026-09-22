@@ -15,7 +15,7 @@
 | 数据格式 | JSON，UTF-8（`utf8mb4`） |
 | 认证方式 | JWT Bearer Token |
 | 三种角色 | `admin` · `hr`（HR / 面试官端）· `candidate`（候选人端） |
-| 接口总数 | **59 个 method-route / 43 条路径** |
+| 接口总数 | **62 个 method-route / 43 条路径** |
 | 契约来源 | `GET /openapi.json`（字段与类型）+ `docs/superpowers/specs/` 各模块计划书（业务规则、状态码） |
 | 交互式文档 | `GET /docs`（Swagger UI）、`GET /openapi.json` |
 
@@ -323,7 +323,7 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 
 ## 三、接口总览
 
-`/api` 下共 **43 条路径 / 59 个 method-route**。「鉴权」列写的是**允许的角色**，
+`/api` 下共 **43 条路径 / 62 个 method-route**。「鉴权」列写的是**允许的角色**，
 不带 token 一律 401，角色不符一律 403（见 [§2.2](#22-认证)）。
 
 | # | 提交方式 | URL | 鉴权 | 说明 | 详见 |
@@ -361,32 +361,35 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 | 31 | `PUT` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | 编辑准备提纲（整体覆盖） | [§8.14](#814-编辑准备提纲) |
 | 32 | `POST` | `/api/interviews/{interview_id}/questions/match` | `admin` `hr` | **按简历补题**（追加、幂等） | [§8.15](#815-按简历补题) |
 | 33 | `GET` | `/api/interviews/{interview_id}/resume` | `admin` `hr` | **读取该面试关联的简历**（未关联 404） | [§8.16](#816-读取面试关联的简历) |
-| 34 | `POST` | `/api/interviews/{interview_id}/evaluate` | `admin` `hr` | 触发评估（**202**） | [§9.1](#91-触发评估) |
-| 35 | `GET` | `/api/interviews/{interview_id}/evaluation/stream` | `admin` `hr` | **SSE** 评估进度 | [§9.2](#92-sse-流式评估进度) |
-| 36 | `GET` | `/api/interviews/{interview_id}/report` | `admin` `hr` | 获取完整报告 | [§9.3](#93-获取报告) |
-| 37 | `GET` | `/api/interviews/{interview_id}/report/export` | `admin` `hr` | **导出报告为 DOCX**（文件流） | [§9.4](#94-导出报告为-docx) |
-| 38 | `GET` | `/api/candidate/interviews/{interview_id}/feedback` | `candidate` | 候选人**脱敏**反馈 | [§9.5](#95-候选人脱敏反馈) |
-| 39 | `GET` | `/api/candidate/positions` | `candidate` | 刷题岗位筛选项（有题目的岗位） | [§10.1](#101-刷题岗位筛选项) |
-| 40 | `POST` | `/api/candidate/invitations/{code}/accept` | **公开** | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
-| 41 | `GET` | `/api/candidate/interviews` | `candidate` | 我参与的面试列表 | [§10.3](#103-我的面试列表) |
-| 42 | `GET` | `/api/candidate/interviews/{interview_id}` | `candidate` | 面试详情（仅题目与我的作答） | [§10.4](#104-面试详情候选人视图) |
-| 43 | `POST` | `/api/candidate/interviews/{interview_id}/answers` | `candidate` | 保存 / 更新我的作答 | [§10.5](#105-保存--更新我的作答) |
-| 44 | `POST` | `/api/candidate/interviews/{interview_id}/submit` | `candidate` | **交卷**（幂等） | [§10.6](#106-交卷) |
-| 45 | `PUT` | `/api/candidate/interviews/{interview_id}/resume` | `candidate` | **关联 / 解除关联我的简历** | [§10.7](#107-关联--解除关联简历) |
-| 46 | `POST` | `/api/candidate/resumes` | `candidate` | 新建我的简历 | [§11.1](#111-新建简历) |
-| 47 | `GET` | `/api/candidate/resumes` | `candidate` | 我的简历列表 | [§11.2](#112-我的简历列表) |
-| 48 | `GET` | `/api/candidate/resumes/{resume_id}` | `candidate` | 简历详情 | [§11.3](#113-简历详情) |
-| 49 | `PUT` | `/api/candidate/resumes/{resume_id}` | `candidate` | 更新我的简历（部分更新） | [§11.4](#114-更新我的简历) |
-| 50 | `DELETE` | `/api/candidate/resumes/{resume_id}` | `candidate` | 删除我的简历（204） | [§11.5](#115-删除我的简历) |
-| 51 | `GET` | `/api/practice/questions` | `candidate` | 刷题取题（**不含答案与解析**） | [§12.1](#121-刷题取题预览) |
-| 52 | `GET` | `/api/practice/sessions` | `candidate` | 我的练习会话列表（含进行中） | [§12.2](#122-我的练习会话列表) |
-| 53 | `POST` | `/api/practice/sessions` | `candidate` | 开始一次练习（**201**） | [§12.3](#123-开始一次练习) |
-| 54 | `GET` | `/api/practice/sessions/{session_id}` | `candidate` | 练习详情与进度 | [§12.4](#124-练习详情与进度) |
-| 55 | `POST` | `/api/practice/sessions/{session_id}/items` | `candidate` | 提交某题作答 → **即时判分** | [§12.5](#125-提交作答即时判分) |
-| 56 | `POST` | `/api/practice/items/{item_id}/rescore` | `candidate` | 对**未判分**的题重新判分 | [§12.6](#126-重新判分) |
-| 57 | `POST` | `/api/practice/sessions/{session_id}/finish` | `candidate` | 结束练习，出小结 | [§12.7](#127-结束练习) |
-| 58 | `GET` | `/api/practice/wrong-book` | `candidate` | 错题本（派生查询） | [§12.8](#128-错题本) |
-| 59 | `GET` | `/api/practice/stats` | `candidate` | 我的练习统计 | [§12.9](#129-练习统计) |
+| 34 | `POST` | `/api/interviews/{interview_id}/resume-review` | `admin` `hr` | **评估简历与岗位的匹配度**（不落库、不限状态） | [§8.17](#817-评估简历与岗位的匹配度) |
+| 35 | `POST` | `/api/interviews/{interview_id}/evaluate` | `admin` `hr` | 触发评估（**202**） | [§9.1](#91-触发评估) |
+| 36 | `GET` | `/api/interviews/{interview_id}/evaluation/stream` | `admin` `hr` | **SSE** 评估进度 | [§9.2](#92-sse-流式评估进度) |
+| 37 | `GET` | `/api/interviews/{interview_id}/report` | `admin` `hr` | 获取完整报告 | [§9.3](#93-获取报告) |
+| 38 | `GET` | `/api/interviews/{interview_id}/report/export` | `admin` `hr` | **导出报告为 DOCX**（文件流） | [§9.4](#94-导出报告为-docx) |
+| 39 | `GET` | `/api/candidate/interviews/{interview_id}/feedback` | `candidate` | 候选人**脱敏**反馈 | [§9.5](#95-候选人脱敏反馈) |
+| 40 | `GET` | `/api/candidate/positions` | `candidate` | 刷题岗位筛选项（有题目的岗位） | [§10.1](#101-刷题岗位筛选项) |
+| 41 | `POST` | `/api/candidate/invitations/{code}/accept` | **公开** | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
+| 42 | `GET` | `/api/candidate/interviews` | `candidate` | 我参与的面试列表 | [§10.3](#103-我的面试列表) |
+| 43 | `GET` | `/api/candidate/interviews/{interview_id}` | `candidate` | 面试详情（仅题目与我的作答） | [§10.4](#104-面试详情候选人视图) |
+| 44 | `POST` | `/api/candidate/interviews/{interview_id}/answers` | `candidate` | 保存 / 更新我的作答 | [§10.5](#105-保存--更新我的作答) |
+| 45 | `POST` | `/api/candidate/interviews/{interview_id}/submit` | `candidate` | **交卷**（幂等） | [§10.6](#106-交卷) |
+| 46 | `PUT` | `/api/candidate/interviews/{interview_id}/resume` | `candidate` | **关联 / 解除关联我的简历** | [§10.7](#107-关联--解除关联简历) |
+| 47 | `POST` | `/api/candidate/interviews/{interview_id}/resume-review` | `candidate` | **评估我的简历与岗位的匹配度**（脱敏） | [§10.8](#108-评估我的简历与岗位的匹配度) |
+| 48 | `POST` | `/api/candidate/resumes` | `candidate` | 新建我的简历 | [§11.1](#111-新建简历) |
+| 49 | `GET` | `/api/candidate/resumes` | `candidate` | 我的简历列表 | [§11.2](#112-我的简历列表) |
+| 50 | `GET` | `/api/candidate/resumes/{resume_id}` | `candidate` | 简历详情 | [§11.3](#113-简历详情) |
+| 51 | `PUT` | `/api/candidate/resumes/{resume_id}` | `candidate` | 更新我的简历（部分更新） | [§11.4](#114-更新我的简历) |
+| 52 | `DELETE` | `/api/candidate/resumes/{resume_id}` | `candidate` | 删除我的简历（204） | [§11.5](#115-删除我的简历) |
+| 53 | `POST` | `/api/candidate/resumes/parse` | `candidate` | **上传 DOCX / PDF 解析为纯文本**（不落库、不落盘） | [§11.6](#116-上传解析简历文件) |
+| 54 | `GET` | `/api/practice/questions` | `candidate` | 刷题取题（**不含答案与解析**） | [§12.1](#121-刷题取题预览) |
+| 55 | `GET` | `/api/practice/sessions` | `candidate` | 我的练习会话列表（含进行中） | [§12.2](#122-我的练习会话列表) |
+| 56 | `POST` | `/api/practice/sessions` | `candidate` | 开始一次练习（**201**） | [§12.3](#123-开始一次练习) |
+| 57 | `GET` | `/api/practice/sessions/{session_id}` | `candidate` | 练习详情与进度 | [§12.4](#124-练习详情与进度) |
+| 58 | `POST` | `/api/practice/sessions/{session_id}/items` | `candidate` | 提交某题作答 → **即时判分** | [§12.5](#125-提交作答即时判分) |
+| 59 | `POST` | `/api/practice/items/{item_id}/rescore` | `candidate` | 对**未判分**的题重新判分 | [§12.6](#126-重新判分) |
+| 60 | `POST` | `/api/practice/sessions/{session_id}/finish` | `candidate` | 结束练习，出小结 | [§12.7](#127-结束练习) |
+| 61 | `GET` | `/api/practice/wrong-book` | `candidate` | 错题本（派生查询） | [§12.8](#128-错题本) |
+| 62 | `GET` | `/api/practice/stats` | `candidate` | 我的练习统计 | [§12.9](#129-练习统计) |
 
 ---
 
@@ -1633,6 +1636,59 @@ draft ──► ongoing ──► completed ──► evaluating ──► evalu
 > ⚠️ 未关联返回的是 **404，不是 403** —— 前端据此显示「候选人尚未提供简历」，
 > 而不是「你没有权限」。
 
+### 8.17 评估简历与岗位的匹配度
+
+对**这场面试关联的简历**与该场岗位做一次 AI 匹配度评估。
+
+| 项 | 内容 |
+|---|---|
+| 提交方式 | `POST` |
+| URL | `/api/interviews/{interview_id}/resume-review` |
+| 鉴权 | `admin` · `hr` |
+
+**请求体**：**无**。岗位来自面试、简历来自关联、可见性档位来自部署配置，没有可传的参数
+（与 [§8.9](#89-生成作答邀请码) 同一形态）。
+
+**响应 200**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `match_score` | float | 匹配度分，0–10，1 位小数。**恒非空**（HR 看全部评分） |
+| `conclusion` | string | 综合结论。**不含去留判断** —— 只说简历与岗位的重合度 |
+| `strengths` | string[] | 亮点，1–5 条，**不会为空** |
+| `gaps` | string[] | 差距，0–5 条，**可能为空**（「没什么明显差距」是正当结论） |
+
+```json
+{
+  "match_score": 7.4,
+  "conclusion": "简历与岗位要求有较好重合，个别维度可以再补一些具体事例与成果。",
+  "strengths": ["简历中体现了「沟通能力」相关经历"],
+  "gaps": ["简历中未见「专业能力」相关经历，建议补充具体事例"]
+}
+```
+
+**错误**
+
+| HTTP | code | 触发场景 | message |
+|---|---|---|---|
+| 403 | `FORBIDDEN` | 面试属于他人 | `无权限访问该面试` |
+| 404 | `NOT_FOUND` | 面试不存在 | `面试不存在` |
+| 409 | `BUSINESS_ERROR` | **该面试尚未关联简历** | `该面试尚未关联简历` |
+| 409 | `BUSINESS_ERROR` | 岗位未定义评估维度 | `岗位未定义评估维度，无法评估简历` |
+| 502 | `AI_PROVIDER_ERROR` | AI 调用失败（**不降级**） | 上游错误详情 |
+
+> ⚠️ 「尚未关联简历」的文案与 [§8.15](#815-按简历补题) 补题**逐字一致** —— 前端在面试详情页
+> 同时挂着这两颗按钮，据同一句话做「去关联简历」的引导。
+
+**规则**
+
+| 规则 | 说明 |
+|---|---|
+| **不落库、不缓存** | 结果直接返回，不写任何表，刷新即无 |
+| **不限面试状态** | `draft` / `ongoing` / `completed` / `evaluated` 都能评 —— 评估**不写数据**。这与 [§8.15](#815-按简历补题) 补题要求 `ongoing` **刻意相反** |
+| 每次都真算 | 重复调用会重新调一次 AI，没有缓存层 |
+| **HR 侧恒带分数** | 可见性档位只作用于 [§10.8](#108-评估我的简历与岗位的匹配度) 那个候选人端点 |
+
 ---
 
 ## 九、评估
@@ -2312,11 +2368,66 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 | 面试进行中可以随时改 | 换一份更贴合的简历即可；**改后 HR 需重新触发补题才会生效** |
 | 删除简历的前提 | 被面试或练习关联的简历**不可删除**（409，见 [§11.5](#115-删除我的简历)） |
 
+### 10.8 评估我的简历与岗位的匹配度
+
+对自己关联到某场面试的简历做一次 AI 匹配度评估。与 [§8.17](#817-评估简历与岗位的匹配度)
+是**同一件事**，区别只在权限链与可见性。
+
+| 项 | 内容 |
+|---|---|
+| 提交方式 | `POST` |
+| URL | `/api/candidate/interviews/{interview_id}/resume-review` |
+| 鉴权 | `candidate` |
+
+**请求体**：**无**。
+
+**响应 200**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `match_score` | float \| **null** | `CANDIDATE_FEEDBACK_LEVEL=summary`（默认）时为 **null**；`full` 时为 0–10 |
+| `conclusion` | string | 综合结论，**任何档位都下发**，不含去留判断 |
+| `strengths` | string[] | 亮点，1–5 条，**任何档位都下发** |
+| `gaps` | string[] | 差距，0–5 条，**任何档位都下发**，可能为空 |
+
+```json
+{
+  "match_score": null,
+  "conclusion": "简历与岗位要求有较好重合，个别维度可以再补一些具体事例与成果。",
+  "strengths": ["简历中体现了「沟通能力」相关经历"],
+  "gaps": []
+}
+```
+
+**错误**
+
+| HTTP | code | 触发场景 | message |
+|---|---|---|---|
+| 403 | `FORBIDDEN` | 自己**未接受邀请**的面试 / 是别人的面试 | `无权限访问该面试` |
+| 404 | `NOT_FOUND` | 面试不存在 | `面试不存在` |
+| 409 | `BUSINESS_ERROR` | 该面试尚未关联简历 | `该面试尚未关联简历` |
+| 409 | `BUSINESS_ERROR` | 岗位未定义评估维度 | `岗位未定义评估维度，无法评估简历` |
+| 502 | `AI_PROVIDER_ERROR` | AI 调用失败（**不降级**） | 上游错误详情 |
+
+**规则**
+
+| 规则 | 说明 |
+|---|---|
+| **不落库、不限面试状态** | 同 [§8.17](#817-评估简历与岗位的匹配度) |
+| 分数按档位下发 | `summary` → `null`；`full` → 0–10。**字段保留为 null 而非结构上不存在**，与候选人反馈的 `overall_score` 同一形态 |
+| **不下发档位本身** | 候选人不需要知道部署配了哪一档 |
+| **亮点与差距不脱敏** | 分数是评估结果，文案是可照做的建议 |
+
 ---
 
 ## 十一、简历管理（候选人端）
 
-简历以**纯文本粘贴**方式录入，**不做文件上传与格式解析**（MVP 明确不做）。
+简历正文以**纯文本**存储与录入，有两种录法，最终都落在同一个 `content` 字段上：
+**直接粘贴纯文本**，或**上传 DOCX / PDF 由后端解析出文字**后由候选人确认再保存。
+
+上传**只做「取文字」这一件事**（[§11.6](#116-上传解析简历文件)）：不落库、不落盘、不存原文件。
+因此**「解析失败」这一分支只存在于上传端点**，`POST` / `PUT` 两个写端点仍然没有它。
+
 **写入方只有候选人**；HR 不提供简历 CRUD，只能经面试只读（[§8.16](#816-读取面试关联的简历)）。
 
 简历**不绑定**某场面试或某次练习：同一份简历可被多场面试、多次练习复用，
@@ -2446,6 +2557,66 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 
 > 409 时**简历仍然存在**（事务整体回滚）。前端应提示「先解除关联再删除」，
 > 并给出「去解除关联」的入口（[§10.7](#107-关联--解除关联简历)）。
+
+### 11.6 上传解析简历文件
+
+上传一个简历文件，**把里面的文字抠出来**。这是一个**纯转换端点**：
+**不建简历、不改简历、不在服务器上留下那个文件**。
+
+候选人拿到文字后，在前端确认或改完，再走 [§11.1](#111-新建简历) / [§11.4](#114-更新我的简历)
+保存 —— 只有那一步才真正产生简历数据。
+
+| 项 | 内容 |
+|---|---|
+| 提交方式 | `POST` |
+| URL | `/api/candidate/resumes/parse` |
+| 鉴权 | `candidate` |
+| 请求 Content-Type | `multipart/form-data` |
+
+**请求体**（`multipart/form-data`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `file` | 文件 | 是 | `.docx` 或 `.pdf`，不超过 `RESUME_UPLOAD_MAX_BYTES`（默认 5 MB） |
+
+> **不接收任何其他字段** —— 尤其不接收 `title` / `resume_id`。把「解析」与「保存」混在一个
+> 端点里，就等于允许一次带副作用的调用，而这里的契约是**零副作用**。
+
+**响应 200**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `content` | string | 解析出的纯文本全文 |
+
+```json
+{ "content": "张三\n五年 Python 后端开发经验……" }
+```
+
+**错误**
+
+| HTTP | code | 触发场景 | message |
+|---|---|---|---|
+| 400 | `VALIDATION_ERROR` | 缺 `file` 字段 | 请求参数不合法 |
+| 400 | `VALIDATION_ERROR` | 文件为空（0 字节） | `文件是空的，请换一个文件再试` |
+| 400 | `VALIDATION_ERROR` | 扩展名不在白名单（含 `.doc`）/ 文件头与扩展名不符 | `只支持 DOCX 或 PDF 文件，请换一个文件再试` |
+| 400 | `VALIDATION_ERROR` | 超过体积上限 | `文件不能超过 5 MB，请压缩后再上传` |
+| 400 | `VALIDATION_ERROR` | 文件损坏 / 解压后体积异常 | `无法解析该文件，请确认它是完整的、未加密的 DOCX 或 PDF；也可以改为直接粘贴简历正文` |
+| 400 | `VALIDATION_ERROR` | PDF 已加密且空密码解不开 | `该 PDF 已加密，请先解除密码保护后再上传；也可以改为直接粘贴简历正文` |
+| 400 | `VALIDATION_ERROR` | 未提取到文字（扫描件 / 纯图片 / 全空白） | `未能从文件中提取到文字。它可能是扫描件或纯图片，请改为直接粘贴简历正文` |
+
+> **四类失败一律 400，不新增状态码**（没有 413）。也**不返回部分解析结果** ——
+> 半份文本会让候选人误以为「这份文件就只有这些内容」。
+
+**规则**
+
+| 规则 | 说明 |
+|---|---|
+| **零副作用** | 不落库、不落盘、不存原文件。服务器上不留副本，事后没有「回看原件」 |
+| **不做截断** | 超过正文上限（20000 字符）时**照样返回**，由前端按字数计数提示精简 —— 与「不静默截断」的既有约定一致 |
+| 支持格式 | `.docx`、`.pdf`。**不支持** `.doc`（97–2003 旧二进制格式）、加密 PDF、不含文字层的扫描件 PDF |
+| DOCX 取表格 | 段落与**表格**都取，且保持版序 —— 简历常把经历做成表格 |
+| 空密码加密的 PDF 照常解析 | 很多导出工具默认加空密码，误伤这批文件是不可接受的 |
+| 文本归一化 | 统一换行、折叠连续空行、去行尾空白。**只做这几件事，不重排** |
 
 ---
 
@@ -3817,7 +3988,7 @@ if (user.role === 'candidate') {
 | 契约事实来源 | 各模块 `app/*/schemas.py`（请求 / 响应模型）与 `app/*/router.py`（端点声明） |
 | 字段与类型 | `GET /openapi.json` —— 本文档的字段表与它逐项对应 |
 | 行为验证来源 | MVP-1 的 26 个 route 有 HTTP 层用例验证（[2026-09-17 测试报告](../tests/2026-09-17-API接口测试报告.md)，461 条）；**MVP-2 / MVP-3 的 33 个 route 尚无专门的接口层报告** |
-| 文档覆盖 | **59 个 method-route / 43 条路径**（与 `openapi.json` 的路径数一致） |
+| 文档覆盖 | **62 个 method-route / 43 条路径**（与 `openapi.json` 的路径数一致） |
 | 变更时同步 | 改 `schemas.py` 或路由后，需同步更新本文档；新增 / 删除端点时表 [§三](#三接口总览) 的行数要与 `openapi.json` 对齐 |
 
 **校验覆盖是否完整**（两条命令，数字应一致）：

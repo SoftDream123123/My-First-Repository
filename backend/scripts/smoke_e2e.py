@@ -481,6 +481,147 @@ def main() -> int:
     # HR 不该知道这份简历属于哪个 user（API 文档 §13.8）
     check("HR 视图不泄漏 created_by", "created_by" not in resp.text)
 
+    # ---------------- 简历上传解析（MVP-4，PRD §4.10） ----------------
+    # DOCX 现场造，不往仓库里放二进制测试资产
+    import io as _io
+
+    from docx import Document as _Document
+
+    def _docx_bytes(blocks) -> bytes:
+        document = _Document()
+        for block in blocks:
+            if isinstance(block, str):
+                document.add_paragraph(block)
+            else:
+                table = document.add_table(rows=len(block), cols=len(block[0]))
+                for row_index, row in enumerate(block):
+                    for col_index, value in enumerate(row):
+                        table.cell(row_index, col_index).text = value
+        buffer = _io.BytesIO()
+        document.save(buffer)
+        return buffer.getvalue()
+
+    resumes_before = client.get("/candidate/resumes", headers=activated).json()
+
+    resp = client.post(
+        "/candidate/resumes/parse",
+        files={"file": ("resume.pdf", b"%PDF-1.4\njunk", "application/pdf")},
+        headers=activated,
+    )
+    check("上传损坏文件被拒 (400)", resp.status_code == 400, str(resp.status_code))
+    check("拒绝码是 VALIDATION_ERROR", resp.json().get("code") == "VALIDATION_ERROR")
+
+    resp = client.post(
+        "/candidate/resumes/parse",
+        files={"file": ("resume.doc", b"anything", "application/octet-stream")},
+        headers=activated,
+    )
+    check("上传 .doc 旧格式被拒 (400)", resp.status_code == 400, str(resp.status_code))
+
+    resp = client.post(
+        "/candidate/resumes/parse",
+        files={
+            "file": (
+                "resume.docx",
+                _docx_bytes(["张三", [["某大学", "计算机"], ["某公司", "后端"]]]),
+                "application/octet-stream",
+            )
+        },
+        headers=activated,
+    )
+    check("上传 DOCX 解析 200", resp.status_code == 200, str(resp.status_code))
+    parsed = resp.json().get("content", "")
+    check("解析出段落文字", "张三" in parsed, parsed[:60])
+    check(
+        "解析出**表格内**文字（简历常把经历做成表格）",
+        "某大学" in parsed and "某公司" in parsed,
+        parsed[:120],
+    )
+
+    resumes_after = client.get("/candidate/resumes", headers=activated).json()
+    check(
+        "解析**不落库**：简历数不变",
+        len(resumes_after) == len(resumes_before),
+        f"{len(resumes_before)} → {len(resumes_after)}",
+    )
+
+    resp = client.post(
+        "/candidate/resumes/parse",
+        files={"file": ("resume.docx", _docx_bytes(["x"]), "application/octet-stream")},
+        headers=headers,
+    )
+    check("HR 调上传解析端点被拒 (403)", resp.status_code == 403, str(resp.status_code))
+
+    # ---------------- 简历 AI 评估（MVP-4，PRD §4.15、§5.3 ⑧） ----------------
+    hr_review_path = f"/interviews/{invited_interview}/resume-review"
+    cand_review_path = f"/candidate/interviews/{invited_interview}/resume-review"
+
+    resp = client.post(hr_review_path, headers=headers)
+    check("HR 评估简历 200", resp.status_code == 200, str(resp.status_code))
+    review = resp.json()
+    check(
+        "评估四个字段齐全",
+        set(review) == {"match_score", "conclusion", "strengths", "gaps"},
+        str(sorted(review)),
+    )
+    score = review.get("match_score")
+    check("匹配度分在 0–10", isinstance(score, (int, float)) and 0 <= score <= 10, str(score))
+    check("亮点非空（空亮点说明评估没产出可用内容）", bool(review.get("strengths")), str(review.get("strengths")))
+
+    resp = client.post(hr_review_path, headers=headers)
+    check(
+        "连调两次结果完全一致（Mock Provider 的确定性）",
+        resp.json() == review,
+        str(resp.json())[:80],
+    )
+
+    before_detail = client.get(f"/candidate/interviews/{invited_interview}", headers=activated).json()
+    client.post(hr_review_path, headers=headers)
+    after_detail = client.get(f"/candidate/interviews/{invited_interview}", headers=activated).json()
+    check(
+        "评估**不落库、不改状态**：题目数与面试状态都没变",
+        len(after_detail.get("questions") or []) == len(before_detail.get("questions") or [])
+        and after_detail.get("status") == before_detail.get("status"),
+        f"{before_detail.get('status')} → {after_detail.get('status')}",
+    )
+
+    resp = client.post(cand_review_path, headers=activated)
+    check("候选人评估 200", resp.status_code == 200, str(resp.status_code))
+    cand_review = resp.json()
+    check(
+        "候选人默认档**不下发**匹配度分",
+        cand_review.get("match_score") is None,
+        str(cand_review.get("match_score")),
+    )
+    check(
+        "但结论 / 亮点 / 差距照常下发（脱敏只针对分数）",
+        bool(cand_review.get("conclusion")) and bool(cand_review.get("strengths")),
+        str(sorted(cand_review)),
+    )
+
+    # 去留判断红线（PRD §4.9 的沿用，§4.15 明确要求）
+    # 用「不含关键词」而不是「等于某句文案」：文案随输入变化，红线才是不变量
+    forbidden = ("进入下一轮", "不建议", "淘汰", "录用", "推荐通过")
+    review_text = " ".join(
+        [review.get("conclusion", ""), *(review.get("strengths") or []), *(review.get("gaps") or [])]
+    )
+    check(
+        "评估文案不含去留判断",
+        not any(word in review_text for word in forbidden),
+        review_text[:100],
+    )
+
+    check(
+        "HR 调候选人侧评估端点被拒 (403)",
+        client.post(cand_review_path, headers=headers).status_code == 403,
+        str(client.post(cand_review_path, headers=headers).status_code),
+    )
+    check(
+        "候选人调 HR 侧评估端点被拒 (403)",
+        client.post(hr_review_path, headers=activated).status_code == 403,
+        str(client.post(hr_review_path, headers=activated).status_code),
+    )
+
     resp = client.post(
         f"/interviews/{invited_interview}/questions/match",
         json={"count": 2},
