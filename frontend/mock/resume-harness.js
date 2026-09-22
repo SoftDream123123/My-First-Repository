@@ -87,6 +87,9 @@ const flags = {
   interviews: INTERVIEWS,
   deleteRejected: false,
   detail: null,
+  // 上传解析的假响应。`parseError` 非空时按 400 返回该文案
+  parseContent: '解析出来的简历正文',
+  parseError: null,
 };
 
 function handlers() {
@@ -94,6 +97,11 @@ function handlers() {
     'GET /auth/me': () => ({ status: 200, body: CANDIDATE }),
 
     'GET /candidate/resumes': () => ({ status: 200, body: flags.resumes }),
+    // 上传解析：**不落库**，只回文字。假后端也照这个契约来 —— 它不改 flags.resumes，
+    // 走查里那条「上传后没有 POST/PUT /candidate/resumes」才说得通。
+    'POST /candidate/resumes/parse': () => (flags.parseError
+      ? { status: 400, body: { code: 'VALIDATION_ERROR', message: flags.parseError, detail: null } }
+      : { status: 200, body: { content: flags.parseContent } }),
     'POST /candidate/resumes': ({ body }) => ({
       status: 201,
       body: { id: 6, ...body, created_at: '2026-09-22T09:00:00', updated_at: '2026-09-22T09:00:00' },
@@ -431,6 +439,150 @@ report.run(async () => {
     page().querySelector('.note-box')?.textContent);
   flags.detail = null;
 
-  /* ---------- 14. 收尾 ---------- */
+  /* ---------- 14. 从文件导入正文（MVP-4 上传解析） ----------
+     无头环境没有真实文件对话框，只能用 `DataTransfer` 给 `input.files` 赋值再
+     手工派发 change —— Chromium 允许这么干，是脚本里模拟「选了文件」的唯一办法。 */
+
+  await go('#/candidate/resumes');
+  buttonIn(page(), '新建简历').click();
+  await settle();
+
+  const fileInput = inModal('#resume-file');
+  const pick = (name, bytes) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array(bytes)], name, { type: 'application/octet-stream' }));
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change'));
+  };
+  /** 选文件并在有「替换」确认框时确认掉（正文非空时必然弹）。 */
+  const pickAndConfirm = async (name, bytes) => {
+    pick(name, bytes);
+    await settle();
+    const confirmBtn = buttonIn(openOverlay(), '替换');
+    if (confirmBtn) { confirmBtn.click(); await settle(); }
+    await settle();
+  };
+  const setContent = (value) => {
+    inModal('#resume-content').value = value;
+    inModal('#resume-content').dispatchEvent(new Event('input'));
+  };
+
+  check('新建弹窗里有「上传文件」入口', Boolean(buttonIn(openOverlay(), '上传文件')));
+  check('file input 只接受 docx / pdf（体验层的收窄，真正的把关在后端）',
+    fileInput?.getAttribute('accept') === '.docx,.pdf', fileInput?.getAttribute('accept'));
+
+  /* 14.1 正常解析：填正文 + 刷新计数 + 补标题 + 不落库 */
+  clearToasts();
+  backend.reset();
+  flags.parseContent = '解析出来的简历正文';
+  inModal('#resume-title').value = '';
+  setContent('');
+  pick('李云-后端.docx', 32);
+  await settle();
+  await settle();
+
+  const parseCall = lastCall('POST', '/candidate/resumes/parse');
+  check('上传走的是 parse 端点', called('POST', '/candidate/resumes/parse'),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(','));
+  check('**上传发的是 multipart（body 是 FormData 且带 file），不是 JSON**',
+    parseCall?.body instanceof FormData && Boolean(parseCall.body.get('file')),
+    String(parseCall?.body));
+  check('解析结果填进了正文框',
+    inModal('#resume-content')?.value === flags.parseContent,
+    inModal('#resume-content')?.value);
+  // 这一条盯的是「程序化赋值不会触发 input 事件」那个坑：不手动派发的话
+  // 计数会停在旧值、保存按钮也不会被超长禁用
+  check('**字数计数随之刷新**（不是仍显示 0 / 20000）',
+    inModal('.char-count')?.textContent === `${flags.parseContent.length} / 20000`,
+    inModal('.char-count')?.textContent);
+  check('标题为空时用文件名（去扩展名）补上',
+    inModal('#resume-title')?.value === '李云-后端', inModal('#resume-title')?.value);
+  check('**解析不落库**：没有发生任何 POST/PUT /candidate/resumes',
+    !called('POST', '/candidate/resumes') && !called('PUT', '/candidate/resumes/4'),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(','));
+  check('提示说明了解析出多少字、要确认后再保存',
+    toasts().some((t) => t.includes('已从文件解析出')), toasts().join(' | '));
+
+  /* 14.2 标题已有内容 → 不被文件名覆盖（与正文的替换确认是两件独立的事） */
+  inModal('#resume-title').value = '我自己起的名字';
+  flags.parseContent = '第二份解析结果';
+  await pickAndConfirm('另一个文件.pdf', 16);
+  check('标题已有内容时**不被文件名覆盖**',
+    inModal('#resume-title')?.value === '我自己起的名字', inModal('#resume-title')?.value);
+  check('但正文换成了新的解析结果',
+    inModal('#resume-content')?.value === '第二份解析结果', inModal('#resume-content')?.value);
+
+  /* 14.3 正文非空 → 先确认；取消则一个字都不动 */
+  const beforeCancel = inModal('#resume-content').value;
+  flags.parseContent = '不该被填进去的第三份';
+  pick('third.docx', 24);
+  await settle();
+  check('正文非空时先弹确认框', Boolean(buttonIn(openOverlay(), '替换')));
+  buttonIn(openOverlay(), '取消').click();
+  await settle();
+  check('**取消确认后正文原样不动**（不静默覆盖）',
+    inModal('#resume-content')?.value === beforeCancel, inModal('#resume-content')?.value);
+  check('取消后按钮复位（没有卡在「解析中…」）',
+    buttonIn(openOverlay(), '上传文件')?.disabled === false,
+    buttonIn(openOverlay(), '上传文件')?.textContent);
+
+  /* 14.4 解析出超长正文 → 计数标红、保存禁用、提示精简（不静默截断） */
+  clearToasts();
+  flags.parseContent = 'a'.repeat(25000);
+  await pickAndConfirm('long.docx', 24);
+  check('解析出超长正文 → 计数标红并给出真实字数',
+    inModal('.char-count.is-over')?.textContent === '25000 / 20000',
+    inModal('.char-count')?.textContent);
+  check('解析出超长正文 → 「创建简历」被禁用',
+    buttonIn(openOverlay(), '创建简历')?.disabled === true);
+  check('超长时说清「已解析出 N 字、请精简」，而不是悄悄剪掉',
+    toasts().some((t) => t.includes('超过') && t.includes('25000')), toasts().join(' | '));
+  setContent('');
+
+  /* 14.5 超过体积上限 → 根本不发请求 */
+  backend.reset();
+  clearToasts();
+  flags.parseContent = '小文件';
+  pick('big.pdf', 5 * 1024 * 1024 + 1);
+  await settle();
+  check('**超过 5 MB 的文件一个请求都不发**（这是唯一能在发出前拦住大文件的地方）',
+    !called('POST', '/candidate/resumes/parse'),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(','));
+  check('超限时给出含上限数值的文案', toasts().some((t) => t.includes('5 MB')),
+    toasts().join(' | '));
+
+  /* 14.6 后端 400 → 原样展示；失败后同一文件重选仍会触发 */
+  backend.reset();
+  clearToasts();
+  flags.parseError = '未能从文件中提取到文字。它可能是扫描件或纯图片，请改为直接粘贴简历正文。';
+  pick('scan.pdf', 32);
+  await settle();
+  await settle();
+  check('后端 400 的文案**原样**出现在 toast 里（前端不重写）',
+    toasts().some((t) => t.includes('扫描件')), toasts().join(' | '));
+  check('失败后 file input 的 value 被清空（否则同一文件重选不会触发 change）',
+    inModal('#resume-file')?.value === '', inModal('#resume-file')?.value);
+
+  flags.parseError = null;
+  flags.parseContent = '扫描件改成粘贴后的正文';
+  pick('scan.pdf', 32);
+  await settle();
+  await settle();
+  check('重选同一个文件仍能走完整个解析流程',
+    toasts().some((t) => t.includes('已从文件解析出')), toasts().join(' | '));
+
+  /* 14.7 编辑弹窗也有入口（新建与编辑共用同一个 resumeModal） */
+  buttonIn(openOverlay(), '取消').click();
+  await settle();
+  await go('#/candidate/resumes');
+  buttonIn(page(), '编辑').click();
+  await settle();
+  check('**编辑弹窗里也有上传入口**', Boolean(buttonIn(openOverlay(), '上传文件')));
+  check('编辑弹窗的正文是预填的（不是在新建页那个空框）',
+    Boolean(inModal('#resume-content')?.value), inModal('#resume-content')?.value);
+  buttonIn(openOverlay(), '取消').click();
+  await settle();
+
+  /* ---------- 15. 收尾 ---------- */
   check('没有残留的弹窗', openOverlay() === null);
 });

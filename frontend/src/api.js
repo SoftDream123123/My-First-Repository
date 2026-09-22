@@ -42,15 +42,18 @@ export function setUnauthorizedHandler(fn) { unauthorizedHandler = fn; }
 
 export async function request(method, path, body) {
   const token = session.getToken();
+  // FormData 走 multipart：**不能**手工设 Content-Type —— 浏览器要自己带上
+  // `multipart/form-data; boundary=…`，写死会丢掉 boundary，后端一个字段也收不到。
+  const isForm = body instanceof FormData;
   let response;
   try {
     response = await fetch(BASE + path, {
       method,
       headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError({ code: 'NETWORK_ERROR', message: NETWORK_MESSAGE });
@@ -84,6 +87,17 @@ export const post = (path, body) => request('POST', path, body);
 export const put = (path, body) => request('PUT', path, body);
 export const patch = (path, body) => request('PATCH', path, body);
 export const del = (path) => request('DELETE', path);
+
+/**
+ * 发一个 `multipart/form-data`（文件上传）。
+ *
+ * 只有这一个方法支持 FormData，**不扩散到 put / patch**：将来真需要再开，
+ * 现在多开等于给每个方法留一条无人测试的路径。
+ *
+ * 走 `request` 内部那个分支而不是另写一份 fetch，是为了**继承**它那套不能
+ * 复制的逻辑：网络错误归一化、204 处理、`ApiError` 三字段包装、401 拦截器。
+ */
+export const postForm = (path, formData) => request('POST', path, formData);
 
 /**
  * 尽力送达的 POST —— 用在页面**正在被卸载**时（`pagehide`）保存还没落盘的作答。

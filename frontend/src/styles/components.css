@@ -579,6 +579,12 @@
 }
 .char-count.is-over { color: var(--danger); font-weight: 600; }
 
+/* ---- 从文件导入正文 ----
+   上传与粘贴是同一份正文的两种录法，因此并排放在正文框下方，不让上传显得像
+   另一条独立流程。导入只是**填进框里**，还要点保存才算数。 */
+.upload-row { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s2); }
+.upload-hint { font-size: var(--t-xs); color: var(--faint); }
+
 /* ---- 我的简历：右栏里「被哪几场面试用到」的那两行 ---- */
 .used-row { display: flex; align-items: center; gap: var(--s2); }
 .used-row + .used-row { margin-top: var(--s2); }

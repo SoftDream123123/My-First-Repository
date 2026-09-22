@@ -53,7 +53,12 @@ export function installFakeBackend(defaults = {}) {
     // 保留 query（岗位搜索靠它），但把基址去掉
     const raw = String(url).replace(/^\/api/, '');
     const [path, query = ''] = raw.split('?');
-    const body = options.body ? JSON.parse(options.body) : undefined;
+    // FormData（文件上传）必须原样传出：`JSON.parse` 收到 "[object FormData]"
+    // 会抛错，把整个假后端打挂。处理器可以用 `body.get('file')` 取文件。
+    const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const body = options.body === undefined
+      ? undefined
+      : isForm ? options.body : JSON.parse(options.body);
     const headers = options.headers || {};
 
     state.calls.push({ method, path, query, body, auth: headers.Authorization ?? null });

@@ -13,7 +13,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  RESUME_CONTENT_MAX_LENGTH, canSubmitResume, contentLengthState,
+  RESUME_CONTENT_MAX_LENGTH, RESUME_UPLOAD_MAX_BYTES, canSubmitResume, contentLengthState,
+  titleFromFilename, uploadSizeState,
 } from '../pages/candidate-resumes.js';
 
 const ok = { title: '后端开发 · 主投版', content: '教育经历…' };
@@ -80,5 +81,64 @@ describe('RESUME_CONTENT_MAX_LENGTH —— 与后端对齐的守门断言', () =
   it('常量等于 20000', () => {
     // 与后端 `RESUME_CONTENT_MAX_LENGTH` 一致。改了这里，后端那边必须同时改
     expect(RESUME_CONTENT_MAX_LENGTH).toBe(20000);
+  });
+});
+
+describe('uploadSizeState —— 上传体积预检', () => {
+  it('恰好等于上限 → 不超（边界取闭区间）', () => {
+    expect(uploadSizeState(RESUME_UPLOAD_MAX_BYTES).over).toBe(false);
+  });
+
+  it('上限 + 1 → 超', () => {
+    expect(uploadSizeState(RESUME_UPLOAD_MAX_BYTES + 1).over).toBe(true);
+  });
+
+  it('0 字节 → 不超（空文件的拦截在后端，不在这一层）', () => {
+    expect(uploadSizeState(0)).toEqual({ size: 0, over: false });
+  });
+
+  it('上限可以覆盖（判定不写死 5 MB）', () => {
+    expect(uploadSizeState(101, 100).over).toBe(true);
+    expect(uploadSizeState(100, 100).over).toBe(false);
+  });
+
+  it('非数值 / 缺值不抛异常，按 0 处理', () => {
+    expect(uploadSizeState(undefined).over).toBe(false);
+    expect(uploadSizeState(null).size).toBe(0);
+  });
+});
+
+describe('titleFromFilename —— 由文件名推标题', () => {
+  it('去掉最后一个扩展名', () => {
+    expect(titleFromFilename('简历.docx')).toBe('简历');
+  });
+
+  it('多点文件名只去掉最后一个扩展名', () => {
+    expect(titleFromFilename('a.b.c.pdf')).toBe('a.b.c');
+  });
+
+  it('没有扩展名 → 原样返回', () => {
+    expect(titleFromFilename('无扩展名')).toBe('无扩展名');
+  });
+
+  it('首尾空白去掉', () => {
+    expect(titleFromFilename('  简历.pdf  ')).toBe('简历');
+  });
+
+  it('空 / null / undefined → 空串（不抛异常）', () => {
+    expect(titleFromFilename('')).toBe('');
+    expect(titleFromFilename(null)).toBe('');
+    expect(titleFromFilename(undefined)).toBe('');
+  });
+
+  it('以点开头（隐藏文件）→ 原样返回，不切出一个空标题', () => {
+    expect(titleFromFilename('.gitignore')).toBe('.gitignore');
+  });
+});
+
+describe('RESUME_UPLOAD_MAX_BYTES —— 与后端对齐的守门断言', () => {
+  it('常量等于 5 MB', () => {
+    // 与后端 `RESUME_UPLOAD_MAX_BYTES` 一致。改了这里，后端那边必须同时改
+    expect(RESUME_UPLOAD_MAX_BYTES).toBe(5242880);
   });
 });

@@ -53,6 +53,37 @@ export function canSubmitResume({ title, content, maxLength = RESUME_CONTENT_MAX
     && rawContent.length <= maxLength;
 }
 
+/**
+ * 上传文件的体积上限（字节），默认 5 MB。
+ *
+ * ⚠️ **与后端 `RESUME_UPLOAD_MAX_BYTES` 保持一致，改一处必须改另一处** ——
+ * 与上面的 `RESUME_CONTENT_MAX_LENGTH` 同一处理方式（前端无法 import 后端配置），
+ * `resume-form.test.js` 里有一条守门断言把这个值钉住。
+ *
+ * 为什么前端也要判：后端那道拦在**请求体已经收完之后**（Starlette 会先缓冲整个
+ * 请求体），只有这一道能在请求**发出前**拦住大文件。
+ */
+export const RESUME_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+
+/** 体积判定。`over` 为真时应当**不发请求**，直接给文案。 */
+export function uploadSizeState(fileSize, maxBytes = RESUME_UPLOAD_MAX_BYTES) {
+  const size = Number(fileSize) || 0;
+  return { size, over: size > maxBytes };
+}
+
+/**
+ * 由文件名推出简历标题：去掉最后一个扩展名并去首尾空白。
+ *
+ * `"简历.docx"` → `"简历"`；`"a.b.c.pdf"` → `"a.b.c"`；`"无扩展名"` → 原样；
+ * 空 / `null` → `''`。不做文件名清洗 —— 浏览器给的 `File.name` 已是纯名称，
+ * 且它只会被写进 `title` 字段（后端还有 100 字符上限与去空白校验兜底）。
+ */
+export function titleFromFilename(filename) {
+  const name = String(filename ?? '').trim();
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(0, dot).trim() : name;
+}
+
 /* --------------------------- 新建 / 编辑 --------------------------- */
 
 /** 实时字数：越界立刻变红并禁用保存 —— 硬上限不能等提交被拒才知道。 */
@@ -102,6 +133,68 @@ function resumeModal(resume, onDone) {
   });
   const counter = charCount(content, save);
 
+  /* --------------------------- 从文件导入 --------------------------- */
+  // 解析出的文字只是**填进正文框**，还要候选人点保存才算数 —— 这一步刻意做成
+  // 「导入 + 确认」，而不是「上传即建简历」：解析免不了有噪声，得让人过一眼。
+
+  const fileInput = el('input', { type: 'file', id: 'resume-file', accept: '.docx,.pdf', hidden: true });
+  const upload = el('button', { class: 'btn btn--sm', type: 'button', text: '上传文件' });
+
+  upload.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    // 超限就**根本不发请求** —— 这是唯一能在请求发出前拦住大文件的地方
+    if (uploadSizeState(file.size).over) {
+      toast.error(`文件不能超过 ${RESUME_UPLOAD_MAX_BYTES / (1024 * 1024)} MB`);
+      fileInput.value = '';
+      return;
+    }
+
+    upload.disabled = true;
+    upload.textContent = '解析中…';
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const parsed = (await api.postForm('/candidate/resumes/parse', form)).content;
+
+      const keep = !String(content.value).trim() || await confirmModal({
+        title: '替换当前正文',
+        message: '正文框里已经有内容了，导入会把它们整体替换掉。确定吗？',
+        confirmLabel: '替换',
+        danger: false,
+      });
+      if (keep) {
+        content.value = parsed;
+        // ⚠️ 必须手动派发 input：字数计数与「超限禁用保存」都是事件驱动的
+        // （`charCount` 里 addEventListener('input', ...)）。直接赋值不会触发，
+        // 后果是计数器仍显示旧值、保存按钮不禁用 —— 候选人能提交一份超长正文，
+        // 然后在提交时吃一个 422。
+        content.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // 标题为空才填：已有内容一律不动（与正文的替换确认是两件独立的事）
+        if (!String(title.value).trim()) title.value = titleFromFilename(file.name);
+
+        const { length, over } = contentLengthState(parsed);
+        if (over) {
+          toast.error(`已解析出 ${length} 字，超过 ${RESUME_CONTENT_MAX_LENGTH} 字上限，请精简后再保存`);
+        } else {
+          toast.success(`已从文件解析出 ${length} 字，请确认后保存`);
+        }
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      upload.disabled = false;
+      upload.textContent = '上传文件';
+      // 同一个文件连选两次（第一次失败后重试）时浏览器不会触发 change ——
+      // value 没变。清空才能让第二次选择生效。
+      fileInput.value = '';
+    }
+  });
+
   const handle = openModal({
     title: resume ? '编辑简历' : '新建简历',
     wide: true,
@@ -129,8 +222,15 @@ function resumeModal(resume, onDone) {
         content,
         el('p', {
           class: 'field-note',
-          text: '直接粘贴纯文本，换行会原样保留。不支持上传文件或解析格式。',
+          text: '直接粘贴纯文本，换行会原样保留。',
         }),
+        el('div', { class: 'upload-row' },
+          upload,
+          fileInput,
+          el('span', {
+            class: 'upload-hint',
+            text: `也可以上传 DOCX / PDF 解析出文字（不超过 ${RESUME_UPLOAD_MAX_BYTES / (1024 * 1024)} MB）`,
+          })),
         contentError)),
     footer: [
       el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
