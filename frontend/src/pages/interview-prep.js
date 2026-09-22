@@ -27,7 +27,7 @@ import { confirmModal } from '../components/modal.js';
 import {
   baseTitle, contextTitle, createShell, dimTag, emptyState, formatDateTime, loadingBlock, panelHead,
 } from '../components/shell.js';
-import { navigate } from '../router.js';
+import { currentNavId, navigate } from '../router.js';
 
 const FROZEN_HINT = '面试已完成，准备提纲随之定稿；如需修改，请先回退到进行中。';
 
@@ -293,6 +293,12 @@ export function destroy() { document.title = baseTitle(); }
 
 export async function render(container, params) {
   const interviewId = params.id;
+  // 「我这一轮还算数吗」：生成提纲是十几秒的 AI 调用，等待期间用户很可能已经
+  // 导航走了。那时再挂载会把准备页整块盖回 #app（地址栏写着别的路径），
+  // 而这份重挂出来的页面 router 永远不会清理。
+  const navId = currentNavId();
+  const stillMine = () => currentNavId() === navId;
+
   const { root, main } = createShell(contextTitle('面试', '面试准备'));
   // 提纲是一份要读的东西：把正文收在 1000px 内，别让它横跨 1240px
   main.classList.add('prep-page');
@@ -338,6 +344,7 @@ export async function render(container, params) {
     try {
       // 准备助手的产出是整批一次给全的，不做流式（PRD §4.11）
       await api.post(`/interviews/${interviewId}/prep`);
+      if (!stillMine()) return;
       render(container, params);
     } catch (error) {
       // AI 失败（502）时后端不动旧内容 —— 页面上原来那份还在
@@ -458,6 +465,7 @@ export async function render(container, params) {
           })),
         });
         toast.success('准备提纲已保存');
+        if (!stillMine()) return;
         render(container, params);
       } catch (error) {
         toast.error(error.message);

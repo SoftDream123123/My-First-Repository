@@ -453,4 +453,25 @@ report.run(async () => {
   /* ---------- 21. 标签页标题（打印 PDF 用的就是它） ---------- */
   check('评估页把标签页标题改成「候选人 · 面试评估报告」',
     document.title === '张三 · 面试评估报告', document.title);
+
+  /* ---------- 22. 取详情期间导航走：不得留下关不掉的评估流 ---------- */
+  // 评估页的 render 先 await 取详情、之后才建立 SSE 连接。若在这段等待里用户
+  // 导航走了，router 那时的 destroy() 还没有句柄可关 —— 修好之前，render 恢复后
+  // 会照常发流，而此后没有任何人能关掉它（currentPage 已指向别的页面）。
+  reset('evaluating');
+  backend.setHandlers({
+    ...defaultHandlers(),
+    'GET /interviews/:id': () => ({ status: 200, body: detail(), delay: 300 }),
+  });
+  backend.reset();
+  await go('#/interviews/1/evaluation');   // 详情还在路上（人为延迟 300ms）
+  await go('#/interviews');                // 立刻导航走
+  await new Promise((resolve) => setTimeout(resolve, 700));   // 等迟到的那份详情返回
+
+  check('取详情期间导航走 → 不得再建立评估流（否则没人关得掉它）',
+    !backend.calls.some((c) => c.path === '/interviews/1/evaluation/stream'),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(' | '));
+  check('取详情期间导航走 → 不得把评估页盖回当前页面之上',
+    page().querySelector('.rail-step') === null,
+    page().querySelector('.rail-step') ? '评估页被盖回来了' : 'ok');
 });

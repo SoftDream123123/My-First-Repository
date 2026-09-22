@@ -371,6 +371,32 @@ report.run(async () => {
   await settle();
   check('没改就不发请求（失焦不应造成无谓的写库）', backend.calls.length === 0, `实际 ${backend.calls.length} 次`);
 
+  /* ---------- 9b. 没失焦也要落盘：pagehide 与 SPA 换页 ---------- */
+  // blur 覆盖不到 F5 / 关标签页 / 浏览器后退键 —— 那几条路径输入框都不会失焦，
+  // 原来整段作答会**静默消失**，而页面上还写着「离开输入框会自动保存」。
+  backend.reset();
+  const unblurred = page().querySelector('#candidate-answer');
+  unblurred.value = '写了很长一段但一次都没失焦的作答';
+  window.dispatchEvent(new Event('pagehide'));
+  await settle();
+  const flushed = lastCall('POST', '/candidate/interviews/3/answers');
+  check('pagehide（F5 / 关标签页）也会把未落盘的作答发出去',
+    flushed?.body?.content === '写了很长一段但一次都没失焦的作答',
+    JSON.stringify(flushed?.body));
+  check('兜底落盘用的也是 interview_question_id（不是面试 id）',
+    flushed?.body?.interview_question_id === 41, String(flushed?.body?.interview_question_id));
+  check('兜底落盘带上了 Authorization（keepalive 请求不能丢鉴权）',
+    Boolean(flushed?.auth), String(flushed?.auth));
+
+  // SPA 内部换页（含后退键）走的是 router 的 destroy()，同样不会让输入框失焦
+  backend.reset();
+  page().querySelector('#candidate-answer').value = '换页前没失焦的作答';
+  await go('#/candidate/interviews');
+  await settle();
+  check('SPA 内换页（含浏览器后退键）也会把未落盘的作答发出去',
+    lastCall('POST', '/candidate/interviews/3/answers')?.body?.content === '换页前没失焦的作答',
+    JSON.stringify(lastCall('POST', '/candidate/interviews/3/answers')?.body));
+
   /* ---------- 10. 已交卷态：输入框只读 + 冻结条 ---------- */
   flags.detail = { submitted: true, submitted_at: '2026-09-21T11:20:00' };
   backend.reset();

@@ -116,7 +116,7 @@ function defaultHandlers() {
       }
       DETAIL[id].status = 'completed';
       DETAIL[id].completed_at = '2026-09-21T10:05:00';
-      return { status: 200, body: DETAIL[id] };
+      return { status: 200, body: DETAIL[id], delay: completeDelay };
     },
     'POST /interviews/:id/rollback': ({ path }) => {
       const id = Number(path.split('/')[2]);
@@ -160,6 +160,9 @@ const rows = () => [...page().querySelectorAll('.main tbody tr')];
 const navItems = () => [...page().querySelectorAll('.qnav-item')];
 const editorSeq = () => page().querySelector('.editor-seq')?.textContent;
 const answerBox = () => page().querySelector('#answer-input');
+/** 状态变更请求的人为延迟 —— 用来把「等待期间导航走」做成确定状态（见第 27 节）。 */
+let completeDelay = 0;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function setInput(node, value) {
   node.value = value;
@@ -323,6 +326,20 @@ report.run(async () => {
     saveCall?.body?.content === '改过的回答内容', JSON.stringify(saveCall?.body?.content));
   check('保存成功 → 状态变「已保存」', page().querySelector('.save-state')?.textContent === '已保存',
     String(page().querySelector('.save-state')?.textContent));
+
+  /* ---------- 9b. 没失焦也要落盘（F5 / 关标签页 / 后退键） ---------- */
+  // blur 覆盖不到这几条路径 —— 那时输入框不会失焦，整段记录会静默丢掉，
+  // 而页面提示写的是「离开输入框会自动保存」。
+  backend.reset();
+  answerBox().value = '面试官边听边记的一段，没点别处';
+  window.dispatchEvent(new Event('pagehide'));
+  await settle();
+  const hrFlushed = backend.find('POST', '/interviews/1/answers');
+  check('pagehide（F5 / 关标签页）也会把未落盘的记录发出去',
+    hrFlushed?.body?.content === '面试官边听边记的一段，没点别处', JSON.stringify(hrFlushed?.body));
+  check('兜底落盘带上了 Authorization（keepalive 请求不能丢鉴权）',
+    Boolean(hrFlushed?.auth), String(hrFlushed?.auth));
+  answerBox().value = '改过的回答内容';
   check('保存后该题在导航里由「待答」变「已答」（已答数 2 → 3）',
     navItems().filter((n) => n.classList.contains('is-answered')).length === 3 &&
       navItems()[2].querySelector('.qnav-mark').textContent === '已答',
@@ -608,4 +625,25 @@ report.run(async () => {
     openOverlay().textContent.includes('先到「岗位」页创建一个') ?? false,
     openOverlay().textContent.slice(0, 120));
   await closeAnyModal();
+
+  /* ---------- 27. 等待期间导航走：不得把旧页面盖回来 ---------- */
+  // transition() 是「await 一个 POST，成功后重载本页」。重载若不做「我还在这一页吗」
+  // 判断，用户已经导航走后旧页面会被整块盖回 #app —— 地址栏写着列表、看到的却是
+  // 详情页；而且这份重挂出来的页面 router 永远不会清理。
+  resetWorld();
+  backend.setHandlers(defaultHandlers());
+  await go('#/interviews/1');
+  completeDelay = 400;
+  backend.reset();
+  buttonIn(page().querySelector('.page-head-actions'), '标记完成').click();
+  await wait(40);
+  await go('#/interviews');        // 请求还在飞就导航走
+  await wait(500);                 // 等那个迟到的响应返回
+  completeDelay = 0;
+
+  check('等待期间导航走 → 旧页面不得被盖回来（仍停在面试列表）',
+    hash() === '#/interviews' && page().querySelector('#answer-input') === null,
+    `hash=${hash()} 详情编辑器=${page().querySelector('#answer-input') ? '被盖回来了' : '不在'}`);
+  check('等待期间导航走 → 列表本身渲染正常',
+    rows().length === LIST.length, `rows=${rows().length}`);
 });

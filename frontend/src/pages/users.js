@@ -10,6 +10,7 @@ import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
 import { confirmModal, openModal } from '../components/modal.js';
 import { contextTitle, createShell, emptyState, formatDate, loadingBlock } from '../components/shell.js';
+import { currentNavId } from '../router.js';
 
 const ROLE_LABELS = { admin: '管理员', hr: 'HR' };
 
@@ -114,6 +115,14 @@ function openCreateModal(onSaved) {
 }
 
 export async function render(container) {
+  // 「我这一轮还算数吗」：改角色/启停是「await 一个 PATCH，成功后重载本页」。
+  // 等待期间用户可能已经导航走了 —— 那时再挂载会把用户管理页盖回 #app，
+  // 而且这份重挂出来的页面 router 永远不会清理。
+  // 重载用直接 render() 而不是 navigate()：本页既可能由路由挂载，也可能由
+  // 测试台直接驱动（`await users.render(container)`），直接 render 两种都成立。
+  const navId = currentNavId();
+  const stillMine = () => currentNavId() === navId;
+
   const { root, main } = createShell(contextTitle('用户管理'));
   mount(container, root);
   mount(main, loadingBlock('正在加载用户…'));
@@ -132,6 +141,7 @@ export async function render(container) {
     try {
       await api.patch(`/users/${userId}`, payload);
       toast.success(successMessage);
+      if (!stillMine()) return;
       render(container);
     } catch (error) {
       toast.error(error.message);

@@ -237,13 +237,23 @@ export async function render(container) {
 
   function create() { openPositionModal(null, reload); }
 
+  // 防抖只减少请求数，**不保证响应顺序**：慢网络下两个关键词的响应仍可能乱序
+  // 返回，让旧结果覆盖新结果（列表与搜索框里的词对不上，还不报错）。
+  // 与 questions.js 的 reloadNo 同法：只接受最新一次请求的响应。
+  let reloadNo = 0;
+
   async function reload() {
+    const token = (reloadNo += 1);
+    let rows;
     try {
-      positions = await api.get(listPath());
+      rows = await api.get(listPath());
     } catch (error) {
+      if (token !== reloadNo) return;  // 已被更新的请求取代，别弹过期的错
       toast.error(error.message);
       return;
     }
+    if (token !== reloadNo) return;  // 先发后到的旧响应：整批丢弃，不写进界面
+    positions = rows;
     if (!positions.some((p) => p.id === selectedId)) selectedId = positions[0]?.id ?? null;
     paint();
   }

@@ -133,6 +133,12 @@ export async function render(container) {
   const startButtons = [start];
   const setStartEnabled = (enabled) => { for (const node of startButtons) node.disabled = !enabled; };
 
+  // 「开始练习」的创建请求在飞时为真。**必须挡住晚到的计数响应**：
+  // refreshCount 的 token 只保证「不用旧结果覆盖新文案」，它仍会执行
+  // setStartEnabled(rows.length > 0) 把按钮重新点亮 —— 于是用户能在
+  // 创建请求返回前再点一次，服务端各建一场会话，其中一场是空壳。
+  let starting = false;
+
   function currentFilters() {
     const out = {};
     for (const [key, node] of Object.entries(controls)) {
@@ -157,17 +163,18 @@ export async function render(container) {
         ? `符合条件 ${rows.length} 题`
         : '没有符合条件的题目，换一组筛选条件';
       count.className = `practice-count${rows.length ? '' : ' is-none'}`;
-      setStartEnabled(rows.length > 0);
+      if (!starting) setStartEnabled(rows.length > 0);
     } catch {
       if (token !== countToken) return;
       count.textContent = '';
-      setStartEnabled(false);
+      if (!starting) setStartEnabled(false);
     }
   }
   for (const node of Object.values(controls)) node.addEventListener('change', refreshCount);
 
   /** 取题并进入练习。`trigger` 是被点的那颗按钮 —— 载入文案要落在它自己身上。 */
   async function startPractice(trigger) {
+    starting = true;
     setStartEnabled(false);
     const original = trigger.textContent;
     trigger.textContent = '正在取题…';
@@ -184,6 +191,7 @@ export async function render(container) {
     } catch (error) {
       // 409 = 取不到题 / 触发限流。**筛选条件保留不重置** —— 让人看到自己选的是什么
       toast.error(error.message);
+      starting = false;
       setStartEnabled(true);
       trigger.textContent = original;
     }

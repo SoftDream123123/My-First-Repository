@@ -191,6 +191,19 @@ export function registerPages(map) { pages = map; }
 
 let container = null;
 let currentPage = null;
+let navNo = 0;
+
+/**
+ * 已经换过多少次页面（单调递增）。
+ *
+ * 页面在自己的 `render()` 顶部取一次，之后**每个 await 之后**再取一次比较：
+ * 不相等就说明等待期间用户已经导航走了。此时若继续挂载或重画，会把旧页面
+ * 整块盖回 `#app`（地址栏与内容不一致），而且这份重挂出来的页面**不会**
+ * 被 router 的 `destroy()` 清理 —— `currentPage` 早已指向别的页面了。
+ */
+export function currentNavId() {
+  return navNo;
+}
 
 function guard(route) {
   session.setSide(route.side);
@@ -213,6 +226,10 @@ async function render() {
     return;
   }
   if (!guard(matched.route)) return;
+
+  // 递增**必须在调 destroy 之前**：被换走的那一页若还有在飞的渲染，
+  // 它必须在 destroy 的那一刻就作废，而不是等到下一轮 render 结束。
+  navNo += 1;
 
   // 离开上一页前必须清理 —— 评估页的 SSE 连接靠这一步关闭
   if (currentPage?.destroy) {

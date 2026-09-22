@@ -26,7 +26,7 @@ import {
   panelHead, statusRail,
 } from '../components/shell.js';
 import { radarSvg, scoreClass, SCORE_MAX, PASS_THRESHOLD } from '../components/radar.js';
-import { navigate } from '../router.js';
+import { currentNavId, navigate } from '../router.js';
 
 const STAGES = [
   { label: '逐题评分', text: '每一题给一个 0–10 的分数，并写清这个分数是看了什么得出的。' },
@@ -37,7 +37,14 @@ const STAGES = [
 /** 离开页面时要停掉正在读的 SSE。 */
 let activeAbort = null;
 
+// 生命周期状态必须是**模块级**，不能放 render 的局部变量：render 里要 await
+// 取详情，这期间用户可能已经导航走了 —— 那一刻 router 调用的 destroy() 只看得到
+// 模块级状态。若 destroyed 是局部变量，render 恢复后会以为自己是活的，照常建立
+// SSE 流，而此后没有任何人能关掉它（router 的 currentPage 已换成别的页面）。
+let destroyed = true;
+
 export function destroy() {
+  destroyed = true;
   if (activeAbort) { activeAbort(); activeAbort = null; }
   document.title = baseTitle();
 }
@@ -107,6 +114,13 @@ function findingsBlock(report) {
 }
 
 export async function render(container, params) {
+  const navId = currentNavId();
+  destroyed = false;
+  // 「我这一轮还算数吗」—— 中途导航走（router 的换页序号会变）或本页的流被
+  // destroy 掉，都算不算数。每个 await 之后都要过这一关，否则会把内容画进已
+  // 卸载的 DOM，或留下一条没人关得掉的 SSE 流。
+  const superseded = () => destroyed || currentNavId() !== navId;
+
   const interviewId = params.id;
   const { root, main } = createShell(contextTitle('面试', '评估报告'));
   mount(container, root);
@@ -116,10 +130,12 @@ export async function render(container, params) {
   try {
     detail = await api.get(`/interviews/${interviewId}`);
   } catch (error) {
+    if (superseded()) return;
     mount(main, el('div', { class: 'panel' }, emptyState('面试加载失败', error.message,
       el('button', { class: 'btn btn--primary', text: '返回列表', onClick: () => navigate('/interviews') }))));
     return;
   }
+  if (superseded()) return;
 
   // PDF 导出走浏览器打印，文件名取的就是这个标题
   document.title = `${detail.candidate_name} · 面试评估报告`;
@@ -164,6 +180,7 @@ export async function render(container, params) {
       start.textContent = '正在提交…';
       try {
         await api.post(`/interviews/${interviewId}/evaluate`);
+        if (superseded()) return;
         render(container, params); // 状态已变为「评估中」，重载后自动接流
       } catch (error) {
         toast.error(error.message);
@@ -344,6 +361,7 @@ export async function render(container, params) {
           if (!ok) return;
           try {
             await api.post(`/interviews/${interviewId}/evaluate`);
+            if (superseded()) return;
             render(container, params);
           } catch (error) {
             toast.error(error.message);
@@ -388,7 +406,6 @@ export async function render(container, params) {
     repaintScores();
   }
 
-  let destroyed = false;
   let controller = null;
   activeAbort = () => { destroyed = true; if (controller) controller.abort(); };
 
@@ -450,12 +467,14 @@ export async function render(container, params) {
   if (detail.status === 'evaluated') {
     try {
       const report = await api.get(`/interviews/${interviewId}/report`);
+      if (superseded()) return;
       view.report = report;
       view.done = true;
       for (const item of report.question_scores) view.scoreMap[item.interview_question_id] = item;
       for (const item of report.dimension_scores) view.dimMap[item.dimension] = item;
       repaint();
     } catch (error) {
+      if (superseded()) return;
       // 状态说已评估、报告却读不到：如实说，不假装有报告
       clear(headRegion);
       headRegion.append(

@@ -14,9 +14,26 @@ import {
   contextTitle, createShell, emptyState, formatDate, formatDateTime, loadingBlock,
   panelHead, sourceTag, dimTag, statusRail,
 } from '../components/shell.js';
-import { navigate } from '../router.js';
+import { currentNavId, navigate } from '../router.js';
 
 const SAVE_LABELS = { idle: '未修改', saving: '保存中…', saved: '已保存', failed: '保存失败' };
+
+// 当前正在编辑的那道题与它的输入框。`buildEditor` 里的 textarea/stateNode 是局部
+// 变量，而「离开本页时把未落盘的内容发出去」要在 render 作用域之外也能拿到它们 ——
+// 由 `buildEditor` 在构造时登记到这里。
+let pendingEditor = null;
+let flushOnLeave = null;
+
+export function destroy() {
+  // 离开本页时把还没落盘的编辑发出去。SPA 内部导航（含浏览器后退键）走的就是
+  // 这里，而那条路径**不会**让输入框失焦 —— 光靠 blur 保存会静默丢掉整段记录。
+  if (flushOnLeave) {
+    flushOnLeave();
+    window.removeEventListener('pagehide', flushOnLeave);
+    flushOnLeave = null;
+  }
+  pendingEditor = null;
+}
 
 const INVITE_LABELS = { pending: '待接受', accepted: '已接受', revoked: '已撤销', expired: '已过期' };
 const INVITE_TAG = {
@@ -62,6 +79,14 @@ function copyCode(code) {
 
 export async function render(container, params) {
   const interviewId = params.id;
+  // 「我这一轮还算数吗」：本页多处动作是「await 一个 POST，成功后重载本页」。
+  // 等待期间用户可能已经导航走了 —— 那时再挂载会把旧页面整块盖回 #app
+  // （地址栏与内容不一致），而这份重挂出来的页面 router 永远不会清理。
+  // 重载用直接 render() 而不是 navigate()：本页既可能由路由挂载，也可能由
+  // 测试台直接驱动，直接 render 两种都成立。
+  const navId = currentNavId();
+  const stillMine = () => currentNavId() === navId;
+
   const { root, main } = createShell(contextTitle('面试'));
   mount(container, root);
   mount(main, loadingBlock('正在加载面试…'));
@@ -85,6 +110,29 @@ export async function render(container, params) {
   let currentIndex = pickInitialIndex(detail.questions);
   const saveStates = {};
 
+  /**
+   * 离开本页时把当前编辑器里未落盘的内容发出去。
+   *
+   * 与候选人侧同因：blur 只覆盖「点到别处」，而下面两条路径都不会让输入框失焦，
+   * 原来会被静默丢掉整段记录 ——
+   *   ① 点导航 / 按浏览器后退键 → SPA 内部换页 → router 调 destroy()（见文件顶部）
+   *   ② F5 / 关标签页 / 后退到站外 → pagehide（下面这个监听）
+   * 用 postKeepalive：卸载路径上普通请求会被浏览器中断。
+   */
+  // 本页可能被直接 render() 重载（状态变更、补题成功都走这条路），每次 render
+  // 都会再执行一遍这里 —— 先摘掉上一轮的监听，否则会越积越多。
+  if (flushOnLeave) window.removeEventListener('pagehide', flushOnLeave);
+  flushOnLeave = () => {
+    if (!pendingEditor || !editable) return;
+    const { question, textarea } = pendingEditor;
+    if (textarea.value === (question.answer ?? '')) return; // 没改就不发请求
+    api.postKeepalive(`/interviews/${interviewId}/answers`, {
+      interview_question_id: question.interview_question_id,
+      content: textarea.value,
+    });
+  };
+  window.addEventListener('pagehide', flushOnLeave);
+
   /* --------------------------- 状态操作 --------------------------- */
 
   /**
@@ -94,6 +142,7 @@ export async function render(container, params) {
     try {
       await api.post(`/interviews/${interviewId}/${action}`);
       toast.success(successMessage);
+      if (!stillMine()) return;
       render(container, params);
     } catch (error) {
       toast.error(error.message); // 状态机不允许的迁移，文案来自后端
@@ -245,6 +294,8 @@ export async function render(container, params) {
         if (textarea.value === (question.answer ?? '')) return; // 没改就不发请求
         saveAnswer(question, textarea, stateNode);
       });
+      // 登记给「离开页面」的兜底落盘用（见本文件顶部的 flushOnLeave）
+      pendingEditor = { question, textarea };
     }
 
     const actions = editable
@@ -333,6 +384,7 @@ export async function render(container, params) {
         // 必须报本场总数：只报增量时 HR 连点几次会以为界面在重复加同一批题
         toast.success(`本次新增 ${result.added_count} 题，本场共 ${result.total_questions} 题`);
       }
+      if (!stillMine()) return;
       render(container, params); // 重新拉详情，让新题与匹配理由出现在导航与编辑区
     } catch (error) {
       toast.error(error.message); // 409 / 502 都用后端文案

@@ -27,6 +27,9 @@ session.save('mock-token', {
 
 let POSITIONS = [];
 
+/** 让某个关键词的响应故意迟到 —— 构造「旧关键词的响应后到」这个确定状态。 */
+let slowKeyword = null;
+
 const seed = () => [
   {
     id: 1, name: '后端工程师',
@@ -48,7 +51,11 @@ function defaultHandlers() {
     'GET /positions': ({ query }) => {
       const params = new URLSearchParams(query);
       const keyword = params.get('keyword');
-      return { status: 200, body: keyword ? POSITIONS.filter((p) => p.name.includes(keyword)) : POSITIONS };
+      return {
+        status: 200,
+        body: keyword ? POSITIONS.filter((p) => p.name.includes(keyword)) : POSITIONS,
+        delay: keyword !== null && keyword === slowKeyword ? 600 : 0,
+      };
     },
     'POST /positions': ({ body }) => {
       const created = { id: POSITIONS.length + 10, ...body, created_by: 2, created_at: '2026-09-18T10:00:00' };
@@ -183,6 +190,26 @@ report.run(async () => {
   check('清空搜索词 → 请求不带 keyword 参数', backend.calls.find((c) => c.path === '/positions')?.query === '',
     String(backend.calls.find((c) => c.path === '/positions')?.query));
   check('清空后恢复全量', listItems().length === 2, `实际 ${listItems().length}`);
+
+  /* ---------- 旧关键词的响应后到，不得覆盖新结果 ---------- */
+  // 防抖只减少请求数，**不保证返回顺序**。这里让「后端」的响应故意迟到 600ms，
+  // 使它落在「前端」的响应**之后** —— 没有守卫时列表会被旧关键词的结果覆盖，
+  // 而搜索框里写着新关键词，全程不报错，只是数据对不上。
+  backend.reset();
+  slowKeyword = '后端';
+  await search('后端');   // 请求已发出，响应还在路上（280ms 的等待等不到它）
+  await search('前端');   // 第二个关键词的响应先落地
+  await wait(700);        // 再等到那个迟到的旧响应落地、并被守卫丢弃
+  slowKeyword = null;
+
+  check('迟到的旧关键词响应被丢弃 → 列表里只剩新关键词的岗位',
+    itemNames().join() === '前端工程师', itemNames().join());
+  check('迟到的旧关键词响应被丢弃 → 右栏也是新关键词的岗位',
+    dossier() === '前端工程师', String(dossier()));
+  check('迟到的旧关键词响应被丢弃 → 搜索框仍是新关键词',
+    searchBox()?.value === '前端', searchBox()?.value);
+  // 收尾：把关键词清掉恢复全量 —— 否则后面的用例会在「只剩 1 条」的列表上做断言
+  await search('');
 
   /* ---------- 创建：本地校验 ---------- */
   clearToasts();

@@ -85,6 +85,35 @@ export const put = (path, body) => request('PUT', path, body);
 export const patch = (path, body) => request('PATCH', path, body);
 export const del = (path) => request('DELETE', path);
 
+/**
+ * 尽力送达的 POST —— 用在页面**正在被卸载**时（`pagehide`）保存还没落盘的作答。
+ *
+ * `keepalive: true` 让浏览器在文档卸载后仍把这个请求发完，这是卸载路径上唯一
+ * 能把写入真的送到服务端的手段：那里 await 不到结果，普通 `fetch` 会被中断。
+ *
+ * 为什么不用 `sendBeacon`：它**带不了自定义请求头**，而这个 API 需要
+ * `Authorization: Bearer`。载荷上限（本端点作答 ≤ 10000 字符）也远低于
+ * keepalive 的 64KB 限额。
+ *
+ * 没有返回值 —— 调用方处在卸载路径上，既等不到结果，也不该在这里报错。
+ */
+export function postKeepalive(path, body) {
+  const token = session.getToken();
+  try {
+    fetch(BASE + path, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+  } catch {
+    // 卸载中不做任何处理
+  }
+}
+
 /* ==========================================================================
    SSE 流式读取
    ========================================================================== */

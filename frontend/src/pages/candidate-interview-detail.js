@@ -26,7 +26,21 @@ const filled = (question) => (question.my_answer ?? '').trim() !== '';
 const savedValue = (question) => question.my_answer ?? '';
 
 let activeTitle = null;
-export function destroy() { if (activeTitle) document.title = activeTitle; }
+
+// destroy() 是模块级的，而「把未落盘的作答发出去」要用到 render 作用域里的
+// 输入框与题目 —— 用一个模块级钩子把这件事接过来。
+let flushOnLeave = null;
+
+export function destroy() {
+  // 离开本页时把还没落盘的作答发出去。SPA 内部导航（含浏览器后退键）走的就是
+  // 这里，而那条路径**不会**让输入框失焦 —— 光靠 blur 保存会静默丢掉整段作答。
+  if (flushOnLeave) {
+    flushOnLeave();
+    window.removeEventListener('pagehide', flushOnLeave);
+    flushOnLeave = null;
+  }
+  if (activeTitle) document.title = activeTitle;
+}
 
 export async function render(container, params) {
   const interviewId = params.id;
@@ -256,6 +270,30 @@ export async function render(container, params) {
     if (!editorTextarea || editorTextarea.value === savedValue(question)) return true;
     return saveAnswer(question, editorTextarea, editorStateNode);
   }
+
+  /**
+   * 离开本页时把当前输入框里未落盘的内容发出去。
+   *
+   * 三条离开路径里原来只有 blur 覆盖到：
+   *   ① 点导航 / 按浏览器后退键 → SPA 内部换页 → router 调 destroy()（见模块顶部）
+   *   ② F5 / 关标签页 / 后退到站外 → pagehide（下面这个监听）
+   * ① 不会让输入框失焦，② 更不会 —— 所以只挂 blur 时，整段作答会静默消失。
+   * 这里必须用 postKeepalive：卸载路径上普通请求会被浏览器中断。
+   */
+  // 本页可能被直接 render() 重载（保存成功、切题都走这条路），每次 render 都会
+  // 再执行一遍这里 —— 先摘掉上一轮的监听，否则会越积越多，且旧监听闭包还攥着
+  // 已经不在文档里的输入框。
+  if (flushOnLeave) window.removeEventListener('pagehide', flushOnLeave);
+  flushOnLeave = () => {
+    const question = questions[currentIndex];
+    if (!editorTextarea || !question || !canAnswer()) return;
+    if (editorTextarea.value === savedValue(question)) return; // 没改就不发请求
+    api.postKeepalive(`/candidate/interviews/${interviewId}/answers`, {
+      interview_question_id: question.interview_question_id,
+      content: editorTextarea.value,
+    });
+  };
+  window.addEventListener('pagehide', flushOnLeave);
 
   async function askSubmit() {
     if (submitting) return; // 防连点：flush 与确认弹窗都是异步的

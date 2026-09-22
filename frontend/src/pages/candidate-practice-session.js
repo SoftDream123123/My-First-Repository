@@ -80,12 +80,18 @@ function writtenRecap(item) {
 
 const LETTERS = 'ABCDEFGHIJ';
 
+// 后端 `app/practice/schemas.py::MAX_PRACTICE_ANSWER_LENGTH`。
+// 练习作答上限是 **5000**；**面试**作答（`app/interview/schemas.py`）才是 10000。
+// 两者不是同一个值 —— 写成 10000 会让超长作答被后端 400 拒，而错误只落到
+// 通用文案「请求参数不合法」上，候选人无从知道是长度问题，页面也无字段级出口。
+const MAX_ANSWER_LENGTH = 5000;
+
 function answerControl(item, onSubmit) {
   const single = item.question.question_type === 'single_choice';
 
   if (!single) {
     const textarea = el('textarea', {
-      class: 'textarea', maxlength: '10000',
+      class: 'textarea', maxlength: String(MAX_ANSWER_LENGTH),
       placeholder: '写下你的回答。提交后会给出得分、参考答案与解析。',
     });
     const submit = el('button', { class: 'btn btn--primary btn--sm', text: '提交' });

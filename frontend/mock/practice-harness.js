@@ -167,6 +167,9 @@ const flags = {
   wrongBook: WRONG_BOOK,
   stats: STATS,
   finishing: true,
+  // 人为延迟：用来把「先发的请求后返回」做成**确定状态**（见第 17b 节）
+  countDelay: 0,
+  startDelay: 0,
 };
 
 function handlers() {
@@ -187,15 +190,15 @@ function handlers() {
       const dimension = params.get('dimension');
       const rows = flags.pool.filter((q) =>
         (!difficulty || q.difficulty === difficulty) && (!dimension || q.dimension === dimension));
-      return { status: 200, body: rows };
+      return { status: 200, body: rows, delay: flags.countDelay };
     },
 
     'POST /practice/sessions': ({ body }) => {
       if (flags.startFails) {
-        return { status: 409, body: { code: 'BUSINESS_ERROR', message: '没有符合条件的题目，请调整筛选条件', detail: null } };
+        return { status: 409, body: { code: 'BUSINESS_ERROR', message: '没有符合条件的题目，请调整筛选条件', detail: null }, delay: flags.startDelay };
       }
       flags.lastStartBody = body;
-      return { status: 201, body: sessionDetail() };
+      return { status: 201, body: sessionDetail(), delay: flags.startDelay };
     },
 
     'GET /practice/sessions/:id': () => ({ status: 200, body: flags.detail ?? sessionDetail() }),
@@ -290,6 +293,7 @@ const itemAt = (index) => all('.practice-item')[index];
 
 const selectIn = (index) => all('.filterbar .select')[index];
 const lastCall = (method, path) => [...backend.calls].reverse().find((c) => c.method === method && c.path === path);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const called = (method, path) => backend.calls.some((c) => c.method === method && c.path === path);
 
 function signInAsCandidate() {
@@ -400,6 +404,13 @@ report.run(async () => {
     itemAt(1).querySelectorAll('.choice-option').length === 3);
   check('简答题渲染成文本框',
     Boolean(itemAt(2).querySelector('textarea')));
+  // 练习作答的上限与**面试**作答不是同一个值：后端 `MAX_PRACTICE_ANSWER_LENGTH`
+  // 是 5000（`interview/schemas.py` 才是 10000）。前端放行到 10000 会让 5000 字
+  // 以上的作答被后端 400 拒，而本页只弹一句「请求参数不合法」、没有字段级出口，
+  // 候选人无从知道是长度问题，重按多少次都不会成功。
+  check('练习作答框 maxlength 与后端 5000 对齐（不是面试的 10000）',
+    itemAt(2).querySelector('textarea')?.getAttribute('maxlength') === '5000',
+    itemAt(2).querySelector('textarea')?.getAttribute('maxlength'));
   check('单选未选中时提交按钮禁用（避免提交空答案）',
     buttonIn(itemAt(1), '提交')?.disabled === true);
   check('已判对的题显示「答对」与得分',
@@ -690,6 +701,43 @@ report.run(async () => {
   check('正确率为 null 时数字格里不是「0%」（0% 会被读成「全错」）',
     all('.summary-cell')[2].textContent.includes('—'), all('.summary-cell')[2].textContent);
   flags.stats = STATS;
+
+  /* ---------- 17b. 迟到的计数响应不得点亮「开始练习」 ---------- */
+  // refreshCount 的 token 只保证「不用旧结果覆盖新文案」，但它仍会执行
+  // setStartEnabled(rows.length > 0)。创建练习的请求在飞时若被它点亮，用户能在
+  // 创建请求返回前再点一次 —— 服务端各建一场会话，其中一场是空壳。
+  flags.startFails = true;   // 让创建返回 409：不跳页，本轮只观察按钮状态
+  flags.countDelay = 0;
+  flags.startDelay = 600;    // 创建请求够慢，保证「创建在飞」可观测
+  backend.reset();
+  await go('#/candidate/practice');
+  await wait(120);           // 首次计数落地 → 按钮可用
+  check('前置：首次计数落地后按钮可用',
+    buttonIn(page(), '开始练习')?.disabled === false);
+
+  flags.countDelay = 300;    // 这一次计数故意迟到
+  selectIn(3).value = 'easy';
+  selectIn(3).dispatchEvent(new Event('change'));
+  await wait(30);            // 计数请求已发出、还没回来
+  // 持有节点引用再点：创建在飞时按钮文案会变成「正在取题…」，
+  // 按文案去找会找不到它，断言就变成在测空气
+  const startButton = buttonIn(page(), '开始练习');
+  startButton.click();       // 创建在飞 → 按钮被禁
+  await wait(330);           // 迟到的计数响应此刻已落地
+  check('迟到的计数响应不得把「开始练习」重新点亮（否则能连点出第二场练习）',
+    startButton.disabled === true,
+    `disabled=${startButton.disabled} text=${startButton.textContent}`);
+  check('同一个迟到响应仍然更新了计数文案（守卫只挡可用状态，不挡计数）',
+    page().querySelector('.practice-count')?.textContent === '符合条件 2 题',
+    page().querySelector('.practice-count')?.textContent);
+
+  await wait(500);           // 等创建请求返回（409）并把按钮恢复
+  check('创建失败后按钮恢复可用',
+    startButton.disabled === false, `disabled=${startButton.disabled}`);
+  flags.startFails = false;
+  flags.countDelay = 0;
+  flags.startDelay = 0;
+  backend.reset();
 
   /* ---------- 18. 收尾 ---------- */
   check('没有残留的弹窗', openOverlay() === null);

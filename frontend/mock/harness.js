@@ -63,6 +63,11 @@ export function installFakeBackend(defaults = {}) {
       ? handler({ method, path, query, body })
       : { status: 404, body: { code: 'NOT_FOUND', message: `未 mock 的路由：${method} ${path}`, detail: null } };
 
+    // 处理器可以返回 `delay: <ms>`。用来把「先发的请求后返回」做成**确定状态**
+    // 而不是撞运气 —— 迟到的响应覆盖新结果这类竞态，只有能控制返回顺序才测得到。
+    // 注意 `state.calls` 已在上面按**发出顺序**记录，延迟不改变调用流水。
+    if (result.delay) await new Promise((resolve) => setTimeout(resolve, result.delay));
+
     return {
       ok: result.status >= 200 && result.status < 300,
       status: result.status,
