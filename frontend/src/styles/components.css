@@ -589,6 +589,37 @@
 .used-row { display: flex; align-items: center; gap: var(--s2); }
 .used-row + .used-row { margin-top: var(--s2); }
 .used-row-name { font-size: 14px; }
+/* 「评估匹配度」推到行尾：状态标签要紧跟着岗位名读 */
+.used-row .btn { margin-left: auto; }
+
+/* ---- 简历 AI 评估的结果（两端共用，components/resume-review.js） ----
+   分数用色**刻意不含红色**：最低档用中性灰而不是 danger —— 红色读起来像
+   「否决」，而去留判断正是 §4.9 划掉的东西；结论已经不说了，颜色也不该说。
+   候选人默认档拿不到分数时**整块不渲染**，因此这里没有对应的占位样式。 */
+.review-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  margin-bottom: var(--s5);
+  border-radius: var(--r-surface);
+  background: var(--brand-wash);
+}
+.review-score-value { font-family: var(--font-num); font-size: var(--t-2xl); font-weight: 700; }
+.review-score-label { font-size: var(--t-sm); color: var(--ink-soft); }
+.review-score.is-high { background: var(--pass-wash); }
+.review-score.is-high .review-score-value { color: var(--pass); }
+.review-score.is-mid { background: var(--brand-wash); }
+.review-score.is-mid .review-score-value { color: var(--brand); }
+.review-score.is-low { background: var(--watch-wash); }
+.review-score.is-low .review-score-value { color: var(--watch); }
+.review-score.is-weak { background: var(--ground); }
+.review-score.is-weak .review-score-value { color: var(--muted); }
+
+.review-section + .review-section { margin-top: var(--s5); }
+.review-list { margin: var(--s2) 0 0; padding-left: var(--s5); }
+.review-list li { font-size: 14px; color: var(--ink-soft); }
+.review-list li + li { margin-top: var(--s1); }
 
 /* ---- 「这份简历用在哪些面试」里的多选行 ----
    与 `.choice-option` 同构，区别是这里多选，且每行要说清「这场现在用的是哪一份」 */

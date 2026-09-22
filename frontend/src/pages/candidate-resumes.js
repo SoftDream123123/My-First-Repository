@@ -19,6 +19,7 @@ import { el, clear, mount } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
 import { confirmModal, openModal } from '../components/modal.js';
+import { openResumeReview } from '../components/resume-review.js';
 import { fieldError, fieldErrors } from '../components/form.js';
 import {
   candidateStateTag, contextTitle, createShell, emptyState, formatDateTime, loadingBlock,
@@ -466,9 +467,28 @@ export async function render(container) {
       el('div', { class: 'dossier-section' },
         el('div', { class: 'dossier-label', text: '用于面试' }),
         used.length
-          ? el('div', {}, used.map((interview) => el('div', { class: 'used-row' },
-              el('span', { class: 'used-row-name', text: interview.position_name }),
-              candidateStateTag(interview))))
+          ? el('div', {}, used.map((interview) => {
+              // 入口放在这里而不是候选人答题页：简历的关联与查看本来就都在本页
+              // （F9/F10 的既定决定），评估是「这份简历用在那场岗位」的属性，
+              // 放进答题页会让同一件事有两个入口。
+              //
+              // 不需要前置禁用：这一行只在已关联时存在。唯一可能的 409 是
+              // 「岗位未定义评估维度」，那是部署配置问题，前端无从预知 ——
+              // 原样报出来比猜一个禁用态更诚实。
+              const reviewButton = el('button', {
+                class: 'btn btn--ghost btn--sm',
+                text: '评估匹配度',
+                title: 'AI 评估这份简历与该场岗位的匹配度（每次点击重新评估，结果不保存）',
+                // 把按钮本身交给弹窗管忙态：每次评估都真调一次 AI，连点就是几次调用
+                onClick: () => openResumeReview({
+                  interviewId: interview.id, side: 'candidate', button: reviewButton,
+                }),
+              });
+              return el('div', { class: 'used-row' },
+                el('span', { class: 'used-row-name', text: interview.position_name }),
+                candidateStateTag(interview),
+                reviewButton);
+            }))
           : el('p', { class: 'meta', text: '还没有关联到任何面试。点上面的「用于面试」挑一场。' })),
 
       el('div', { class: 'dossier-section' },

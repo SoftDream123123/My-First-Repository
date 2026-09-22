@@ -10,6 +10,7 @@ import { el, mount, clear } from '../dom.js';
 import * as api from '../api.js';
 import { toast } from '../components/toast.js';
 import { confirmModal, openModal } from '../components/modal.js';
+import { openResumeReview } from '../components/resume-review.js';
 import { fieldError, fieldErrors } from '../components/form.js';
 import {
   contextTitle, createShell, emptyState, formatDate, formatDateTime, loadingBlock,
@@ -472,11 +473,25 @@ export async function render(container, params) {
       onClick: () => runMatch(matchButton),
     });
 
+    // 评估**不写任何数据**，因此只看「有没有关联简历」，**不看面试状态** ——
+    // 照抄上面那条 `status === 'ongoing'` 会让一大半面试的按钮是灰的。
+    // 未关联时的 title 与后端 409 文案逐字一致。
+    const reviewButton = el('button', {
+      class: 'btn btn--ghost btn--sm',
+      text: '评估匹配度',
+      disabled: detail.resume_id == null,
+      title: detail.resume_id == null
+        ? '该面试尚未关联简历'
+        : 'AI 评估这份简历与该场岗位的匹配度（每次点击重新评估，结果不保存）',
+      // 把按钮本身交给弹窗管忙态：每次评估都真调一次 AI，连点就是几次调用
+      onClick: () => openResumeReview({ interviewId, side: 'hr', button: reviewButton }),
+    });
+
     // 标题先立起来、正文随后填 —— 加载期间不该是一块没有名字的空白面板
     const body = el('div', {});
     clear(resumePanel);
     resumePanel.append(
-      panelHead('候选人简历', detail.resume_id == null ? '尚未关联' : null, [matchButton]),
+      panelHead('候选人简历', detail.resume_id == null ? '尚未关联' : null, [matchButton, reviewButton]),
       body,
     );
     body.append(loadingBlock('正在读取简历…'));

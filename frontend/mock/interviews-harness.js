@@ -65,6 +65,15 @@ let RESUME = null;
 let NEXT_ID = 900;
 let CREATED = null;
 
+// 简历 AI 评估的假响应（PRD §4.15）。四块内容齐全，`match_score` 非空 ——
+// HR 侧**恒带分数**，档位只作用于候选人侧那个端点。
+const REVIEW = {
+  match_score: 7.4,
+  conclusion: '简历与岗位要求有较好重合，个别维度可以再补一些具体事例与成果。',
+  strengths: ['简历中体现了「沟通能力」相关经历'],
+  gaps: ['简历中未见「专业能力」相关经历，建议补充具体事例'],
+};
+
 function makeDetail(id) {
   const item = LIST.find((row) => row.id === id) ?? LIST[2];
   return {
@@ -142,6 +151,8 @@ function defaultHandlers() {
     'GET /interviews/:id/resume': () => (RESUME
       ? { status: 200, body: RESUME }
       : { status: 404, body: { code: 'NOT_FOUND', message: '该面试尚未关联简历', detail: null } }),
+    // 简历 AI 评估（MVP-4，PRD §4.15）：**无请求体、不落库、不限面试状态**
+    'POST /interviews/:id/resume-review': () => ({ status: 200, body: REVIEW }),
     'GET /interviews/:id/invitations': () => ({ status: 200, body: INVITATIONS }),
     'POST /interviews/:id/invitations': ({ path }) => {
       const id = Number(path.split('/')[2]);
@@ -704,6 +715,88 @@ report.run(async () => {
   check('评估中 → 「编辑候选人」禁用', disabledEdit?.disabled === true, String(disabledEdit?.disabled));
   check('评估中 → 按钮说明为什么不能改',
     (disabledEdit?.title ?? '').includes('不可修改候选人信息'), String(disabledEdit?.title));
+
+  /* ---------- 29. 简历 AI 评估（MVP-4，PRD §4.15） ---------- */
+  resetWorld();
+  backend.setHandlers(defaultHandlers());
+  await go('#/interviews/1');
+
+  const reviewBtn = () => buttonIn(resumePanel(), '评估匹配度');
+  check('简历面板上有「评估匹配度」按钮', Boolean(reviewBtn()));
+  check('未关联简历 → 评估按钮禁用', reviewBtn()?.disabled === true, String(reviewBtn()?.disabled));
+  check('未关联简历 → 按钮说明与后端 409 文案逐字一致',
+    reviewBtn()?.title === '该面试尚未关联简历', String(reviewBtn()?.title));
+
+  // 已关联 + 面试已完成：补题不可用（它会追加题目），但**评估仍可点**
+  RESUME = {
+    resume_id: 4, title: '张三-后端开发', content: '（简历全文）',
+    candidate_name: '张三', candidate_contact: null, updated_at: '2026-09-20T09:40:00',
+  };
+  DETAIL[1].resume_id = 4;
+  DETAIL[1].status = 'completed';
+  await go('#/interviews/1');
+  check('面试已完成 → 补题禁用（补题会追加题目）',
+    buttonIn(resumePanel(), '按简历补题')?.disabled === true);
+  check('**面试已完成 → 评估仍可点**（评估不写数据，与补题的要求相反）',
+    reviewBtn()?.disabled === false, String(reviewBtn()?.disabled));
+
+  backend.reset();
+  reviewBtn().click();
+  await settle();
+  await settle();
+  const reviewCall = backend.find('POST', '/interviews/1/resume-review');
+  check('评估走 POST /interviews/{id}/resume-review', Boolean(reviewCall),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(','));
+  check('**评估请求没有请求体**（岗位来自面试、简历来自关联、档位来自配置）',
+    reviewCall?.body === undefined, JSON.stringify(reviewCall?.body));
+  check('弹窗里显示分数',
+    openOverlay()?.querySelector('.review-score-value')?.textContent === '7.4',
+    String(openOverlay()?.querySelector('.review-score-value')?.textContent));
+  check('档位文案只说重合度、不含去留判断',
+    openOverlay()?.querySelector('.review-score-label')?.textContent === '重合度较好',
+    String(openOverlay()?.querySelector('.review-score-label')?.textContent));
+  check('弹窗里三块内容都在（综合结论 / 亮点 / 差距）',
+    (openOverlay()?.textContent ?? '').includes('综合结论')
+      && (openOverlay()?.textContent ?? '').includes('亮点')
+      && (openOverlay()?.textContent ?? '').includes('差距'),
+    openOverlay()?.textContent?.slice(0, 120));
+  check('亮点与差距逐条列出',
+    openOverlay()?.querySelectorAll('.review-list li').length === 2,
+    String(openOverlay()?.querySelectorAll('.review-list li').length));
+  await closeAnyModal();
+
+  // 差距为空 → 一句固定文案，而不是一片空白
+  backend.setHandlers({
+    ...defaultHandlers(),
+    'POST /interviews/:id/resume-review': () => ({ status: 200, body: { ...REVIEW, gaps: [] } }),
+  });
+  reviewBtn().click();
+  await settle();
+  await settle();
+  check('差距为空 → 显示「未发现明显差距」（空白区块看起来像渲染失败）',
+    (openOverlay()?.textContent ?? '').includes('未发现明显差距'),
+    openOverlay()?.textContent?.slice(0, 200));
+  await closeAnyModal();
+
+  // 502 → 文案留在**弹窗内**（用户刚点的就是这个按钮）
+  backend.setHandlers({
+    ...defaultHandlers(),
+    'POST /interviews/:id/resume-review': () => ({
+      status: 502, body: { code: 'AI_PROVIDER_ERROR', message: 'AI 服务调用失败，请稍后重试', detail: null },
+    }),
+  });
+  clearToasts();
+  reviewBtn().click();
+  await settle();
+  await settle();
+  check('评估失败 → 后端文案出现在**弹窗内**',
+    (openOverlay()?.querySelector('.field-error')?.textContent ?? '').includes('AI 服务调用失败'),
+    String(openOverlay()?.querySelector('.field-error')?.textContent));
+  check('评估失败 → 没有退化成 toast（「空弹窗 + 角落一句话」很难理解）',
+    !toasts().some((t) => t.includes('AI 服务调用失败')), toasts().join(' | '));
+  check('评估失败 → 弹窗仍可关闭（路由按钮没有被 busy 卡住）',
+    buttonIn(openOverlay(), '关闭')?.disabled === false);
+  await closeAnyModal();
 
   resetWorld();
   backend.setHandlers(defaultHandlers());

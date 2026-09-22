@@ -19,7 +19,7 @@
 import { boot, installUnauthorizedHandler } from '../src/app.js';
 import * as router from '../src/router.js';
 import * as session from '../src/session.js';
-import { buttonIn, clearToasts, createReport, installFakeBackend, openOverlay, settle, toasts } from './harness.js';
+import { buttonIn, clearToasts, closeAnyModal, createReport, installFakeBackend, openOverlay, settle, toasts } from './harness.js';
 
 const report = createReport('我的简历 Mock 测试');
 const { check } = report;
@@ -90,6 +90,16 @@ const flags = {
   // 上传解析的假响应。`parseError` 非空时按 400 返回该文案
   parseContent: '解析出来的简历正文',
   parseError: null,
+  // 简历 AI 评估的假响应（PRD §4.15）。默认 `match_score: null` —— 复现
+  // 候选人默认档 `summary` 的脱敏，那是本页最要紧的一条断言
+  reviewResult: {
+    match_score: null,
+    conclusion: '简历与岗位要求有较好重合，个别维度可以再补一些具体事例与成果。',
+    strengths: ['简历中体现了「沟通能力」相关经历'],
+    gaps: [],
+  },
+  reviewError: null,
+  reviewDelay: 0,
 };
 
 function handlers() {
@@ -115,6 +125,11 @@ function handlers() {
       : { status: 204 }),
 
     'GET /candidate/interviews': () => ({ status: 200, body: flags.interviews }),
+    // 简历 AI 评估：**无请求体、不落库**。默认返回 `match_score: null`
+    //（候选人 summary 档），走查据此断言分数区整块不存在
+    'POST /candidate/interviews/:id/resume-review': () => (flags.reviewError
+      ? { status: 409, body: { code: 'BUSINESS_ERROR', message: flags.reviewError, detail: null } }
+      : { status: 200, body: flags.reviewResult, delay: flags.reviewDelay }),
     'PUT /candidate/interviews/:id/resume': ({ body }) => ({
       status: 200,
       body: body.resume_id == null ? null : { resume_id: body.resume_id, title: 'x', content: 'y', candidate_name: null, candidate_contact: null, updated_at: '2026-09-22T10:00:00' },
@@ -583,6 +598,66 @@ report.run(async () => {
   buttonIn(openOverlay(), '取消').click();
   await settle();
 
-  /* ---------- 15. 收尾 ---------- */
+  /* ---------- 15. 简历 AI 评估（MVP-4，PRD §4.15） ---------- */
+  await go('#/candidate/resumes');
+  const usedRow = page().querySelector('.used-row');
+  // 用**前缀**匹配而不是全等：忙态期间文案会变成「评估中…」，按全等找就找不到了
+  const reviewBtn = () => [...usedRow.querySelectorAll('button')]
+    .find((b) => b.textContent.startsWith('评估'));
+  check('「用于面试」每一行都有「评估匹配度」按钮',
+    reviewBtn()?.textContent === '评估匹配度', String(usedRow?.textContent));
+
+  backend.reset();
+  // 给请求一个在途窗口（settle 是 25ms），否则测不到按钮忙态
+  flags.reviewDelay = 60;
+  reviewBtn().click();
+  await settle();
+  check('在途时按钮进入忙态（每次评估都真调一次 AI，连点就是几次调用）',
+    reviewBtn()?.disabled === true && reviewBtn()?.textContent === '评估中…',
+    `${reviewBtn()?.disabled} / ${reviewBtn()?.textContent}`);
+  await settle();
+  await settle();
+  flags.reviewDelay = 0;
+
+  check('评估走 POST /candidate/interviews/{id}/resume-review',
+    called('POST', '/candidate/interviews/3/resume-review'),
+    backend.calls.map((c) => `${c.method} ${c.path}`).join(','));
+  check('**评估请求没有请求体**（岗位来自面试、简历来自关联、档位来自配置）',
+    lastCall('POST', '/candidate/interviews/3/resume-review')?.body === undefined,
+    JSON.stringify(lastCall('POST', '/candidate/interviews/3/resume-review')?.body));
+  check('请求完成后按钮复位（不卡在「评估中…」）',
+    reviewBtn()?.textContent === '评估匹配度' && reviewBtn()?.disabled === false,
+    `${reviewBtn()?.disabled} / ${reviewBtn()?.textContent}`);
+
+  // 本页最要紧的一条：默认档拿不到分数
+  check('**match_score 为 null 时弹窗里不存在分数节点**（不是渲染成空值）',
+    openOverlay()?.querySelector('.review-score') === null,
+    String(openOverlay()?.querySelector('.review-score')?.className));
+  check('**也没有 0 / — / 暂无 这类占位**（那会让人以为「我得了零分」或「系统坏了」）',
+    !/(^|\D)0(\D|$)|—|暂无/.test(openOverlay()?.textContent ?? ''),
+    openOverlay()?.textContent?.slice(0, 200));
+  check('结论 / 亮点 / 差距**照常显示**（脱敏不能把非分数内容一起藏掉）',
+    ['综合结论', '亮点', '差距'].every((t) => (openOverlay()?.textContent ?? '').includes(t)),
+    openOverlay()?.textContent?.slice(0, 200));
+  check('差距为空 → 显示「未发现明显差距」，而不是留一片空白',
+    (openOverlay()?.textContent ?? '').includes('未发现明显差距'));
+  await closeAnyModal();
+
+  // 后端 409 → 文案留在**弹窗内**（用户刚点的就是这个按钮）
+  clearToasts();
+  flags.reviewError = '岗位未定义评估维度，无法评估简历';
+  reviewBtn().click();
+  await settle();
+  await settle();
+  check('后端 409 的文案出现在**弹窗内**',
+    (openOverlay()?.querySelector('.field-error')?.textContent ?? '').includes('评估维度'),
+    String(openOverlay()?.querySelector('.field-error')?.textContent));
+  check('评估失败 → 没有退化成 toast（「空弹窗 + 角落一句话」很难理解）',
+    !toasts().some((t) => t.includes('评估维度')), toasts().join(' | '));
+  check('评估失败 → 按钮也复位了（可以重试）', reviewBtn()?.disabled === false);
+  await closeAnyModal();
+  flags.reviewError = null;
+
+  /* ---------- 16. 收尾 ---------- */
   check('没有残留的弹窗', openOverlay() === null);
 });
