@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">工程规模</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">03 技术栈</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P18 / 35</text>
+  </g>
+
+  <g id="kpi-tests">
+    <rect x="64" y="152" width="270" height="260" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="88" y="178" width="48" height="48" rx="10" fill="#1565C0" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/test-pipe" x="96" y="186" width="32" height="32" fill="#1565C0" stroke-width="2"/>
+    <text x="88" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">后端测试</text>
+    <text x="88" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">1034</text>
+    <text x="88" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">项 · pytest</text>
+    <text x="88" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">全部走 Mock Provider</text>
+  </g>
+
+  <g id="kpi-routes">
+    <rect x="358" y="152" width="270" height="260" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="382" y="178" width="48" height="48" rx="10" fill="#00897B" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/route" x="390" y="186" width="32" height="32" fill="#00897B" stroke-width="2"/>
+    <text x="382" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">接口规模</text>
+    <text x="382" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">43</text>
+    <text x="382" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">条路径 / 62 个 method-route</text>
+    <text x="382" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">取自 openapi.json</text>
+  </g>
+
+  <g id="kpi-schema">
+    <rect x="652" y="152" width="270" height="260" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="676" y="178" width="48" height="48" rx="10" fill="#F57C00" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/database" x="684" y="186" width="32" height="32" fill="#F57C00" stroke-width="2"/>
+    <text x="676" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">数据与模块</text>
+    <text x="676" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">15</text>
+    <text x="676" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">张表 / 8 个 package</text>
+    <text x="676" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">单一 MySQL 库，无中间件</text>
+  </g>
+
+  <g id="kpi-smoke">
+    <rect x="946" y="152" width="270" height="260" rx="8" fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5"/>
+    <rect x="970" y="178" width="48" height="48" rx="10" fill="#2E7D32" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/checklist" x="978" y="186" width="32" height="32" fill="#2E7D32" stroke-width="2"/>
+    <text x="970" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">端到端冒烟</text>
+    <text x="970" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#2E7D32">128</text>
+    <text x="970" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">项断言</text>
+    <text x="970" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">对真实运行中的服务走全链路</text>
+  </g>
+
+  <g id="supplement-cards">
+    <rect x="64" y="436" width="368" height="124" rx="8" fill="#F2F6FA"/>
+    <text x="84" y="470" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#93A1B0">前端单测</text>
+    <text x="84" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1F2733">25 项 <tspan font-size="14" font-weight="400" fill="#93A1B0">Vitest</tspan></text>
+    <text x="84" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">纯函数与状态推导的单元覆盖</text>
+
+    <rect x="456" y="436" width="368" height="124" rx="8" fill="#F2F6FA"/>
+    <text x="476" y="470" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#93A1B0">浏览器端联调台</text>
+    <text x="476" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1F2733">8 个 <tspan font-size="14" font-weight="400" fill="#93A1B0">Mock 台</tspan></text>
+    <text x="476" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">合计 700+ 断言，不依赖后端</text>
+
+    <rect x="848" y="436" width="368" height="124" rx="8" fill="#F2F6FA"/>
+    <text x="868" y="470" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#93A1B0">变异检查</text>
+    <text x="868" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1F2733">33 次 <tspan font-size="14" font-weight="400" fill="#93A1B0">把缺陷植回去</tspan></text>
+    <text x="868" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">抓出 5 个真 bug + 6 处契约偏差</text>
+  </g>
+
+  <g id="closing-band">
+    <rect x="64" y="576" width="1152" height="48" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/flask" x="88" y="588" width="24" height="24" fill="#1565C0" stroke-width="2"/>
+    <text x="124" y="606" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">整套测试<tspan font-weight="700" fill="#1565C0">不需要网络、不需要任何 API Key</tspan> —— 检出代码即可完整跑通</text>
+  </g>
+</svg>

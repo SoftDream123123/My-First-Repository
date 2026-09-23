@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">模块③ evaluation：问题与解决</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P26 / 35</text>
+  </g>
+
+  <g id="row-1">
+    <path fill="#C62828" fill-opacity="0.05" d="M72,148 H496 A8,8 0 0 1 504,156 V222 A8,8 0 0 1 496,230 H72 A8,8 0 0 1 64,222 V156 A8,8 0 0 1 72,148 Z" />
+    <rect x="64" y="148" width="3" height="82" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M84,156 H136 A4,4 0 0 1 140,160 V172 A4,4 0 0 1 136,176 H84 A4,4 0 0 1 80,172 V160 A4,4 0 0 1 84,156 Z" />
+    <text x="110" y="171" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题一</text>
+    <text x="80" y="194" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">评估跑了一半，界面永远停在半截 —— 若</text>
+    <text x="80" y="212" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">「终结事件」与「运行状态」分两次写，读</text>
+    <text x="80" y="230" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">侧会读到「状态已终结、事件尚未入列」。</text>
+
+    <path fill="#2E7D32" fill-opacity="0.05" d="M528,148 H1208 A8,8 0 0 1 1216,156 V222 A8,8 0 0 1 1208,230 H528 A8,8 0 0 1 520,222 V156 A8,8 0 0 1 528,148 Z" />
+    <rect x="520" y="148" width="3" height="82" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M540,156 H584 A4,4 0 0 1 588,160 V172 A4,4 0 0 1 584,176 H540 A4,4 0 0 1 536,172 V160 A4,4 0 0 1 540,156 Z" />
+    <text x="562" y="171" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="536" y="194" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">publish_terminal</tspan> 把两者在<tspan font-weight="700" fill="#2E7D32">同一把锁</tspan>内写入；<tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">stream_events</tspan> 也在同一把锁内读「事件列表 + 状态」。</text>
+    <text x="536" y="212" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">两边配合保证「状态已终结 ⇒ 终结事件必在重放序列中」——</text>
+    <text x="536" y="230" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">客户端不会既收不到 done / error、又不报错。</text>
+  </g>
+
+  <g id="row-2">
+    <path fill="#C62828" fill-opacity="0.05" d="M72,236 H496 A8,8 0 0 1 504,244 V310 A8,8 0 0 1 496,318 H72 A8,8 0 0 1 64,310 V244 A8,8 0 0 1 72,236 Z" />
+    <rect x="64" y="236" width="3" height="82" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M84,244 H136 A4,4 0 0 1 140,248 V260 A4,4 0 0 1 136,264 H84 A4,4 0 0 1 80,260 V248 A4,4 0 0 1 84,244 Z" />
+    <text x="110" y="259" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题二</text>
+    <text x="80" y="282" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">订阅与取快照之间的空隙会漏事件 —— 若</text>
+    <text x="80" y="300" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">先取快照再订阅，两步之间 publish 的事</text>
+    <text x="80" y="318" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">件既不在快照里、也到不了订阅者。</text>
+
+    <path fill="#2E7D32" fill-opacity="0.05" d="M528,236 H1208 A8,8 0 0 1 1216,244 V310 A8,8 0 0 1 1208,318 H528 A8,8 0 0 1 520,310 V244 A8,8 0 0 1 528,236 Z" />
+    <rect x="520" y="236" width="3" height="82" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M540,244 H584 A4,4 0 0 1 588,248 V260 A4,4 0 0 1 584,264 H540 A4,4 0 0 1 536,260 V248 A4,4 0 0 1 540,244 Z" />
+    <text x="562" y="259" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="536" y="282" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">把「订阅 + 取快照 + 读状态」合并进<tspan font-weight="700" fill="#2E7D32">同一把锁</tspan>内原子完成 —— 三步之间不再</text>
+    <text x="536" y="300" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">存在可被 publish 插入的窗口，因此不会出现「事件既不在快照、又没投给订阅者」的组合。</text>
+    <text x="536" y="318" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">客户端因此不会看到跳号。</text>
+  </g>
+
+  <g id="row-3">
+    <path fill="#C62828" fill-opacity="0.05" d="M72,324 H496 A8,8 0 0 1 504,332 V398 A8,8 0 0 1 496,406 H72 A8,8 0 0 1 64,398 V332 A8,8 0 0 1 72,324 Z" />
+    <rect x="64" y="324" width="3" height="82" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M84,332 H136 A4,4 0 0 1 140,336 V348 A4,4 0 0 1 136,352 H84 A4,4 0 0 1 80,348 V336 A4,4 0 0 1 84,332 Z" />
+    <text x="110" y="347" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题三</text>
+    <text x="80" y="370" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">客户端在重放期间断开，订阅者永久留在</text>
+    <text x="80" y="388" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">名单里 —— 之后每个事件都往没人消费的</text>
+    <text x="80" y="406" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">队列里投递，内存单调增长。</text>
+
+    <path fill="#2E7D32" fill-opacity="0.05" d="M528,324 H1208 A8,8 0 0 1 1216,332 V398 A8,8 0 0 1 1208,406 H528 A8,8 0 0 1 520,398 V332 A8,8 0 0 1 528,324 Z" />
+    <rect x="520" y="324" width="3" height="82" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M540,332 H584 A4,4 0 0 1 588,336 V348 A4,4 0 0 1 584,352 H540 A4,4 0 0 1 536,348 V336 A4,4 0 0 1 540,332 Z" />
+    <text x="562" y="347" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="536" y="370" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-weight="700" fill="#2E7D32">try 必须覆盖重放循环</tspan>，<tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">finally</tspan> 里移除订阅者。若重放不在 try 内，</text>
+    <text x="536" y="388" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">生成器在 <tspan font-family="Consolas, Courier New, monospace">yield</tspan> 处收到 <tspan font-family="Consolas, Courier New, monospace">GeneratorExit</tspan> 时 finally 不会执行。</text>
+    <text x="536" y="406" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">这是「位置放错一行就漏内存」的典型。</text>
+  </g>
+
+  <g id="row-4">
+    <path fill="#C62828" fill-opacity="0.05" d="M72,412 H496 A8,8 0 0 1 504,420 V486 A8,8 0 0 1 496,494 H72 A8,8 0 0 1 64,486 V420 A8,8 0 0 1 72,412 Z" />
+    <rect x="64" y="412" width="3" height="82" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M84,420 H136 A4,4 0 0 1 140,424 V436 A4,4 0 0 1 136,440 H84 A4,4 0 0 1 80,436 V424 A4,4 0 0 1 84,420 Z" />
+    <text x="110" y="435" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题四</text>
+    <text x="80" y="458" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">重评时，上一轮的延时回收定时器会误删</text>
+    <text x="80" y="476" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">新一轮的运行记录 —— 于是重连的人拿不</text>
+    <text x="80" y="494" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">到进度。</text>
+
+    <path fill="#2E7D32" fill-opacity="0.05" d="M528,412 H1208 A8,8 0 0 1 1216,420 V486 A8,8 0 0 1 1208,494 H528 A8,8 0 0 1 520,486 V420 A8,8 0 0 1 528,412 Z" />
+    <rect x="520" y="412" width="3" height="82" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M540,420 H584 A4,4 0 0 1 588,424 V436 A4,4 0 0 1 584,440 H540 A4,4 0 0 1 536,436 V424 A4,4 0 0 1 540,420 Z" />
+    <text x="562" y="435" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="536" y="458" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">_evict_if_current</tspan> 做<tspan font-weight="700" fill="#2E7D32">身份校验</tspan>（<tspan font-family="Consolas, Courier New, monospace">_runs.get(id) is run</tspan>），只回收仍是当</text>
+    <text x="536" y="476" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">前这一轮的记录。上一轮的定时器醒来时，发现「现在这个 run 不是我」，于是什么都不做。</text>
+    <text x="536" y="494" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">判据是对象身份，而不是面试 id —— id 相同恰恰是问题所在。</text>
+  </g>
+
+  <g id="row-5">
+    <path fill="#C62828" fill-opacity="0.05" d="M72,500 H496 A8,8 0 0 1 504,508 V574 A8,8 0 0 1 496,582 H72 A8,8 0 0 1 64,574 V508 A8,8 0 0 1 72,500 Z" />
+    <rect x="64" y="500" width="3" height="82" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M84,508 H136 A4,4 0 0 1 140,512 V524 A4,4 0 0 1 136,528 H84 A4,4 0 0 1 80,524 V512 A4,4 0 0 1 84,508 Z" />
+    <text x="110" y="523" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题五</text>
+    <text x="80" y="546" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">进程重启遗留下的孤儿评估 —— 状态卡在</text>
+    <text x="80" y="564" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace">evaluating</tspan>，而运行注册表是空的：没人会</text>
+    <text x="80" y="582" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">再来推进它，也永远不会有终结事件。</text>
+
+    <path fill="#2E7D32" fill-opacity="0.05" d="M528,500 H1208 A8,8 0 0 1 1216,508 V574 A8,8 0 0 1 1208,582 H528 A8,8 0 0 1 520,574 V508 A8,8 0 0 1 528,500 Z" />
+    <rect x="520" y="500" width="3" height="82" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M540,508 H584 A4,4 0 0 1 588,512 V524 A4,4 0 0 1 584,528 H540 A4,4 0 0 1 536,524 V512 A4,4 0 0 1 540,508 Z" />
+    <text x="562" y="523" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="536" y="546" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">heal_orphan</tspan> 以<tspan font-weight="700" fill="#2E7D32">注册表为「评估是否真在跑」的唯一事实来源</tspan>，按与失败</text>
+    <text x="536" y="564" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">回退相同的规则自愈：注册表里没有 ⇒ 认定它没在跑 ⇒ 按「库里有无旧报告」回退到</text>
+    <text x="536" y="582" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">evaluated 或 completed。两个目标都在状态迁移表的允许范围内。</text>
+  </g>
+
+  <g id="closing-band">
+    <path fill="#E3EDF9" d="M72,592 H1208 A8,8 0 0 1 1216,600 V624 A8,8 0 0 1 1208,632 H72 A8,8 0 0 1 64,624 V600 A8,8 0 0 1 72,592 Z" />
+    
+  <g transform="translate(84.0, 600.0) scale(0.9166666666666666)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+  </g>
+    <text x="116" y="617" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#1F2733">重连会从头重放是<tspan font-weight="700" fill="#1565C0">设计特性而非缺陷</tspan> —— 前端必须按 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">interview_question_id</tspan> 覆盖，而不是「来一条加一条」，否则进度会翻倍</text>
+  </g>
+</svg>

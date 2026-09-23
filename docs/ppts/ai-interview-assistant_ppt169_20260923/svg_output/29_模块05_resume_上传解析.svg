@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块⑤ resume：上传取文字的纯转换端点</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P29 / 35</text>
+  </g>
+
+  <g id="code-block">
+    <rect x="64" y="182" width="536" height="318" fill="#F2F6FA"/>
+    <path d="M 72 148 h 520 a 8 8 0 0 1 8 8 v 26 h -536 v -26 a 8 8 0 0 1 8 -8 Z" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/codeblock" x="80" y="156" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="108" y="171" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">backend/app/resume/parser.py:31 · 53-67</text>
+    <rect x="64" y="148" width="536" height="352" rx="8" fill="none" stroke="#DCE5EE" stroke-width="1"/>
+
+    <text x="84" y="202" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">_MAGIC = {".pdf": b"%PDF-", ".docx": b"PK\x03\x04"}</text>
+    <text x="84" y="222" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">def <tspan fill="#1565C0" font-weight="700">parse_resume_file</tspan>(data: bytes, filename: str | None) -&gt; str:</text>
+    <text x="84" y="238" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">    """失败抛 ValidationError（400）—— 不新增状态码。"""</text>
+    <text x="84" y="258" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    extension = _extension_of(filename)</text>
+    <text x="84" y="274" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1565C0">    if extension not in SUPPORTED_EXTENSIONS:   # ① 扩展名白名单</text>
+    <text x="84" y="290" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        raise ValidationError(_TYPE_MESSAGE)</text>
+    <text x="84" y="310" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">    # 扩展名由客户端提供，改个名字就能绕过</text>
+    <text x="84" y="326" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1565C0">    if not data.startswith(_MAGIC[extension]):  # ② 文件头魔数复核</text>
+    <text x="84" y="342" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        raise ValidationError(_TYPE_MESSAGE)</text>
+    <text x="84" y="362" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    text = (_parse_docx(data) if extension == ".docx"</text>
+    <text x="84" y="378" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1565C0">            else _parse_pdf(data))                # ③ 解析</text>
+    <text x="84" y="398" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    normalized = _normalize(text)               # ④ 归一化</text>
+    <text x="84" y="414" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    if not normalized:                          # 非空校验</text>
+    <text x="84" y="430" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        raise ValidationError(_NO_TEXT_MESSAGE)</text>
+    <text x="84" y="446" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    return normalized</text>
+    <text x="84" y="474" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 本模块不接 session、不落盘、不读配置 —— 纯函数</text>
+  </g>
+
+  <g id="flow-steps">
+    <rect x="624" y="148" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <circle cx="652" cy="173" r="13" fill="#1565C0" fill-opacity="0.12"/>
+    <text x="652" y="178" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">1</text>
+    <text x="676" y="170" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">上传</text>
+    <text x="676" y="188" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">POST /candidate/resumes/parse</text>
+
+    <line x1="652" y1="198" x2="652" y2="208" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="624" y="212" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <circle cx="652" cy="237" r="13" fill="#1565C0" fill-opacity="0.12"/>
+    <text x="652" y="242" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">2</text>
+    <text x="676" y="234" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">四道校验</text>
+    <text x="676" y="252" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">扩展名白名单 → 文件头魔数 → 解析 → 归一化后非空</text>
+
+    <line x1="652" y1="262" x2="652" y2="272" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="624" y="276" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <circle cx="652" cy="301" r="13" fill="#1565C0" fill-opacity="0.12"/>
+    <text x="652" y="306" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">3</text>
+    <text x="676" y="298" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">解析</text>
+    <text x="676" y="316" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">DOCX → python-docx　·　PDF → pypdf</text>
+
+    <line x1="652" y1="326" x2="652" y2="336" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="624" y="340" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <circle cx="652" cy="365" r="13" fill="#1565C0" fill-opacity="0.12"/>
+    <text x="652" y="370" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">4</text>
+    <text x="676" y="362" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">归一化（只做四件事）</text>
+    <text x="676" y="380" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">统一换行 · 去行尾空白 · 折叠连续空行 · 去首尾空白</text>
+
+    <line x1="652" y1="390" x2="652" y2="400" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="624" y="404" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <circle cx="652" cy="429" r="13" fill="#F57C00" fill-opacity="0.12"/>
+    <text x="652" y="434" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">5</text>
+    <text x="676" y="426" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">回填正文框</text>
+    <text x="676" y="444" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">解析结果填进候选人可见的编辑框，他可自行修改</text>
+
+    <line x1="652" y1="454" x2="652" y2="464" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="624" y="468" width="592" height="50" rx="6" fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5"/>
+    <circle cx="652" cy="493" r="13" fill="#2E7D32" fill-opacity="0.12"/>
+    <text x="652" y="498" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#2E7D32">6</text>
+    <text x="676" y="490" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1F2733">候选人确认保存</text>
+    <text x="676" y="508" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">另走创建 / 更新端点 —— 与解析这一步完全分开</text>
+  </g>
+
+  <g id="note-no-persist">
+    <rect x="64" y="520" width="368" height="104" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/file-download" x="84" y="536" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="112" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">不落库、不落盘</text>
+    <text x="84" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">不建简历、不改简历，服务器上不留那</text>
+    <text x="84" y="600" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">个文件，也不存解析产物 —— 简历表</text>
+    <text x="84" y="618" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">结构因此完全不变。</text>
+  </g>
+
+  <g id="note-docx-tables">
+    <rect x="456" y="520" width="368" height="104" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/table" x="476" y="536" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="504" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">DOCX 表格也要取</text>
+    <text x="476" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">只取 document.paragraphs 会整块丢掉</text>
+    <text x="476" y="600" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">表格；须按 body 子元素顺序遍历，保持</text>
+    <text x="476" y="618" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">版序，并递归取嵌套表格。</text>
+  </g>
+
+  <g id="note-normalize">
+    <rect x="848" y="520" width="368" height="104" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/adjustments" x="868" y="536" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="896" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">归一化不做重排</text>
+    <text x="868" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">任何「更聪明」的处理都会让系统偷偷</text>
+    <text x="868" y="600" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">改掉候选人的原文 —— 而他看到的正文</text>
+    <text x="868" y="618" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">正是要被 AI 消费的内容。</text>
+  </g>
+</svg>

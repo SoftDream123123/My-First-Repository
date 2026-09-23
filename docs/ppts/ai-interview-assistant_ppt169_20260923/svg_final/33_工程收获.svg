@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">工程收获</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">05 收获与展望</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P33 / 35</text>
+  </g>
+
+  <g id="gain-1">
+    <path fill="#F2F6FA" d="M72,148 H1208 A8,8 0 0 1 1216,156 V228 A8,8 0 0 1 1208,236 H72 A8,8 0 0 1 64,228 V156 A8,8 0 0 1 72,148 Z" />
+    <rect x="64" y="148" width="4" height="88" fill="#1565C0" />
+    <circle cx="104" cy="192" r="17" fill="#1565C0" fill-opacity="0.12" />
+    <text x="104" y="197" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">1</text>
+    <text x="140" y="186" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">架构约束要能被测试钉住，而不是靠自觉</text>
+    <text x="1216" y="186" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">tests/test_architecture.py</text>
+    <text x="140" y="212" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">直接检查「router 不得引用 repository」「service 不得出现 db.execute」——</text>
+    <text x="140" y="232" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">写在文档里的约束会腐化，<tspan font-weight="700" fill="#1565C0">写成测试的不会</tspan>。</text>
+  </g>
+
+  <g id="gain-2">
+    <path fill="#F2F6FA" d="M72,244 H1208 A8,8 0 0 1 1216,252 V324 A8,8 0 0 1 1208,332 H72 A8,8 0 0 1 64,324 V252 A8,8 0 0 1 72,244 Z" />
+    <rect x="64" y="244" width="4" height="88" fill="#00897B" />
+    <circle cx="104" cy="288" r="17" fill="#00897B" fill-opacity="0.12" />
+    <text x="104" y="293" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#00897B">2</text>
+    <text x="140" y="282" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">让不该发生的事在结构上无从表达</text>
+    <text x="1216" y="282" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">ai/base.py · 输出 schema</text>
+    <text x="140" y="308" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">MatchedQuestion 只有 id 与理由、没有题面字段；CandidateFeedbackOut 是<tspan font-weight="700" fill="#00897B">白名单模型</tspan>，</text>
+    <text x="140" y="328" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">分数不在里面就<tspan font-weight="700" fill="#00897B">根本没发给浏览器</tspan>。靠「前端不渲染」脱敏，等于发出去再要求它别看。</text>
+  </g>
+
+  <g id="gain-3">
+    <path fill="#F2F6FA" d="M72,340 H1208 A8,8 0 0 1 1216,348 V420 A8,8 0 0 1 1208,428 H72 A8,8 0 0 1 64,420 V348 A8,8 0 0 1 72,340 Z" />
+    <rect x="64" y="340" width="4" height="88" fill="#F57C00" />
+    <circle cx="104" cy="384" r="17" fill="#F57C00" fill-opacity="0.12" />
+    <text x="104" y="389" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#F57C00">3</text>
+    <text x="140" y="378" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">失败要显式，不要静默降级</text>
+    <text x="1216" y="378" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">ai/factory.py · evaluation</text>
+    <text x="140" y="404" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">真实 Provider 失败<tspan font-weight="700" fill="#F57C00">不降级到 Mock</tspan>，而是 502；AI 判分失败不阻塞作答，</text>
+    <text x="140" y="424" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">标记为「未判分」并可重判 —— 「没有」与「坏了」必须可区分。</text>
+  </g>
+
+  <g id="gain-4">
+    <path fill="#F2F6FA" d="M72,436 H1208 A8,8 0 0 1 1216,444 V516 A8,8 0 0 1 1208,524 H72 A8,8 0 0 1 64,516 V444 A8,8 0 0 1 72,436 Z" />
+    <rect x="64" y="436" width="4" height="88" fill="#1565C0" />
+    <circle cx="104" cy="480" r="17" fill="#1565C0" fill-opacity="0.12" />
+    <text x="104" y="485" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">4</text>
+    <text x="140" y="474" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">先写设计契约，再写实现</text>
+    <text x="1216" y="474" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">模块计划书 × 30</text>
+    <text x="140" y="500" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">30 份模块计划书先定签名与字段表，再落代码。前端重建期抓到的五处</text>
+    <text x="140" y="520" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">「原型与真实契约对不上」，根因都是照着原型的内存 mock 写字段名。</text>
+  </g>
+
+  <g id="gain-5">
+    <path fill="#F2F6FA" d="M72,532 H1208 A8,8 0 0 1 1216,540 V612 A8,8 0 0 1 1208,620 H72 A8,8 0 0 1 64,612 V540 A8,8 0 0 1 72,532 Z" />
+    <rect x="64" y="532" width="4" height="88" fill="#00897B" />
+    <circle cx="104" cy="576" r="17" fill="#00897B" fill-opacity="0.12" />
+    <text x="104" y="581" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#00897B">5</text>
+    <text x="140" y="570" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">测试方法本身要能被审查</text>
+    <text x="1216" y="570" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">变异检查 × 33</text>
+    <text x="140" y="596" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">前端测试台曾用取按钮的辅助函数按文字找「登录」，命中的却是文档顺序靠前的模式</text>
+    <text x="140" y="616" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">切换控件 —— 两条断言全绿，但什么都没测到。<tspan font-weight="700" fill="#C62828">「绿」可能只是「没测」的另一种说法。</tspan></text>
+  </g>
+</svg>

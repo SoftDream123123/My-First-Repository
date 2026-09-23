@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">产品定位与它解决的问题</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">01 项目概述与背景</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P04 / 35</text>
+  </g>
+
+  <g id="positioning-band">
+    <rect x="64" y="148" width="1152" height="56" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="148" width="5" height="56" fill="#1565C0"/>
+    <use data-icon="tabler-outline/target" x="92" y="162" width="28" height="28" fill="#1565C0" stroke-width="2"/>
+    <text x="136" y="183" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">单机部署的<tspan font-weight="700" fill="#1565C0">双端</tspan> Web 应用 —— AI 辅助真人面试官完成「出题 → 记录 → 评估 → 报告」闭环</text>
+  </g>
+
+  <g id="role-cards">
+    <rect x="64" y="220" width="368" height="52" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/user-shield" x="84" y="234" width="24" height="24" fill="#1565C0" stroke-width="2"/>
+    <text x="120" y="241" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">admin</text>
+    <text x="120" y="262" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">系统管理 · 唯一可建账号的角色</text>
+
+    <rect x="456" y="220" width="368" height="52" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/briefcase" x="476" y="234" width="24" height="24" fill="#1565C0" stroke-width="2"/>
+    <text x="512" y="241" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">hr</text>
+    <text x="512" y="262" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">日常使用者 · 不可自助注册</text>
+
+    <rect x="848" y="220" width="368" height="52" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/user-check" x="868" y="234" width="24" height="24" fill="#00897B" stroke-width="2"/>
+    <text x="904" y="241" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">candidate</text>
+    <text x="904" y="262" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">终端用户 · 凭邀请码激活</text>
+  </g>
+
+  <g id="table-header">
+    <rect x="64" y="300" width="1152" height="44" fill="#F2F6FA"/>
+    <line x1="64" y1="344" x2="1216" y2="344" stroke="#DCE5EE" stroke-width="2"/>
+    <text x="84" y="328" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#5A6B7D" letter-spacing="1">痛点现状</text>
+    <text x="554" y="328" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0" letter-spacing="1">本产品的应对</text>
+    <line x1="534" y1="300" x2="534" y2="624" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="table-row-1">
+    <line x1="64" y1="400" x2="1216" y2="400" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="84" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">出题靠人肉翻题库，题意与岗位 JD 脱节</text>
+    <text x="554" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">从题库按岗位维度抽取，并由 AI 按 JD 补充；</text>
+    <text x="554" y="390" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">候选人提交简历后可按简历<tspan font-weight="700" fill="#1565C0">追加</tspan>更贴合的题</text>
+  </g>
+
+  <g id="table-row-2">
+    <rect x="64" y="400" width="1152" height="56" fill="#F2F6FA" fill-opacity="0.55"/>
+    <line x1="64" y1="456" x2="1216" y2="456" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="84" y="424" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">面试记录散落，面完想不起答了什么</text>
+    <text x="554" y="424" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">作答（HR 录入或候选人线上作答）统一落库，</text>
+    <text x="554" y="446" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">并附<tspan font-weight="700" fill="#1565C0">题目快照</tspan>，事后可逐题复看</text>
+  </g>
+
+  <g id="table-row-3">
+    <line x1="64" y1="512" x2="1216" y2="512" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="84" y="480" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">面完写评估报告耗时且口径不一</text>
+    <text x="554" y="480" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">三阶段流式评估：逐题评分 → 多维评分 → 汇总报告，</text>
+    <text x="554" y="502" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">全线同一套 <tspan font-weight="700" fill="#1565C0">0–10 分制</tspan>，口径不再因人而异</text>
+  </g>
+
+  <g id="table-row-4">
+    <rect x="64" y="512" width="1152" height="56" fill="#F2F6FA" fill-opacity="0.55"/>
+    <line x1="64" y1="568" x2="1216" y2="568" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="84" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">候选人面完杳无音信</text>
+    <text x="554" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">评估完成后候选人可自助查看<tspan font-weight="700" fill="#00897B">脱敏反馈</tspan>，</text>
+    <text x="554" y="558" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">只讲结论、优点与待改进，不含去留判断</text>
+  </g>
+
+  <g id="table-row-5">
+    <line x1="64" y1="624" x2="1216" y2="624" stroke="#DCE5EE" stroke-width="2"/>
+    <text x="84" y="592" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">候选人无题可练，题库资产闲置</text>
+    <text x="554" y="592" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">复用同一题库做刷题闭环；同一份简历</text>
+    <text x="554" y="614" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">同时驱动 HR 侧补题与候选人侧推荐</text>
+  </g>
+</svg>

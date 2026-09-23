@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">目录</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">开篇</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P02 / 35</text>
+  </g>
+
+  <g id="toc-axis">
+    <line x1="132" y1="150" x2="132" y2="620" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="toc-item-1">
+    <text x="64" y="206" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="40" font-weight="700" fill="#1565C0">01</text>
+    <text x="164" y="194" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#1F2733">项目概述与背景</text>
+    <text x="164" y="224" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">定位、三条业务闭环、版本演进，以及刻意画出的边界</text>
+    <text x="1216" y="206" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="16" fill="#93A1B0" letter-spacing="1">P03–P07</text>
+    <line x1="64" y1="244" x2="1216" y2="244" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="toc-item-2">
+    <text x="64" y="300" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="40" font-weight="700" fill="#1565C0">02</text>
+    <text x="164" y="288" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#1F2733">业务流程</text>
+    <text x="164" y="318" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">两条主线、一条缝合线、两个状态机</text>
+    <text x="1216" y="300" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="16" fill="#93A1B0" letter-spacing="1">P08–P12</text>
+    <line x1="64" y1="338" x2="1216" y2="338" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="toc-item-3">
+    <text x="64" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="40" font-weight="700" fill="#1565C0">03</text>
+    <text x="164" y="382" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#1F2733">技术栈</text>
+    <text x="164" y="412" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">选型、分层、模块边界与数据模型</text>
+    <text x="1216" y="394" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="16" fill="#93A1B0" letter-spacing="1">P13–P18</text>
+    <line x1="64" y1="432" x2="1216" y2="432" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="toc-item-4">
+    <text x="64" y="488" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="40" font-weight="700" fill="#1565C0">04</text>
+    <text x="164" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#1F2733">核心模块技术讲解</text>
+    <text x="164" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">六个模块 × 固定三段式 —— 实现 → 序列图 → 问题与解决</text>
+    <text x="1216" y="488" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="16" fill="#93A1B0" letter-spacing="1">P19–P32</text>
+    <line x1="64" y1="526" x2="1216" y2="526" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="toc-item-5">
+    <text x="64" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="40" font-weight="700" fill="#1565C0">05</text>
+    <text x="164" y="570" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#1F2733">收获与展望</text>
+    <text x="164" y="600" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">工程收获、已知局限与踩过的坑、V1.1 规划</text>
+    <text x="1216" y="582" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="16" fill="#93A1B0" letter-spacing="1">P33–P35</text>
+    <line x1="64" y1="620" x2="1216" y2="620" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+</svg>

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">技术栈总览</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">03 技术栈</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P14 / 35</text>
+  </g>
+
+  <g id="card-python">
+    <rect x="64" y="148" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="84" y="172" width="46" height="46" rx="10" fill="#1565C0" fill-opacity="0.10"/>
+    <use data-icon="simple-icons/python" x="91" y="179" width="32" height="32" fill="#1565C0"/>
+    <text x="88" y="248" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">Python 3.11+</text>
+    <text x="88" y="272" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">本机验证于 3.13</text>
+    <line x1="88" y1="288" x2="310" y2="288" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="88" y="312" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">与 FastAPI 同源，避免两套</text>
+    <text x="88" y="334" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">运行时语义；类型标注贯穿</text>
+    <text x="88" y="356" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">全项目，静态检查即契约</text>
+  </g>
+
+  <g id="card-fastapi">
+    <rect x="358" y="148" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="378" y="172" width="46" height="46" rx="10" fill="#1565C0" fill-opacity="0.10"/>
+    <use data-icon="simple-icons/fastapi" x="385" y="179" width="32" height="32" fill="#1565C0"/>
+    <text x="382" y="248" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">FastAPI</text>
+    <text x="382" y="272" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">纯 API · 不渲染页面</text>
+    <line x1="382" y1="288" x2="604" y2="288" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="382" y="312" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">只输出 JSON 接口；模板渲染</text>
+    <text x="382" y="334" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">与静态资源托管都不由框架</text>
+    <text x="382" y="356" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">承担，边界干净</text>
+  </g>
+
+  <g id="card-mysql">
+    <rect x="652" y="148" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="672" y="172" width="46" height="46" rx="10" fill="#1565C0" fill-opacity="0.10"/>
+    <use data-icon="simple-icons/mysql" x="679" y="179" width="32" height="32" fill="#1565C0"/>
+    <text x="676" y="248" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">MySQL 8.0+</text>
+    <text x="676" y="272" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">单一库 · 15 张表</text>
+    <line x1="676" y1="288" x2="898" y2="288" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="676" y="312" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">JSON 列与 ENUM 需要 8.0+；</text>
+    <text x="676" y="334" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">不使用迁移框架，表结构由</text>
+    <text x="676" y="356" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">script.sql 一处维护</text>
+  </g>
+
+  <g id="card-frontend">
+    <rect x="946" y="148" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="966" y="172" width="46" height="46" rx="10" fill="#1565C0" fill-opacity="0.10"/>
+    <use data-icon="simple-icons/vite" x="973" y="179" width="32" height="32" fill="#1565C0"/>
+    <text x="970" y="248" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">原生前端 + Vite</text>
+    <text x="970" y="272" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">无 UI 框架 · 无图表库</text>
+    <line x1="970" y1="288" x2="1192" y2="288" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="970" y="300" width="58" height="56" rx="6" fill="#F2F6FA"/>
+    <use data-icon="simple-icons/javascript" x="989" y="310" width="20" height="20" fill="#1565C0"/>
+    <text x="999" y="346" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="10" fill="#5A6B7D">JS</text>
+    <rect x="1040" y="300" width="58" height="56" rx="6" fill="#F2F6FA"/>
+    <use data-icon="simple-icons/html5" x="1059" y="310" width="20" height="20" fill="#1565C0"/>
+    <text x="1069" y="346" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="10" fill="#5A6B7D">HTML</text>
+    <rect x="1110" y="300" width="58" height="56" rx="6" fill="#F2F6FA"/>
+    <use data-icon="simple-icons/css3" x="1129" y="310" width="20" height="20" fill="#1565C0"/>
+    <text x="1139" y="346" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="10" fill="#5A6B7D">CSS</text>
+  </g>
+
+  <g id="card-architecture">
+    <rect x="64" y="396" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="84" y="420" width="46" height="46" rx="10" fill="#00897B" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/server" x="91" y="427" width="32" height="32" fill="#00897B" stroke-width="2"/>
+    <text x="88" y="496" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">前后端分离 · 同源</text>
+    <text x="88" y="520" font-family="Consolas, Courier New, monospace" font-size="12" fill="#00897B">开发期 Vite 代理</text>
+    <line x1="88" y1="536" x2="310" y2="536" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="88" y="560" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">演示期由后端托管前端产物，</text>
+    <text x="88" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">同源部署 —— 因此整个项目</text>
+    <text x="88" y="604" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">没有一行 CORS 配置</text>
+  </g>
+
+  <g id="card-layering">
+    <rect x="358" y="396" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="378" y="420" width="46" height="46" rx="10" fill="#00897B" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/stack-2" x="385" y="427" width="32" height="32" fill="#00897B" stroke-width="2"/>
+    <text x="382" y="496" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">三层严格分层</text>
+    <text x="382" y="520" font-family="Consolas, Courier New, monospace" font-size="12" fill="#00897B">router → service → repository</text>
+    <line x1="382" y1="536" x2="604" y2="536" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="382" y="560" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">职责分离不写在文档里，而是</text>
+    <text x="382" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">由 test_architecture.py 直接</text>
+    <text x="382" y="604" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">断言，靠测试而非自觉</text>
+  </g>
+
+  <g id="card-ai">
+    <rect x="652" y="396" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="672" y="420" width="46" height="46" rx="10" fill="#F57C00" fill-opacity="0.10"/>
+    <use data-icon="simple-icons/openai" x="679" y="427" width="32" height="32" fill="#F57C00"/>
+    <text x="676" y="496" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">Provider 抽象</text>
+    <text x="676" y="520" font-family="Consolas, Courier New, monospace" font-size="12" fill="#F57C00">mock / openai 可切换</text>
+    <line x1="676" y1="536" x2="898" y2="536" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="676" y="560" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">无 API Key 也能完整演示与</text>
+    <text x="676" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">跑通全部测试；配置有误在</text>
+    <text x="676" y="604" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">启动期直接失败（fail fast）</text>
+  </g>
+
+  <g id="card-deploy">
+    <rect x="946" y="396" width="270" height="224" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="966" y="420" width="46" height="46" rx="10" fill="#F57C00" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/settings" x="973" y="427" width="32" height="32" fill="#F57C00" stroke-width="2"/>
+    <text x="970" y="496" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">单机同源部署</text>
+    <text x="970" y="520" font-family="Consolas, Courier New, monospace" font-size="12" fill="#F57C00">127.0.0.1:8000</text>
+    <line x1="970" y1="536" x2="1192" y2="536" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="970" y="560" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">SSE 运行注册表与刷题限流</text>
+    <text x="970" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">计数都在进程内 ——</text>
+    <text x="970" y="604" font-family="Consolas, Courier New, monospace" font-size="13" fill="#C62828">--workers 1 是硬性要求</text>
+  </g>
+</svg>

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="deepGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B2E52"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-deep">
+    <rect width="1280" height="720" fill="url(#deepGradient)"/>
+  </g>
+
+  <g id="bg-decor">
+    <line x1="1077" y1="720" x2="1253.6" y2="618" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1047.6" y1="703" x2="1224.2" y2="601" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1018.1" y1="686" x2="1194.8" y2="584" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="988.7" y1="669" x2="1165.3" y2="567" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="959.2" y1="652" x2="1135.9" y2="550" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="929.8" y1="635" x2="1106.4" y2="533" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="900.4" y1="618" x2="1077" y2="516" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+
+    <line x1="1077" y1="720" x2="900.4" y2="618" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1106.4" y1="703" x2="929.8" y2="601" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1135.9" y1="686" x2="959.2" y2="584" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1165.3" y1="669" x2="988.7" y2="567" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1194.8" y1="652" x2="1018.1" y2="550" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1224.2" y1="635" x2="1047.6" y2="533" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1253.6" y1="618" x2="1077" y2="516" stroke="#EAF2FB" stroke-opacity="0.10" stroke-width="1"/>
+
+    <circle cx="1018.1" cy="686" r="3" fill="#F57C00" fill-opacity="0.75"/>
+    <circle cx="1135.9" cy="550" r="3" fill="#F57C00" fill-opacity="0.75"/>
+    <circle cx="1047.6" cy="533" r="3" fill="#00897B" fill-opacity="0.75"/>
+    <circle cx="1224.2" cy="601" r="2.5" fill="#EAF2FB" fill-opacity="0.35"/>
+  </g>
+
+  <g id="cover-title">
+    <text x="640" y="286" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="500" fill="#EAF2FB" fill-opacity="0.62" letter-spacing="5">AI INTERVIEW ASSISTANT</text>
+    <text x="640" y="358" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="64" font-weight="700" fill="#FFFFFF">AI 智能面试助手</text>
+    <rect x="608" y="382" width="64" height="4" fill="#F57C00"/>
+  </g>
+
+  <g id="cover-subtitle">
+    <text x="640" y="438" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="600" fill="#EAF2FB">技术解构 —— 架构、模块与工程取舍</text>
+    <line x1="540" y1="478" x2="740" y2="478" stroke="#EAF2FB" stroke-opacity="0.22" stroke-width="1"/>
+    <text x="640" y="510" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#EAF2FB" fill-opacity="0.62">35 页 · 技术答辩 · 2026-09-23</text>
+  </g>
+</svg>

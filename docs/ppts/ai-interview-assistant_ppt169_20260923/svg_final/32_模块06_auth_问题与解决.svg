@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">模块⑥ auth：问题与解决（候选人隔离判据）</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P32 / 35</text>
+  </g>
+
+  <g id="row-1">
+    <path fill="#5A6B7D" fill-opacity="0.07" d="M72,148 H496 A8,8 0 0 1 504,156 V244 A8,8 0 0 1 496,252 H72 A8,8 0 0 1 64,244 V156 A8,8 0 0 1 72,148 Z" />
+    <rect x="64" y="148" width="4" height="104" fill="#5A6B7D" />
+    <path fill="#5A6B7D" fill-opacity="0.16" d="M88,160 H148 A4,4 0 0 1 152,164 V176 A4,4 0 0 1 148,180 H88 A4,4 0 0 1 84,176 V164 A4,4 0 0 1 88,160 Z" />
+    <text x="118" y="175" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#5A6B7D">错误做法</text>
+    <text x="84" y="198" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">加入 candidate 角色后，原有的 HR 侧路由</text>
+    <text x="84" y="220" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">只校验「已登录」—— 候选人 token 可以直接</text>
+    <text x="84" y="242" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">调用 HR 接口。</text>
+
+    <path fill="#1565C0" fill-opacity="0.07" d="M532,148 H1208 A8,8 0 0 1 1216,156 V244 A8,8 0 0 1 1208,252 H532 A8,8 0 0 1 524,244 V156 A8,8 0 0 1 532,148 Z" />
+    <rect x="524" y="148" width="4" height="104" fill="#1565C0" />
+    <path fill="#1565C0" fill-opacity="0.16" d="M548,160 H608 A4,4 0 0 1 612,164 V176 A4,4 0 0 1 608,180 H548 A4,4 0 0 1 544,176 V164 A4,4 0 0 1 548,160 Z" />
+    <text x="578" y="175" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#1565C0">正确做法</text>
+    <text x="544" y="198" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">权限守卫<tspan font-weight="700" fill="#1565C0">收紧为多角色判定</tspan>：HR 侧全部接口显式校验 admin / hr，候选人侧校验 candidate。</text>
+    <text x="544" y="220" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">这是本期<tspan font-weight="700" fill="#1565C0">强制项</tspan>，不是可选项 —— 不收紧等于把整组 HR 接口对候选人开放。</text>
+    <text x="544" y="242" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">接口一旦多出一个角色，这条检查必须同步收紧。</text>
+  </g>
+
+  <g id="row-2">
+    <path fill="#5A6B7D" fill-opacity="0.07" d="M72,260 H496 A8,8 0 0 1 504,268 V356 A8,8 0 0 1 496,364 H72 A8,8 0 0 1 64,356 V268 A8,8 0 0 1 72,260 Z" />
+    <rect x="64" y="260" width="4" height="104" fill="#5A6B7D" />
+    <path fill="#5A6B7D" fill-opacity="0.16" d="M88,272 H148 A4,4 0 0 1 152,276 V288 A4,4 0 0 1 148,292 H88 A4,4 0 0 1 84,288 V276 A4,4 0 0 1 88,272 Z" />
+    <text x="118" y="287" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#5A6B7D">错误做法</text>
+    <text x="84" y="310" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">候选人数据隔离<tspan font-weight="700">复用 created_by 判据</tspan></text>
+    <text x="84" y="332" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">—— 候选人不是面试的创建者（那是 HR），</text>
+    <text x="84" y="354" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">按它过滤会让候选人看不到自己的任何面试。</text>
+
+    <path fill="#00897B" fill-opacity="0.07" d="M532,260 H1208 A8,8 0 0 1 1216,268 V356 A8,8 0 0 1 1208,364 H532 A8,8 0 0 1 524,356 V268 A8,8 0 0 1 532,260 Z" />
+    <rect x="524" y="260" width="4" height="104" fill="#00897B" />
+    <path fill="#00897B" fill-opacity="0.16" d="M548,272 H608 A4,4 0 0 1 612,276 V288 A4,4 0 0 1 608,292 H548 A4,4 0 0 1 544,288 V276 A4,4 0 0 1 548,272 Z" />
+    <text x="578" y="287" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#00897B">正确做法</text>
+    <text x="544" y="310" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">候选人侧新增「<tspan font-weight="700" fill="#00897B">持有该面试的有效邀请</tspan>」这条独立校验路径</text>
+    <text x="544" y="332" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">（<tspan font-family="Consolas, Courier New, monospace" fill="#00897B">get_interview_for_candidate</tspan>）：不引入新机制，</text>
+    <text x="544" y="354" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">直接复用既有的邀请链 —— 归属关系本来就在那里。</text>
+  </g>
+
+  <g id="row-3">
+    <path fill="#5A6B7D" fill-opacity="0.07" d="M72,372 H496 A8,8 0 0 1 504,380 V468 A8,8 0 0 1 496,476 H72 A8,8 0 0 1 64,468 V380 A8,8 0 0 1 72,372 Z" />
+    <rect x="64" y="372" width="4" height="104" fill="#5A6B7D" />
+    <path fill="#5A6B7D" fill-opacity="0.16" d="M88,384 H148 A4,4 0 0 1 152,388 V400 A4,4 0 0 1 148,404 H88 A4,4 0 0 1 84,400 V388 A4,4 0 0 1 88,384 Z" />
+    <text x="118" y="399" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#5A6B7D">错误做法</text>
+    <text x="84" y="422" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">用户名已被 candidate 占用时，直接复用该</text>
+    <text x="84" y="444" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">账号 —— 于是「知道对方用户名」就等价于</text>
+    <text x="84" y="466" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">能把他的账号绑到自己的邀请上。</text>
+
+    <path fill="#1565C0" fill-opacity="0.07" d="M532,372 H1208 A8,8 0 0 1 1216,380 V468 A8,8 0 0 1 1208,476 H532 A8,8 0 0 1 524,468 V380 A8,8 0 0 1 532,372 Z" />
+    <rect x="524" y="372" width="4" height="104" fill="#1565C0" />
+    <path fill="#1565C0" fill-opacity="0.16" d="M548,384 H608 A4,4 0 0 1 612,388 V400 A4,4 0 0 1 608,404 H548 A4,4 0 0 1 544,400 V388 A4,4 0 0 1 548,384 Z" />
+    <text x="578" y="399" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#1565C0">正确做法</text>
+    <text x="544" y="422" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-weight="700" fill="#1565C0">必须校验密码一致</tspan>才复用，不符即 401「用户名或密码错误」。否则被读到的不只是账号，</text>
+    <text x="544" y="444" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">还有对方的面试。用户名已被 hr / admin 占用则返回 409（沿用「用户名已被占用」语义）。</text>
+    <text x="544" y="466" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">401 的文案对「密码错」与「用户名不存在」故意一致。</text>
+  </g>
+
+  <g id="row-4">
+    <path fill="#5A6B7D" fill-opacity="0.07" d="M72,484 H496 A8,8 0 0 1 504,492 V580 A8,8 0 0 1 496,588 H72 A8,8 0 0 1 64,580 V492 A8,8 0 0 1 72,484 Z" />
+    <rect x="64" y="484" width="4" height="104" fill="#5A6B7D" />
+    <path fill="#5A6B7D" fill-opacity="0.16" d="M88,496 H148 A4,4 0 0 1 152,500 V512 A4,4 0 0 1 148,516 H88 A4,4 0 0 1 84,512 V500 A4,4 0 0 1 88,496 Z" />
+    <text x="118" y="511" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#5A6B7D">错误做法</text>
+    <text x="84" y="534" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">被禁用的候选人账号被复用绑定 —— 绑定会</text>
+    <text x="84" y="556" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">消耗掉一次性邀请码，而该账号此后 login</text>
+    <text x="84" y="578" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">与 get_current_user 都拒绝它。</text>
+
+    <path fill="#C62828" fill-opacity="0.07" d="M532,484 H1208 A8,8 0 0 1 1216,492 V580 A8,8 0 0 1 1208,588 H532 A8,8 0 0 1 524,580 V492 A8,8 0 0 1 532,484 Z" />
+    <rect x="524" y="484" width="4" height="104" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.16" d="M548,496 H608 A4,4 0 0 1 612,500 V512 A4,4 0 0 1 608,516 H548 A4,4 0 0 1 544,512 V500 A4,4 0 0 1 548,496 Z" />
+    <text x="578" y="511" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">正确做法</text>
+    <text x="544" y="534" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733"><tspan font-weight="700" fill="#C62828">不得复用，返回 401</tspan>。禁用账号一旦被绑定，候选人永远打不开这场面试，</text>
+    <text x="544" y="556" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">HR 也无法重新发码 —— 邀请码是<tspan font-weight="700" fill="#C62828">一次性</tspan>的，消耗掉就没有第二次机会。</text>
+    <text x="544" y="578" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">这是一条无法自行恢复的死路，所以必须在入口拦住。</text>
+  </g>
+
+  <g id="closing-band">
+    <path fill="#E3EDF9" d="M72,600 H1208 A8,8 0 0 1 1216,608 V632 A8,8 0 0 1 1208,640 H72 A8,8 0 0 1 64,632 V608 A8,8 0 0 1 72,600 Z" />
+    
+  <g transform="translate(84.0, 608.0) scale(0.9166666666666666)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" />
+    <path d="M11 11a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    <path d="M12 12l0 2.5" />
+  </g>
+    <text x="116" y="625" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#1F2733">贯穿六条改动的原则：把「谁有权看到什么」写成<tspan font-weight="700" fill="#1565C0">可执行的路径与判据</tspan>，而不是写在注释里</text>
+  </g>
+</svg>

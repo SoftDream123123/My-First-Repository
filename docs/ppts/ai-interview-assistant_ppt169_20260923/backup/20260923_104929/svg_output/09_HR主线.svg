@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">HR 主线：出题 → 记录 → 评估 → 报告</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">02 业务流程</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P09 / 35</text>
+  </g>
+
+  <g id="flow-arrows">
+    <line x1="214" y1="196" x2="226" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+    <line x1="381" y1="196" x2="393" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+    <line x1="548" y1="196" x2="560" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+    <line x1="715" y1="196" x2="727" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+    <line x1="882" y1="196" x2="894" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+    <line x1="1049" y1="196" x2="1061" y2="196" stroke="#1565C0" stroke-width="2" marker-end="url(#arrowHead)"/>
+  </g>
+
+  <g id="step-1">
+    <rect x="64" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="76" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">01</text>
+    <text x="76" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">建岗位</text>
+    <text x="76" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">名称 / JD / 维度</text>
+  </g>
+
+  <g id="step-2">
+    <rect x="231" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="243" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">02</text>
+    <text x="243" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">新建面试</text>
+    <text x="243" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">5 题库 + 3 AI</text>
+  </g>
+
+  <g id="step-3">
+    <rect x="398" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="497" y="156" width="40" height="18" rx="3" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="517" y="169" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">可选</text>
+    <text x="410" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">03</text>
+    <text x="410" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">准备提纲</text>
+    <text x="410" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">按岗位生成</text>
+  </g>
+
+  <g id="step-4">
+    <rect x="565" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <rect x="664" y="156" width="40" height="18" rx="3" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="684" y="169" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">可选</text>
+    <text x="577" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">04</text>
+    <text x="577" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">发邀请码</text>
+    <text x="577" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">仅 ongoing 可发</text>
+  </g>
+
+  <g id="step-5">
+    <rect x="732" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="744" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">05</text>
+    <text x="744" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">录入回答</text>
+    <text x="744" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">实时保存</text>
+  </g>
+
+  <g id="step-6">
+    <rect x="899" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="911" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#1565C0">06</text>
+    <text x="911" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">标记完成</text>
+    <text x="911" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">收口本场</text>
+  </g>
+
+  <g id="step-7">
+    <rect x="1066" y="148" width="147" height="96" rx="8" fill="#FFFFFF" stroke="#F57C00" stroke-width="1.5"/>
+    <text x="1078" y="174" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#F57C00">07</text>
+    <text x="1078" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">评估导出</text>
+    <text x="1078" y="226" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">SSE → DOCX</text>
+  </g>
+
+  <g id="rules-heading">
+    <text x="64" y="280" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#5A6B7D" letter-spacing="1">三条易踩规则</text>
+    <line x1="190" y1="274" x2="1216" y2="274" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="rule-1">
+    <rect x="64" y="292" width="1152" height="92" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="292" width="4" height="92" fill="#C62828"/>
+    <use data-icon="tabler-outline/alert-triangle" x="88" y="308" width="24" height="24" fill="#C62828" stroke-width="2"/>
+    <rect x="124" y="308" width="76" height="24" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="162" y="325" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#C62828">易踩点一</text>
+    <text x="220" y="326" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">出题后<tspan font-weight="700" fill="#C62828">不能换题、不能删题</tspan> —— 补题是唯一的加题例外</text>
+    <text x="220" y="356" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">补题只追加、不改动既有题目；序号续接本场最大值，注明来源为简历匹配</text>
+  </g>
+
+  <g id="rule-2">
+    <rect x="64" y="396" width="1152" height="92" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="396" width="4" height="92" fill="#C62828"/>
+    <use data-icon="tabler-outline/alert-triangle" x="88" y="412" width="24" height="24" fill="#C62828" stroke-width="2"/>
+    <rect x="124" y="412" width="76" height="24" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="162" y="429" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#C62828">易踩点二</text>
+    <text x="220" y="430" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">发邀请码只在 <tspan font-family="Consolas, Courier New, monospace" font-weight="700" fill="#C62828">ongoing</tspan> 可行 —— <tspan font-weight="700" fill="#C62828">completed 及之后提前拦截</tspan></text>
+    <text x="220" y="460" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">越权调用返回 409，并在 detail 里带上 {from, to} 便于定位</text>
+  </g>
+
+  <g id="rule-3">
+    <rect x="64" y="500" width="1152" height="92" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="500" width="4" height="92" fill="#C62828"/>
+    <use data-icon="tabler-outline/alert-triangle" x="88" y="516" width="24" height="24" fill="#C62828" stroke-width="2"/>
+    <rect x="124" y="516" width="76" height="24" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="162" y="533" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#C62828">易踩点三</text>
+    <text x="220" y="534" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#1F2733">重新评估失败<tspan font-weight="700" fill="#2E7D32">退回 evaluated，旧报告不丢</tspan></text>
+    <text x="220" y="564" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">回退目标由「库里有没有旧报告」决定：有则回 evaluated，无则回 completed</text>
+  </g>
+</svg>

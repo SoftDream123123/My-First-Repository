@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#93A1B0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块② interview：序列图与 N+M 差额补题</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P23 / 35</text>
+  </g>
+
+  <g id="seq-lifelines">
+    <rect x="60" y="160" width="120" height="40" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="120" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">HR（浏览器）</text>
+    <line x1="120" y1="200" x2="120" y2="406" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="324" y="160" width="120" height="40" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="384" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">interview.service</text>
+    <line x1="384" y1="200" x2="384" y2="406" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="588" y="160" width="120" height="40" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="648" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">question.service</text>
+    <line x1="648" y1="200" x2="648" y2="406" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="852" y="160" width="120" height="40" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="912" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">ai（Provider）</text>
+    <line x1="912" y1="200" x2="912" y2="406" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="1090" y="160" width="120" height="40" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="1150" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">repository</text>
+    <line x1="1150" y1="200" x2="1150" y2="406" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+  </g>
+
+  <g id="seq-activations">
+    <rect x="114" y="208" width="12" height="191" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="378" y="210" width="12" height="189" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="642" y="258" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="642" y="333" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="906" y="309" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="1144" y="234" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="1144" y="359" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+  </g>
+
+  <g id="seq-messages">
+    <line x1="126" y1="216" x2="376" y2="216" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="251" y="210" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">1  POST /interviews</text>
+
+    <line x1="390" y1="241" x2="1142" y2="241" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="766" y="235" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">2  get_position()  读岗位与评估维度</text>
+
+    <line x1="390" y1="266" x2="640" y2="266" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="515" y="260" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">3  list_candidates_for_position()</text>
+
+    <line x1="642" y1="291" x2="392" y2="291" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowGray)"/>
+    <text x="517" y="285" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#5A6B7D">4  候选池（已按 id 升序）</text>
+
+    <line x1="390" y1="316" x2="904" y2="316" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="647" y="310" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">5  generate_questions(need_ai)</text>
+
+    <line x1="390" y1="341" x2="640" y2="341" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="515" y="335" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">6  bulk_create_from_ai()</text>
+
+    <line x1="390" y1="366" x2="1142" y2="366" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="766" y="360" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">7  create_questions(items)</text>
+
+    <line x1="378" y1="391" x2="128" y2="391" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowGray)"/>
+    <text x="253" y="385" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#5A6B7D">8  置 ongoing + db.commit()</text>
+  </g>
+
+  <g id="problem-1">
+    <rect x="64" y="424" width="440" height="96" rx="8" fill="#C62828" fill-opacity="0.06"/>
+    <rect x="64" y="424" width="4" height="96" fill="#C62828"/>
+    <rect x="84" y="440" width="52" height="22" rx="4" fill="#C62828" fill-opacity="0.12"/>
+    <text x="110" y="456" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">问题</text>
+    <text x="84" y="486" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">出题后题目列表就写死了 —— 没有换题、</text>
+    <text x="84" y="508" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">也没有删题接口。但候选人的简历是在</text>
+    <text x="84" y="530" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">面试创建之后才提交的，那时才知道该考什么。</text>
+  </g>
+
+  <g id="solution-1">
+    <rect x="524" y="424" width="692" height="96" rx="8" fill="#2E7D32" fill-opacity="0.06"/>
+    <rect x="524" y="424" width="4" height="96" fill="#2E7D32"/>
+    <rect x="544" y="440" width="52" height="22" rx="4" fill="#2E7D32" fill-opacity="0.12"/>
+    <text x="570" y="456" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="544" y="486" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">把「按简历补题」设计为<tspan font-weight="700" fill="#2E7D32">唯一的加题例外</tspan>，且<tspan font-weight="700">只追加、不改动既有题目</tspan>：</text>
+    <text x="544" y="508" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">seq 续接本场最大值，<tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">source_snapshot</tspan> 记为 resume_match，</text>
+    <text x="544" y="530" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">match_reason 写入 AI 给出的理由 —— 补的每一题都能追溯到依据。</text>
+  </g>
+
+  <g id="problem-2">
+    <rect x="64" y="528" width="440" height="96" rx="8" fill="#C62828" fill-opacity="0.06"/>
+    <rect x="64" y="528" width="4" height="96" fill="#C62828"/>
+    <rect x="84" y="544" width="52" height="22" rx="4" fill="#C62828" fill-opacity="0.12"/>
+    <text x="110" y="560" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">问题</text>
+    <text x="84" y="590" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">HR 连点几次「按简历补题」，</text>
+    <text x="84" y="612" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">会不会出一堆重复题？</text>
+  </g>
+
+  <g id="solution-2">
+    <rect x="524" y="528" width="692" height="96" rx="8" fill="#2E7D32" fill-opacity="0.06"/>
+    <rect x="524" y="528" width="4" height="96" fill="#2E7D32"/>
+    <rect x="544" y="544" width="52" height="22" rx="4" fill="#2E7D32" fill-opacity="0.12"/>
+    <text x="570" y="560" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="544" y="590" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733"><tspan font-weight="700" fill="#2E7D32">幂等的准确含义</tspan>：候选池剔除本场已有的 <tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">question_id</tspan>，故不会出重复题；</text>
+    <text x="544" y="612" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">但池子变小后 AI 会挑下一批，所以每次调用都会再加 count 题 —— 界面必须显示本场总数。</text>
+  </g>
+</svg>

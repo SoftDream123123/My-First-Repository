@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#93A1B0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块③ evaluation：SSE 对象交互序列图</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P25 / 35</text>
+  </g>
+
+  <g id="seq-lifelines">
+    <rect x="58" y="156" width="124" height="38" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="120" y="180" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">浏览器</text>
+    <line x1="120" y1="194" x2="120" y2="410" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="318" y="156" width="124" height="38" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="380" y="180" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">router</text>
+    <line x1="380" y1="194" x2="380" y2="410" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="578" y="156" width="124" height="38" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="640" y="180" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">stream</text>
+    <line x1="640" y1="194" x2="640" y2="410" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="838" y="156" width="124" height="38" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="900" y="180" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">后台线程</text>
+    <line x1="900" y1="194" x2="900" y2="410" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <rect x="1088" y="156" width="124" height="38" rx="6" fill="#E3EDF9" stroke="#1565C0" stroke-width="1"/>
+    <text x="1150" y="180" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">repository·MySQL</text>
+    <line x1="1150" y1="194" x2="1150" y2="410" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5"/>
+  </g>
+
+  <g id="seq-activations">
+    <rect x="114" y="208" width="12" height="196" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="374" y="212" width="12" height="14" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="634" y="216" width="12" height="188" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="894" y="340" width="12" height="64" fill="#1565C0" fill-opacity="0.18"/>
+    <rect x="1144" y="366" width="12" height="16" fill="#1565C0" fill-opacity="0.18"/>
+  </g>
+
+  <g id="seq-messages">
+    <line x1="126" y1="216" x2="372" y2="216" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="249" y="210" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">1  POST /evaluate</text>
+
+    <line x1="386" y1="242" x2="632" y2="242" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="509" y="236" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">2  stream.start_run()</text>
+
+    <line x1="634" y1="268" x2="128" y2="268" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowGray)"/>
+    <text x="381" y="262" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#5A6B7D">3  202 + SSE 地址（立即返回，不起前台阻塞）</text>
+
+    <line x1="126" y1="294" x2="632" y2="294" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="379" y="288" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">4  GET /evaluation/stream（fetch 长连接）</text>
+
+    <line x1="634" y1="320" x2="128" y2="320" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowGray)"/>
+    <text x="381" y="314" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#5A6B7D">5  重放已推事件 → 转发新事件 → 终结后关闭</text>
+
+    <line x1="646" y1="346" x2="892" y2="346" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="769" y="340" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">6  evaluate_interview(db, id, publish)</text>
+
+    <line x1="906" y1="372" x2="1142" y2="372" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <text x="1024" y="366" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">7  落库（单事务）</text>
+
+    <line x1="894" y1="398" x2="128" y2="398" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowGray)"/>
+    <text x="511" y="392" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#5A6B7D">8  publish_terminal("done" / "error") → 浏览器关闭连接</text>
+  </g>
+
+  <g id="lock-note">
+    <rect x="660" y="308" width="228" height="20" rx="4" fill="#E3EDF9"/>
+    <text x="774" y="322" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">订阅 + 取快照 + 读状态在同一把锁内</text>
+  </g>
+
+  <g id="contract-band">
+    <rect x="64" y="436" width="1152" height="188" rx="8" fill="#F2F6FA"/>
+    <text x="88" y="466" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">SSE 事件契约</text>
+    <line x1="200" y1="460" x2="1216" y2="460" stroke="#DCE5EE" stroke-width="1"/>
+
+    <rect x="88" y="482" width="140" height="34" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="158" y="504" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">question</text>
+    <line x1="232" y1="499" x2="262" y2="499" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <rect x="268" y="482" width="150" height="34" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="343" y="504" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">dimension</text>
+    <line x1="422" y1="499" x2="452" y2="499" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <rect x="458" y="482" width="130" height="34" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="523" y="504" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">report</text>
+    <line x1="592" y1="499" x2="622" y2="499" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <rect x="628" y="482" width="196" height="34" rx="6" fill="#2E7D32" fill-opacity="0.10" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="726" y="504" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#2E7D32">done ｜ error</text>
+
+    <text x="856" y="494" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733"><tspan font-weight="700" fill="#2E7D32">done 与 error 互斥且必居其一</tspan></text>
+    <text x="856" y="516" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">question 按 seq 升序推送</text>
+    <text x="856" y="538" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">每 <tspan font-weight="700" fill="#F57C00">15 秒</tspan>一个 <tspan font-family="Consolas, Courier New, monospace">: ping</tspan> 心跳，防代理空闲断开</text>
+
+    <line x1="88" y1="562" x2="1216" y2="562" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="88" y="588" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733"><tspan font-weight="700" fill="#C62828">前端注意：</tspan>SSE 需要 <tspan font-family="Consolas, Courier New, monospace">Authorization</tspan> 头，而浏览器原生 <tspan font-family="Consolas, Courier New, monospace">EventSource</tspan> 无法设置自定义请求头。</text>
+    <text x="88" y="610" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">因此必须用 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">fetch + ReadableStream</tspan> 手动解析 SSE 分帧，而不能直接用 <tspan font-family="Consolas, Courier New, monospace">EventSource</tspan>。</text>
+  </g>
+</svg>

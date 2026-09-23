@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">工程规模</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">03 技术栈</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P18 / 35</text>
+  </g>
+
+  <g id="kpi-tests">
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M72,152 H326 A8,8 0 0 1 334,160 V404 A8,8 0 0 1 326,412 H72 A8,8 0 0 1 64,404 V160 A8,8 0 0 1 72,152 Z" />
+    <path fill="#1565C0" fill-opacity="0.10" d="M98,178 H126 A10,10 0 0 1 136,188 V216 A10,10 0 0 1 126,226 H98 A10,10 0 0 1 88,216 V188 A10,10 0 0 1 98,178 Z" />
+    
+  <g transform="translate(96.0, 186.0) scale(1.3333333333333333)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M20 8.04l-12.122 12.124a2.857 2.857 0 1 1 -4.041 -4.04l12.122 -12.124" />
+    <path d="M7 13h8" />
+    <path d="M19 15l1.5 1.6a2 2 0 1 1 -3 0l1.5 -1.6" />
+    <path d="M15 3l6 6" />
+  </g>
+    <text x="88" y="264" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" fill="#5A6B7D">后端测试</text>
+    <text x="88" y="338" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="56" font-weight="700" fill="#1F2733">1034</text>
+    <text x="88" y="366" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">项 · pytest</text>
+    <text x="88" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">全部走 Mock Provider</text>
+  </g>
+
+  <g id="kpi-routes">
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M366,152 H620 A8,8 0 0 1 628,160 V404 A8,8 0 0 1 620,412 H366 A8,8 0 0 1 358,404 V160 A8,8 0 0 1 366,152 Z" />
+    <path fill="#00897B" fill-opacity="0.10" d="M392,178 H420 A10,10 0 0 1 430,188 V216 A10,10 0 0 1 420,226 H392 A10,10 0 0 1 382,216 V188 A10,10 0 0 1 392,178 Z" />
+    
+  <g transform="translate(390.0, 186.0) scale(1.3333333333333333)" fill="none" stroke="#00897B" stroke-width="2">
+    <path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+    <path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4" />
+    <path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5" />
+  </g>
+    <text x="382" y="264" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" fill="#5A6B7D">接口规模</text>
+    <text x="382" y="338" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="56" font-weight="700" fill="#1F2733">43</text>
+    <text x="382" y="366" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">条路径 / 62 个 method-route</text>
+    <text x="382" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">取自 openapi.json</text>
+  </g>
+
+  <g id="kpi-schema">
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M660,152 H914 A8,8 0 0 1 922,160 V404 A8,8 0 0 1 914,412 H660 A8,8 0 0 1 652,404 V160 A8,8 0 0 1 660,152 Z" />
+    <path fill="#F57C00" fill-opacity="0.10" d="M686,178 H714 A10,10 0 0 1 724,188 V216 A10,10 0 0 1 714,226 H686 A10,10 0 0 1 676,216 V188 A10,10 0 0 1 686,178 Z" />
+    
+  <g transform="translate(684.0, 186.0) scale(1.3333333333333333)" fill="none" stroke="#F57C00" stroke-width="2">
+    <path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0" />
+    <path d="M4 6v6a8 3 0 0 0 16 0v-6" />
+    <path d="M4 12v6a8 3 0 0 0 16 0v-6" />
+  </g>
+    <text x="676" y="264" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" fill="#5A6B7D">数据与模块</text>
+    <text x="676" y="338" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="56" font-weight="700" fill="#1F2733">15</text>
+    <text x="676" y="366" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">张表 / 8 个 package</text>
+    <text x="676" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">单一 MySQL 库，无中间件</text>
+  </g>
+
+  <g id="kpi-smoke">
+    <path fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5" d="M954,152 H1208 A8,8 0 0 1 1216,160 V404 A8,8 0 0 1 1208,412 H954 A8,8 0 0 1 946,404 V160 A8,8 0 0 1 954,152 Z" />
+    <path fill="#2E7D32" fill-opacity="0.10" d="M980,178 H1008 A10,10 0 0 1 1018,188 V216 A10,10 0 0 1 1008,226 H980 A10,10 0 0 1 970,216 V188 A10,10 0 0 1 980,178 Z" />
+    
+  <g transform="translate(978.0, 186.0) scale(1.3333333333333333)" fill="none" stroke="#2E7D32" stroke-width="2">
+    <path d="M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8" />
+    <path d="M14 19l2 2l4 -4" />
+    <path d="M9 8h4" />
+    <path d="M9 12h2" />
+  </g>
+    <text x="970" y="264" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" fill="#5A6B7D">端到端冒烟</text>
+    <text x="970" y="338" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="56" font-weight="700" fill="#2E7D32">128</text>
+    <text x="970" y="366" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">项断言</text>
+    <text x="970" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">对真实运行中的服务走全链路</text>
+  </g>
+
+  <g id="supplement-cards">
+    <path fill="#F2F6FA" d="M72,436 H424 A8,8 0 0 1 432,444 V552 A8,8 0 0 1 424,560 H72 A8,8 0 0 1 64,552 V444 A8,8 0 0 1 72,436 Z" />
+    <text x="84" y="470" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">前端单测</text>
+    <text x="84" y="506" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" font-weight="700" fill="#1F2733">25 项 <tspan font-size="14" font-weight="400" fill="#93A1B0">Vitest</tspan></text>
+    <text x="84" y="536" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">纯函数与状态推导的单元覆盖</text>
+
+    <path fill="#F2F6FA" d="M464,436 H816 A8,8 0 0 1 824,444 V552 A8,8 0 0 1 816,560 H464 A8,8 0 0 1 456,552 V444 A8,8 0 0 1 464,436 Z" />
+    <text x="476" y="470" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">浏览器端联调台</text>
+    <text x="476" y="506" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" font-weight="700" fill="#1F2733">8 个 <tspan font-size="14" font-weight="400" fill="#93A1B0">Mock 台</tspan></text>
+    <text x="476" y="536" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">合计 700+ 断言，不依赖后端</text>
+
+    <path fill="#F2F6FA" d="M856,436 H1208 A8,8 0 0 1 1216,444 V552 A8,8 0 0 1 1208,560 H856 A8,8 0 0 1 848,552 V444 A8,8 0 0 1 856,436 Z" />
+    <text x="868" y="470" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">变异检查</text>
+    <text x="868" y="506" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" font-weight="700" fill="#1F2733">33 次 <tspan font-size="14" font-weight="400" fill="#93A1B0">把缺陷植回去</tspan></text>
+    <text x="868" y="536" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">抓出 5 个真 bug + 6 处契约偏差</text>
+  </g>
+
+  <g id="closing-band">
+    <path fill="#E3EDF9" d="M72,576 H1208 A8,8 0 0 1 1216,584 V616 A8,8 0 0 1 1208,624 H72 A8,8 0 0 1 64,616 V584 A8,8 0 0 1 72,576 Z" />
+    
+  <g transform="translate(88.0, 588.0)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M9 3l6 0" />
+    <path d="M10 9l4 0" />
+    <path d="M10 3v6l-4 11a.7 .7 0 0 0 .5 1h11a.7 .7 0 0 0 .5 -1l-4 -11v-6" />
+  </g>
+    <text x="124" y="606" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#1F2733">整套测试<tspan font-weight="700" fill="#1565C0">不需要网络、不需要任何 API Key</tspan> —— 检出代码即可完整跑通</text>
+  </g>
+</svg>

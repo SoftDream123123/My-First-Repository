@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="railGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#93A1B0" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">展望与结语</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">05 收获与展望</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P35 / 35</text>
+  </g>
+
+  <g id="roadmap-rail">
+    <text x="64" y="172" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">V1.1 规划 · 六项</text>
+    <line x1="104" y1="196" x2="104" y2="560" stroke="url(#railGrad)" stroke-width="2"/>
+    <circle cx="104" cy="204" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+    <circle cx="104" cy="278" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+    <circle cx="104" cy="352" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+    <circle cx="104" cy="426" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+    <circle cx="104" cy="500" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+    <circle cx="104" cy="574" r="7" fill="#FFFFFF" stroke="#93A1B0" stroke-width="2.5"/>
+  </g>
+
+  <g id="roadmap-1">
+    <text x="132" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">报告分享链接</text>
+    <rect x="272" y="188" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="300" y="201" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="222" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">一条只读链接，外部可直接查看报告（带有效期与撤销）。</text>
+  </g>
+
+  <g id="roadmap-2">
+    <text x="132" y="276" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">语音 / 视频面试与录音转写</text>
+    <rect x="368" y="262" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="396" y="275" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="296" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">把作答从键盘输入扩展到语音通道，转写后进入同一套评估。</text>
+  </g>
+
+  <g id="roadmap-3">
+    <text x="132" y="350" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">保留简历原文件与「回看原件」</text>
+    <rect x="392" y="336" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="420" y="349" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="370" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">与之配套的还有存储清理策略与访问审计。</text>
+  </g>
+
+  <g id="roadmap-4">
+    <text x="132" y="424" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">多候选人横向对比</text>
+    <rect x="272" y="410" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="300" y="423" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="444" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">同一岗位下按评估维度并列，而不只是逐份报告看。</text>
+  </g>
+
+  <g id="roadmap-5">
+    <text x="132" y="498" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">后端 PDF 生成</text>
+    <rect x="272" y="484" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="300" y="497" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="518" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">脱离浏览器的批量导出 —— 补上当前只能浏览器打印的短板。</text>
+  </g>
+
+  <g id="roadmap-6">
+    <text x="132" y="572" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">候选人端导出自己的脱敏反馈</text>
+    <rect x="392" y="558" width="56" height="18" rx="9" fill="#93A1B0" fill-opacity="0.16"/>
+    <text x="420" y="571" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="10" fill="#5A6B7D">规划中</text>
+    <text x="132" y="592" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">让反馈真正可以被带走，而不只是在系统里看一眼。</text>
+  </g>
+
+  <g id="epilogue">
+    <rect x="716" y="148" width="1" height="476" fill="#DCE5EE"/>
+    <text x="760" y="186" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="600" fill="#93A1B0" letter-spacing="3">结语</text>
+
+    <text x="760" y="256" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1565C0">把「出题工具」与「刷题 App」</text>
+    <text x="760" y="294" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1565C0">简单拼装<tspan fill="#F57C00">区分开</tspan>的产品</text>
+
+    <text x="760" y="348" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">简历由候选人单侧提交，同时驱动 HR 侧的补题</text>
+    <text x="760" y="376" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">与候选人侧的推荐 —— 把原本互不相干的两端</text>
+    <text x="760" y="404" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">缝成一个闭环。</text>
+
+    <line x1="760" y1="436" x2="1216" y2="436" stroke="#DCE5EE" stroke-width="1"/>
+
+    <rect x="760" y="462" width="48" height="4" fill="#F57C00"/>
+    <text x="760" y="502" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">AI 在其中始终扮演辅助角色</text>
+    <text x="760" y="530" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">每一个 AI 产物都有人确认 —— HR 确认参考答案、</text>
+    <text x="760" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">确认准备提纲、确认最终报告。</text>
+    <text x="760" y="582" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">AI 负责把草稿摆到桌面上，决定权始终在人手里。</text>
+  </g>
+</svg>

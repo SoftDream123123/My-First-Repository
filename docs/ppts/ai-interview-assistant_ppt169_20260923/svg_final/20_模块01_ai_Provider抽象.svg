@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">模块① ai：Provider 抽象与十能力契约</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P20 / 35</text>
+  </g>
+
+  <g id="code-block">
+    <rect x="64" y="182" width="616" height="266" fill="#F2F6FA" />
+    <path d="M 72 148 h 600 a 8 8 0 0 1 8 8 v 26 h -616 v -26 a 8 8 0 0 1 8 -8 Z" fill="#E3EDF9" />
+    
+  <g transform="translate(80.0, 156.0) scale(0.8333333333333334)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M5 4l-2 2l2 2" />
+    <path d="M12 4l2 2l-2 2" />
+    <path d="M8 8l1 -4" />
+    <path d="M17 6a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7" />
+  </g>
+    <text x="108" y="171" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">backend/app/ai/base.py:227-401</text>
+    <path fill="none" stroke="#DCE5EE" stroke-width="1" d="M72,148 H672 A8,8 0 0 1 680,156 V440 A8,8 0 0 1 672,448 H72 A8,8 0 0 1 64,440 V156 A8,8 0 0 1 72,148 Z" />
+
+    <text x="84" y="206" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">class <tspan fill="#1565C0" font-weight="700">AIProvider</tspan>(ABC):</text>
+    <text x="84" y="223" font-family="Consolas, Courier New, monospace" font-size="14" fill="#5A6B7D">    """AI 能力抽象基类 —— 十个抽象方法覆盖三条业务线"""</text>
+    <text x="84" y="240" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">    # 全部方法只接收原始值（str / list[str] / float /</text>
+    <text x="84" y="257" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">    # 本模块 dataclass），不接收任何 ORM 对象</text>
+    <text x="84" y="274" font-family="Consolas, Courier New, monospace" font-size="14" fill="#F57C00">    @abstractmethod</text>
+    <text x="84" y="291" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    def generate_questions(</text>
+    <text x="84" y="308" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        self, position_name: str, jd: str, dims: list[str],</text>
+    <text x="84" y="325" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        existing_contents: list[str], count: int,</text>
+    <text x="84" y="342" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    ) -&gt; list[GeneratedQuestion]: ...</text>
+    <text x="84" y="359" font-family="Consolas, Courier New, monospace" font-size="14" fill="#F57C00">    @abstractmethod</text>
+    <text x="84" y="376" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    def evaluate_answer(</text>
+    <text x="84" y="393" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        self, dimension: str, question: str, answer: str | None</text>
+    <text x="84" y="410" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    ) -&gt; QuestionScoreResult: ...</text>
+    <text x="84" y="427" font-family="Consolas, Courier New, monospace" font-size="14" fill="#F57C00">    @abstractmethod</text>
+    <text x="84" y="444" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">    # …其余七个方法同形；能力分组见右侧三组</text>
+  </g>
+
+  <g id="point-1">
+    <path fill="#F2F6FA" d="M712,148 H1208 A8,8 0 0 1 1216,156 V232 A8,8 0 0 1 1208,240 H712 A8,8 0 0 1 704,232 V156 A8,8 0 0 1 712,148 Z" />
+    <text x="724" y="176" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#1565C0">最重要的一条设计约束</text>
+    <text x="724" y="204" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">全部方法只接收<tspan font-weight="700" fill="#1565C0">原始值</tspan>，不接收任何 ORM 对象</text>
+    <text x="724" y="226" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#5A6B7D">写进契约签名，而不是靠调用方自觉</text>
+  </g>
+
+  <g id="point-2">
+    <path fill="#F2F6FA" d="M712,252 H1208 A8,8 0 0 1 1216,260 V336 A8,8 0 0 1 1208,344 H712 A8,8 0 0 1 704,336 V260 A8,8 0 0 1 712,252 Z" />
+    <text x="724" y="280" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#00897B">由此得到两个收益</text>
+    <text x="724" y="308" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">① ai 不依赖任何业务模块，守住依赖单向</text>
+    <text x="724" y="330" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">② Mock 实现可完全不起数据库被单测</text>
+  </g>
+
+  <g id="point-3">
+    <path fill="#F2F6FA" d="M712,356 H1208 A8,8 0 0 1 1216,364 V440 A8,8 0 0 1 1208,448 H712 A8,8 0 0 1 704,440 V364 A8,8 0 0 1 712,356 Z" />
+    <text x="724" y="384" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#F57C00">工厂与启动期校验</text>
+    <text x="724" y="412" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#F57C00">get_provider()</tspan> 按配置返回实现并<tspan font-weight="700">缓存单例</tspan></text>
+    <text x="724" y="434" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#F57C00">validate_provider_config()</tspan> 启动期校验，有误即启动失败</text>
+  </g>
+
+  <g id="caps-hr">
+    <path d="M 72 468 h 352 a 8 8 0 0 1 8 8 v 32 h -368 v -32 a 8 8 0 0 1 8 -8 Z" fill="#1565C0" fill-opacity="0.10" />
+    <path fill="none" stroke="#DCE5EE" stroke-width="1" d="M72,468 H424 A8,8 0 0 1 432,476 V616 A8,8 0 0 1 424,624 H72 A8,8 0 0 1 64,616 V476 A8,8 0 0 1 72,468 Z" />
+    
+  <g transform="translate(80.0, 478.0) scale(0.8333333333333334)" fill="none" stroke="#1565C0" stroke-width="2">
+    <path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9" />
+    <path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2" />
+    <path d="M12 12l0 .01" />
+    <path d="M3 13a20 20 0 0 0 18 0" />
+  </g>
+    <text x="108" y="494" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#1565C0">HR 侧 · 4 个</text>
+    <circle cx="90" cy="528" r="3" fill="#1565C0" />
+    <text x="104" y="532" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">generate_questions</text>
+    <circle cx="90" cy="554" r="3" fill="#1565C0" />
+    <text x="104" y="558" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">evaluate_answer</text>
+    <circle cx="90" cy="580" r="3" fill="#1565C0" />
+    <text x="104" y="584" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">evaluate_dimensions</text>
+    <circle cx="90" cy="606" r="3" fill="#1565C0" />
+    <text x="104" y="610" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">summarize_report</text>
+  </g>
+
+  <g id="caps-candidate">
+    <path d="M 464 468 h 352 a 8 8 0 0 1 8 8 v 32 h -368 v -32 a 8 8 0 0 1 8 -8 Z" fill="#00897B" fill-opacity="0.10" />
+    <path fill="none" stroke="#DCE5EE" stroke-width="1" d="M464,468 H816 A8,8 0 0 1 824,476 V616 A8,8 0 0 1 816,624 H464 A8,8 0 0 1 456,616 V476 A8,8 0 0 1 464,468 Z" />
+    
+  <g transform="translate(472.0, 478.0) scale(0.8333333333333334)" fill="none" stroke="#00897B" stroke-width="2">
+    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+    <path d="M6 21v-2a4 4 0 0 1 4 -4h4" />
+    <path d="M15 19l2 2l4 -4" />
+  </g>
+    <text x="500" y="494" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#00897B">候选人侧 · 3 个</text>
+    <circle cx="482" cy="528" r="3" fill="#00897B" />
+    <text x="496" y="532" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">generate_reference_answer</text>
+    <circle cx="482" cy="554" r="3" fill="#00897B" />
+    <text x="496" y="558" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">grade_practice_answer</text>
+    <circle cx="482" cy="580" r="3" fill="#00897B" />
+    <text x="496" y="584" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">generate_candidate_feedback</text>
+    <text x="482" y="610" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">补参考答案 · 刷题判分 · 脱敏反馈</text>
+  </g>
+
+  <g id="caps-resume">
+    <path d="M 856 468 h 352 a 8 8 0 0 1 8 8 v 32 h -368 v -32 a 8 8 0 0 1 8 -8 Z" fill="#F57C00" fill-opacity="0.10" />
+    <path fill="none" stroke="#DCE5EE" stroke-width="1" d="M856,468 H1208 A8,8 0 0 1 1216,476 V616 A8,8 0 0 1 1208,624 H856 A8,8 0 0 1 848,616 V476 A8,8 0 0 1 856,468 Z" />
+    
+  <g transform="translate(864.0, 478.0) scale(0.8333333333333334)" fill="none" stroke="#F57C00" stroke-width="2">
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
+    <path d="M9 9l1 0" />
+    <path d="M9 13l6 0" />
+    <path d="M9 17l6 0" />
+  </g>
+    <text x="892" y="494" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#F57C00">简历驱动 · 3 个</text>
+    <circle cx="874" cy="528" r="3" fill="#F57C00" />
+    <text x="888" y="532" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">match_questions_by_resume</text>
+    <circle cx="874" cy="554" r="3" fill="#F57C00" />
+    <text x="888" y="558" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">generate_interview_prep</text>
+    <circle cx="874" cy="580" r="3" fill="#F57C00" />
+    <text x="888" y="584" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">evaluate_resume</text>
+    <text x="874" y="610" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">MVP-4 新增，且不改任何表结构</text>
+  </g>
+</svg>

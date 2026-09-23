@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0" />
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#93A1B0" />
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">模块④ interview：问题与解决（并发绑定双写）</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P28 / 35</text>
+  </g>
+
+  <g id="seq-lifelines">
+    <path fill="#E3EDF9" stroke="#1565C0" stroke-width="1" d="M81,160 H199 A6,6 0 0 1 205,166 V192 A6,6 0 0 1 199,198 H81 A6,6 0 0 1 75,192 V166 A6,6 0 0 1 81,160 Z" />
+    <text x="140" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">请求 A</text>
+    <line x1="140" y1="198" x2="140" y2="312" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5" />
+
+    <path fill="#E3EDF9" stroke="#1565C0" stroke-width="1" d="M321,160 H439 A6,6 0 0 1 445,166 V192 A6,6 0 0 1 439,198 H321 A6,6 0 0 1 315,192 V166 A6,6 0 0 1 321,160 Z" />
+    <text x="380" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">请求 B</text>
+    <line x1="380" y1="198" x2="380" y2="312" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5" />
+
+    <path fill="#E3EDF9" stroke="#1565C0" stroke-width="1" d="M661,160 H779 A6,6 0 0 1 785,166 V192 A6,6 0 0 1 779,198 H661 A6,6 0 0 1 655,192 V166 A6,6 0 0 1 661,160 Z" />
+    <text x="720" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">accept_invitation</text>
+    <line x1="720" y1="198" x2="720" y2="312" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5" />
+
+    <path fill="#E3EDF9" stroke="#1565C0" stroke-width="1" d="M1021,160 H1139 A6,6 0 0 1 1145,166 V192 A6,6 0 0 1 1139,198 H1021 A6,6 0 0 1 1015,192 V166 A6,6 0 0 1 1021,160 Z" />
+    <text x="1080" y="184" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#1565C0">面试行</text>
+    <line x1="1080" y1="198" x2="1080" y2="312" stroke="#DCE5EE" stroke-width="1.5" stroke-dasharray="5,5" />
+  </g>
+
+  <g id="seq-messages">
+    <line x1="146" y1="222" x2="702" y2="222" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <text x="424" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">1  accept(code₁)</text>
+
+    <line x1="386" y1="246" x2="702" y2="246" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <text x="544" y="240" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">2  accept(code₂)　同一候选人的另一条码</text>
+
+    <line x1="726" y1="270" x2="1074" y2="270" stroke="#F57C00" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <text x="900" y="264" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#F57C00">3  A 先获得面试行锁 → 写入接受记录</text>
+
+    <line x1="726" y1="294" x2="1074" y2="294" stroke="#C62828" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <text x="900" y="288" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#C62828">4  B 拿到锁后当前读复查 → 命中 → 拒绝</text>
+  </g>
+
+  <g id="problem">
+    <path fill="#C62828" fill-opacity="0.06" d="M72,336 H496 A8,8 0 0 1 504,344 V448 A8,8 0 0 1 496,456 H72 A8,8 0 0 1 64,448 V344 A8,8 0 0 1 72,336 Z" />
+    <rect x="64" y="336" width="4" height="120" fill="#C62828" />
+    <path fill="#C62828" fill-opacity="0.12" d="M88,352 H132 A4,4 0 0 1 136,356 V370 A4,4 0 0 1 132,374 H88 A4,4 0 0 1 84,370 V356 A4,4 0 0 1 88,352 Z" />
+    <text x="110" y="368" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">问题</text>
+    <text x="84" y="402" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">同一候选人用两条不同的码并发接受同一</text>
+    <text x="84" y="424" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">场面试 —— 仅靠「先查后写」在并发下会</text>
+    <text x="84" y="446" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">双双通过，候选人列表里出现重复项。</text>
+  </g>
+
+  <g id="solution">
+    <path fill="#2E7D32" fill-opacity="0.06" d="M532,336 H1208 A8,8 0 0 1 1216,344 V448 A8,8 0 0 1 1208,456 H532 A8,8 0 0 1 524,448 V344 A8,8 0 0 1 532,336 Z" />
+    <rect x="524" y="336" width="4" height="120" fill="#2E7D32" />
+    <path fill="#2E7D32" fill-opacity="0.12" d="M548,352 H592 A4,4 0 0 1 596,356 V370 A4,4 0 0 1 592,374 H548 A4,4 0 0 1 544,370 V356 A4,4 0 0 1 548,352 Z" />
+    <text x="570" y="368" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#2E7D32">解法</text>
+    <text x="544" y="402" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">用<tspan font-weight="700" fill="#2E7D32">面试行锁</tspan>（<tspan font-family="Consolas, Courier New, monospace" fill="#2E7D32">SELECT … FOR UPDATE</tspan>）串行化同一场面试的接受，</text>
+    <text x="544" y="424" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">并在锁内以<tspan font-weight="700" fill="#2E7D32">当前读</tspan>复查；拿锁后还要重新当前读邀请行，确认它仍是</text>
+    <text x="544" y="446" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">pending —— 挡住「同一条码被并发接受」与「两条码并发接受」两条路径。</text>
+  </g>
+
+  <g id="note-snapshot-read">
+    <path fill="#F2F6FA" d="M72,472 H424 A8,8 0 0 1 432,480 V616 A8,8 0 0 1 424,624 H72 A8,8 0 0 1 64,616 V480 A8,8 0 0 1 72,472 Z" />
+    <text x="84" y="502" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#1565C0">为什么必须当前读</text>
+    <line x1="84" y1="514" x2="412" y2="514" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="542" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">本事务的快照可能早于并发事务的提交，</text>
+    <text x="84" y="564" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">快照读读不到并发事务刚写入的那条接受</text>
+    <text x="84" y="586" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">记录 —— 于是复核形同虚设。</text>
+    <text x="84" y="610" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">快照读 ≠ 能看见别人刚提交的写。</text>
+  </g>
+
+  <g id="note-lock-target">
+    <path fill="#F2F6FA" d="M464,472 H816 A8,8 0 0 1 824,480 V616 A8,8 0 0 1 816,624 H464 A8,8 0 0 1 456,616 V480 A8,8 0 0 1 464,472 Z" />
+    <text x="476" y="502" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#1565C0">为什么锁面试行</text>
+    <line x1="476" y1="514" x2="804" y2="514" stroke="#DCE5EE" stroke-width="1" />
+    <text x="476" y="542" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">对「尚不存在的接受记录」加锁，只会拿到</text>
+    <text x="476" y="564" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">间隙锁，挡不住并发；面试行才是这场绑定</text>
+    <text x="476" y="586" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">的真实归属，锁它才有意义。</text>
+    <text x="476" y="610" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">锁的对象要选并发的真正争用点。</text>
+  </g>
+
+  <g id="note-lock-position">
+    <path fill="#F2F6FA" d="M856,472 H1208 A8,8 0 0 1 1216,480 V616 A8,8 0 0 1 1208,624 H856 A8,8 0 0 1 848,616 V480 A8,8 0 0 1 856,472 Z" />
+    <text x="868" y="502" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" font-weight="700" fill="#F57C00">为什么加锁位置在后</text>
+    <line x1="868" y1="514" x2="1196" y2="514" stroke="#DCE5EE" stroke-width="1" />
+    <text x="868" y="542" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">新建账号会 <tspan font-family="Consolas, Courier New, monospace">commit</tspan>，而 commit 会释放</text>
+    <text x="868" y="564" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">本事务已持有的锁 —— 先加锁等于白加。</text>
+    <text x="868" y="586" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#1F2733">所以必须放在 <tspan font-family="Consolas, Courier New, monospace">create_candidate_account</tspan></text>
+    <text x="868" y="610" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">之后，而不是事务一开始。</text>
+  </g>
+</svg>

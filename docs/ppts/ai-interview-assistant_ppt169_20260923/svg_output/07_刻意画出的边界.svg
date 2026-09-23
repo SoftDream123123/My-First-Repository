@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">刻意画出的边界</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">01 项目概述与背景</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P07 / 35</text>
+  </g>
+
+  <g id="boundary-1">
+    <circle cx="86" cy="180" r="17" fill="#E3EDF9"/>
+    <text x="86" y="185" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">1</text>
+    <rect x="120" y="169" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="185" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不做</text>
+    <text x="182" y="185" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">保留候选人上传的简历原文件</text>
+    <text x="182" y="209" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">上传仅取文字、不落盘、不建文件记录 —— 要留原件请本地自存</text>
+    <line x1="64" y1="226" x2="1216" y2="226" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="boundary-2">
+    <circle cx="86" cy="258" r="17" fill="#E3EDF9"/>
+    <text x="86" y="263" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">2</text>
+    <rect x="120" y="247" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="263" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不做</text>
+    <text x="182" y="263" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">后端生成 PDF</text>
+    <text x="182" y="287" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">PDF 由浏览器打印生成（<tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">window.print()</tspan>）—— 代价是不支持脱离浏览器的后台批量导出</text>
+    <line x1="64" y1="304" x2="1216" y2="304" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="boundary-3">
+    <circle cx="86" cy="336" r="17" fill="#E3EDF9"/>
+    <text x="86" y="341" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">3</text>
+    <rect x="120" y="325" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="341" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不发</text>
+    <text x="182" y="341" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">向候选人下发逐题分与雷达图</text>
+    <text x="182" y="365" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">默认不下发；仅由配置项 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">CANDIDATE_FEEDBACK_LEVEL</tspan> 决定是否放开<tspan font-weight="700" fill="#1F2733">总分</tspan></text>
+    <line x1="64" y1="382" x2="1216" y2="382" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="boundary-4">
+    <circle cx="86" cy="414" r="17" fill="#E3EDF9"/>
+    <text x="86" y="419" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">4</text>
+    <rect x="120" y="403" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="419" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不做</text>
+    <text x="182" y="419" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">邮件 / 站内通知</text>
+    <text x="182" y="443" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">邀请码在系统内展示与复制，由 HR 自行转达 —— 系统不承担送达保证</text>
+    <line x1="64" y1="460" x2="1216" y2="460" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="boundary-5">
+    <circle cx="86" cy="492" r="17" fill="#E3EDF9"/>
+    <text x="86" y="497" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">5</text>
+    <rect x="120" y="481" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="497" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不做</text>
+    <text x="182" y="497" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">流式出题</text>
+    <text x="182" y="521" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">只有评估环节走 SSE 流式；出题与准备提纲都是同步整批返回</text>
+    <line x1="64" y1="538" x2="1216" y2="538" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+
+  <g id="boundary-6">
+    <circle cx="86" cy="570" r="17" fill="#E3EDF9"/>
+    <text x="86" y="575" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">6</text>
+    <rect x="120" y="559" width="46" height="22" rx="4" fill="#C62828" fill-opacity="0.10"/>
+    <text x="143" y="575" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" font-weight="700" fill="#C62828">不做</text>
+    <text x="182" y="575" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" fill="#1F2733">多 worker 部署</text>
+    <text x="182" y="599" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">SSE 运行注册表与刷题限流计数都在进程内，<tspan font-family="Consolas, Courier New, monospace" fill="#C62828">--workers 1</tspan> 是硬性要求</text>
+    <line x1="64" y1="616" x2="1216" y2="616" stroke="#DCE5EE" stroke-width="1"/>
+  </g>
+</svg>

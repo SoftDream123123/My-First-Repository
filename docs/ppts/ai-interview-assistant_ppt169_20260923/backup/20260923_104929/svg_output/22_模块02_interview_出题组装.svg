@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块② interview：出题组装的确定性抽取</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P22 / 35</text>
+  </g>
+
+  <g id="code-block">
+    <rect x="64" y="182" width="600" height="442" fill="#F2F6FA"/>
+    <path d="M 72 148 h 584 a 8 8 0 0 1 8 8 v 26 h -600 v -26 a 8 8 0 0 1 8 -8 Z" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/codeblock" x="80" y="156" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="108" y="171" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">backend/app/interview/service.py:217-238 · 266</text>
+    <rect x="64" y="148" width="600" height="476" rx="8" fill="none" stroke="#DCE5EE" stroke-width="1"/>
+
+    <text x="84" y="196" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">def <tspan fill="#1565C0" font-weight="700">_round_robin_pick</tspan>(groups: dict[str, list],</text>
+    <text x="84" y="213" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">                      dimensions: list[str], count: int):</text>
+    <text x="84" y="230" font-family="Consolas, Courier New, monospace" font-size="14" fill="#5A6B7D">    """按维度轮询抽取，保证各维度题目数尽量平均。</text>
+    <text x="84" y="247" font-family="Consolas, Courier New, monospace" font-size="14" fill="#5A6B7D">    组内已按 id 升序 —— 抽取结果完全确定，便于测试断言。"""</text>
+    <text x="84" y="264" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    cursors = {dim: 0 for dim in dimensions}</text>
+    <text x="84" y="281" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    picked: list = []</text>
+    <text x="84" y="298" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    while len(picked) &lt; count:</text>
+    <text x="84" y="315" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        progressed = False</text>
+    <text x="84" y="332" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">        for dim in dimensions:</text>
+    <text x="84" y="349" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">            if len(picked) &gt;= count:</text>
+    <text x="84" y="366" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">                break</text>
+    <text x="84" y="383" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">            index = cursors[dim]</text>
+    <text x="84" y="400" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">            if index &lt; len(groups[dim]):</text>
+    <text x="84" y="417" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">                picked.append(groups[dim][index])</text>
+    <text x="84" y="434" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">                cursors[dim] = index + 1</text>
+    <text x="84" y="451" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">                progressed = True</text>
+    <text x="84" y="468" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">        if not progressed:  # 所有维度都已抽空</text>
+    <text x="84" y="485" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">            break</text>
+    <text x="84" y="502" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    return picked</text>
+    <text x="84" y="530" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># service.py:266 —— 差额补足公式，总题数恒为 N + M</text>
+    <text x="84" y="547" font-family="Consolas, Courier New, monospace" font-size="14" fill="#F57C00">need_ai = want_from_ai + (want_from_bank - len(picked))</text>
+    <text x="84" y="576" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 防御：AI 返回的维度若不在岗位维度列表内，丢弃该条</text>
+    <text x="84" y="593" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0">generated = [g for g in generated if g.dimension in dimensions]</text>
+  </g>
+
+  <g id="point-1">
+    <rect x="688" y="148" width="528" height="84" rx="8" fill="#F2F6FA"/>
+    <text x="706" y="174" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">目标</text>
+    <text x="706" y="200" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">题库抽 <tspan font-weight="700" fill="#1565C0">N（默认 5）</tspan> + AI 补 <tspan font-weight="700" fill="#1565C0">M（默认 3）</tspan></text>
+    <text x="706" y="222" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">合并成题目列表，并逐题写入内容快照</text>
+  </g>
+
+  <g id="point-2">
+    <rect x="688" y="245" width="528" height="84" rx="8" fill="#F2F6FA"/>
+    <text x="706" y="271" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#00897B">round-robin 抽取</text>
+    <text x="706" y="297" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">按维度轮询，<tspan font-weight="700" fill="#00897B">组内按 id 升序</tspan></text>
+    <text x="706" y="319" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">保证各维度抽到的题目数尽量平均</text>
+  </g>
+
+  <g id="point-3">
+    <rect x="688" y="342" width="528" height="84" rx="8" fill="#F2F6FA"/>
+    <text x="706" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#00897B">可预测性是刻意追求的</text>
+    <text x="706" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">相同数据状态下，出题结果<tspan font-weight="700" fill="#00897B">完全确定</tspan></text>
+    <text x="706" y="416" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">因此测试可以直接断言抽到哪几题</text>
+  </g>
+
+  <g id="point-4">
+    <rect x="688" y="439" width="528" height="84" rx="8" fill="#F2F6FA"/>
+    <text x="706" y="465" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#F57C00">差额补足公式</text>
+    <text x="706" y="491" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733"><tspan font-family="Consolas, Courier New, monospace" fill="#F57C00">need_ai = M + (N - K)</tspan>，K 为实际抽到的题库题数</text>
+    <text x="706" y="513" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">总题数恒为 N + M = 8，题库不足时由 AI 补足差额</text>
+  </g>
+
+  <g id="point-5">
+    <rect x="688" y="536" width="528" height="84" rx="8" fill="#F2F6FA"/>
+    <text x="706" y="562" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#C62828">事务边界</text>
+    <text x="706" y="588" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">建面试 + 出题组装 + 置 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">ongoing</tspan> 在<tspan font-weight="700" fill="#C62828">同一事务</tspan>内</text>
+    <text x="706" y="610" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">AI 出题失败 → 整体回滚，不留下半成品面试</text>
+  </g>
+</svg>

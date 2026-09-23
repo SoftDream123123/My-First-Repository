@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0" />
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0" />
+    </marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#C62828" />
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF" />
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">八个模块与依赖方向</text>
+    <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">03 技术栈</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1" />
+    <text x="64" y="658" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#93A1B0">P16 / 35</text>
+  </g>
+
+  <g id="allowed-edges">
+    <line x1="620" y1="222" x2="540" y2="258" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="280" y1="312" x2="248" y2="348" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="430" y1="312" x2="560" y2="348" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="570" y1="312" x2="1000" y2="348" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="770" y1="312" x2="690" y2="348" stroke="#00897B" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="910" y1="312" x2="1040" y2="348" stroke="#00897B" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="234" y1="402" x2="234" y2="438" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="640" y1="402" x2="640" y2="438" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <line x1="1046" y1="402" x2="1046" y2="438" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+  </g>
+
+  <g id="forbidden-edges">
+    <line x1="686" y1="287" x2="598" y2="287" stroke="#C62828" stroke-width="2" stroke-dasharray="7,4" marker-end="url(#arrowRed)" />
+    <line x1="880" y1="352" x2="582" y2="318" stroke="#C62828" stroke-width="2" stroke-dasharray="7,4" marker-end="url(#arrowRed)" />
+    <path fill="#FFFFFF" d="M704,268 H772 A4,4 0 0 1 776,272 V284 A4,4 0 0 1 772,288 H704 A4,4 0 0 1 700,284 V272 A4,4 0 0 1 704,268 Z" />
+    <text x="738" y="282" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">禁止反向</text>
+    <path fill="#FFFFFF" d="M690,312 H758 A4,4 0 0 1 762,316 V328 A4,4 0 0 1 758,332 H690 A4,4 0 0 1 686,328 V316 A4,4 0 0 1 690,312 Z" />
+    <text x="724" y="326" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" font-weight="700" fill="#C62828">禁止反向</text>
+  </g>
+
+  <g id="node-evaluation">
+    <path fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5" d="M476,172 H804 A6,6 0 0 1 810,178 V216 A6,6 0 0 1 804,222 H476 A6,6 0 0 1 470,216 V178 A6,6 0 0 1 476,172 Z" />
+    <text x="640" y="194" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#2E7D32">evaluation</text>
+    <text x="640" y="212" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">读回答生成报告与候选人反馈</text>
+  </g>
+
+  <g id="node-interview">
+    <path fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5" d="M256,262 H584 A6,6 0 0 1 590,268 V306 A6,6 0 0 1 584,312 H256 A6,6 0 0 1 250,306 V268 A6,6 0 0 1 256,262 Z" />
+    <text x="420" y="284" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">interview</text>
+    <text x="420" y="302" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">出题组装 · 作答邀请 · 状态机</text>
+  </g>
+
+  <g id="node-practice">
+    <path fill="#FFFFFF" stroke="#00897B" stroke-width="1.5" d="M696,262 H1024 A6,6 0 0 1 1030,268 V306 A6,6 0 0 1 1024,312 H696 A6,6 0 0 1 690,306 V268 A6,6 0 0 1 696,262 Z" />
+    <text x="860" y="284" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#00897B">practice</text>
+    <text x="860" y="302" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">刷题会话 · 判分 · 推荐</text>
+  </g>
+
+  <g id="node-resources">
+    <path fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5" d="M70,352 H398 A6,6 0 0 1 404,358 V396 A6,6 0 0 1 398,402 H70 A6,6 0 0 1 64,396 V358 A6,6 0 0 1 70,352 Z" />
+    <text x="234" y="374" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">position</text>
+    <text x="234" y="392" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">岗位 · JD · 评估维度</text>
+
+    <path fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5" d="M476,352 H804 A6,6 0 0 1 810,358 V396 A6,6 0 0 1 804,402 H476 A6,6 0 0 1 470,396 V358 A6,6 0 0 1 476,352 Z" />
+    <text x="640" y="374" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">question</text>
+    <text x="640" y="392" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">题库（两条业务线共用）</text>
+
+    <path fill="#FFFFFF" stroke="#F57C00" stroke-width="1.5" d="M882,352 H1210 A6,6 0 0 1 1216,358 V396 A6,6 0 0 1 1210,402 H882 A6,6 0 0 1 876,396 V358 A6,6 0 0 1 882,352 Z" />
+    <text x="1046" y="374" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#F57C00">resume</text>
+    <text x="1046" y="392" text-anchor="middle" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">候选人单侧写入，只被依赖</text>
+  </g>
+
+  <g id="node-auth">
+    <path fill="#1565C0" fill-opacity="0.08" stroke="#1565C0" stroke-width="1" d="M70,442 H1210 A6,6 0 0 1 1216,448 V484 A6,6 0 0 1 1210,490 H70 A6,6 0 0 1 64,484 V448 A6,6 0 0 1 70,442 Z" />
+    <text x="88" y="464" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">auth</text>
+    <text x="88" y="482" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">账号 · 角色 · 令牌</text>
+    <text x="1216" y="474" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">所有业务模块均依赖它做<tspan font-weight="700" fill="#1565C0">鉴权与数据隔离</tspan></text>
+  </g>
+
+  <g id="node-foundation">
+    <path fill="#F2F6FA" stroke="#DCE5EE" stroke-width="1" d="M70,530 H618 A6,6 0 0 1 624,536 V578 A6,6 0 0 1 618,584 H70 A6,6 0 0 1 64,578 V536 A6,6 0 0 1 70,530 Z" />
+    <text x="88" y="552" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#5A6B7D">core</text>
+    <text x="88" y="572" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">配置 · 数据库会话 · 依赖注入 · 错误体系 —— 所有模块依赖它</text>
+
+    <path fill="#F2F6FA" stroke="#DCE5EE" stroke-width="1" d="M662,530 H1210 A6,6 0 0 1 1216,536 V578 A6,6 0 0 1 1210,584 H662 A6,6 0 0 1 656,578 V536 A6,6 0 0 1 662,530 Z" />
+    <text x="680" y="552" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#5A6B7D">ai</text>
+    <text x="680" y="572" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="11" fill="#5A6B7D">被 interview（出题）· evaluation（评分）· practice（判分）调用</text>
+  </g>
+
+  <g id="legend">
+    <line x1="64" y1="612" x2="94" y2="612" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)" />
+    <text x="106" y="616" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">实线：允许的依赖，依赖方向向下</text>
+    <line x1="420" y1="612" x2="450" y2="612" stroke="#C62828" stroke-width="2" stroke-dasharray="7,4" marker-end="url(#arrowRed)" />
+    <text x="462" y="616" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#C62828">红线：被架构测试禁止的反向边</text>
+    <text x="800" y="616" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">core / ai 的依赖关系以框内文字标注</text>
+  </g>
+</svg>

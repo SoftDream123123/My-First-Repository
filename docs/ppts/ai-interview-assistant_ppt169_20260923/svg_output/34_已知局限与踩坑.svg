@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">已知局限与踩过的坑</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">05 收获与展望</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P34 / 35</text>
+  </g>
+
+  <g id="limit-1">
+    <rect x="64" y="148" width="1152" height="80" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="148" width="4" height="80" fill="#F57C00"/>
+    <use data-icon="tabler-outline/server" x="88" y="164" width="22" height="22" fill="#F57C00" stroke-width="2"/>
+    <text x="124" y="180" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">单进程部署是硬约束</text>
+    <text x="124" y="202" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">SSE 运行注册表与刷题限流计数都在进程内，因此必须 <tspan font-family="Consolas, Courier New, monospace" fill="#C62828">--workers 1</tspan>。</text>
+    <text x="124" y="220" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">代价：要支持多 worker，须改用 Redis pub/sub 或 Celery + 结果后端。</text>
+  </g>
+
+  <g id="limit-2">
+    <rect x="64" y="236" width="1152" height="80" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="236" width="4" height="80" fill="#F57C00"/>
+    <use data-icon="tabler-outline/history" x="88" y="252" width="22" height="22" fill="#F57C00" stroke-width="2"/>
+    <text x="124" y="268" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">评估与作答都不留历史版本</text>
+    <text x="124" y="290" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">同一面试只保留最近一次评估结果；HR 覆盖候选人作答时只保留最新内容。</text>
+    <text x="124" y="308" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">代价：无法回溯「上一次评估给了多少分」，也无从对比候选人的修改轨迹。</text>
+  </g>
+
+  <g id="limit-3">
+    <rect x="64" y="324" width="1152" height="80" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="324" width="4" height="80" fill="#F57C00"/>
+    <use data-icon="tabler-outline/key" x="88" y="340" width="22" height="22" fill="#F57C00" stroke-width="2"/>
+    <text x="124" y="356" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">邀请码明文存储</text>
+    <text x="124" y="378" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">HR 需要在系统内复制并转达，因此无法哈希存储。</text>
+    <text x="124" y="396" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">缓解：长码（约 128 位熵）+ 短有效期 + 一次性 + 可撤销，四者叠加使用。</text>
+  </g>
+
+  <g id="limit-4">
+    <rect x="64" y="412" width="1152" height="80" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="412" width="4" height="80" fill="#F57C00"/>
+    <use data-icon="tabler-outline/chart-radar" x="88" y="428" width="22" height="22" fill="#F57C00" stroke-width="2"/>
+    <text x="124" y="444" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">刷题推荐只从池内挑</text>
+    <text x="124" y="466" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">候选池是 <tspan font-family="Consolas, Courier New, monospace">min(size×4, 100)</tspan> 条；超出池上限时，排在后面的题永远进不了推荐。</text>
+    <text x="124" y="484" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">代价：题库越大，长尾题目越难被练到 —— 这是一次有意的成本取舍。</text>
+  </g>
+
+  <g id="limit-5">
+    <rect x="64" y="500" width="1152" height="80" rx="8" fill="#F2F6FA"/>
+    <rect x="64" y="500" width="4" height="80" fill="#F57C00"/>
+    <use data-icon="tabler-outline/upload" x="88" y="516" width="22" height="22" fill="#F57C00" stroke-width="2"/>
+    <text x="124" y="532" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1F2733">上传体积上限拦不住「服务器已经收完的请求体」</text>
+    <text x="124" y="554" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">Starlette 在进入视图函数前已把请求体缓冲下来，<tspan font-family="Consolas, Courier New, monospace">read(limit+1)</tspan> 省的是<tspan font-weight="700">我们的</tspan>内存，不是服务器的。</text>
+    <text x="124" y="572" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">真正在请求发出前拦住大文件的是前端那道 <tspan font-family="Consolas, Courier New, monospace">file.size</tspan> 预检 —— 这是前后端各一半的防线。</text>
+  </g>
+
+  <g id="closing-band">
+    <rect x="64" y="592" width="1152" height="40" rx="8" fill="#C62828" fill-opacity="0.07"/>
+    <use data-icon="tabler-outline/bug" x="84" y="600" width="22" height="22" fill="#C62828" stroke-width="2"/>
+    <text x="116" y="617" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">一条测试方法上的教训：变异检查（把缺陷植回去、断言必须失败）至今做了 <tspan font-weight="700" fill="#C62828">33 次</tspan>，抓出 5 个真 bug + 6 处原型与真实契约的偏差 —— 其中一个是<tspan font-weight="700" fill="#C62828">看截图看出来的</tspan>，断言当时是绿的。</text>
+  </g>
+</svg>
