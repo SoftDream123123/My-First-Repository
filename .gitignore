@@ -19,3 +19,8 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Office 临时/锁文件（Word、Excel、PowerPoint 打开文档时生成 owner 文件，
+# 内容只有用户名和空字节 —— 关掉文档后它们会自己消失，不该入库）
+~$*
+.~lock.*#
