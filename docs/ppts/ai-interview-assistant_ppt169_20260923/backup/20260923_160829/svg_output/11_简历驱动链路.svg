@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">简历驱动链路</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">02 业务流程</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P11 / 35</text>
+  </g>
+
+  <g id="chevron-chain">
+    <polygon points="64,152 208,152 244,196 208,240 64,240 100,196" fill="#0B2E52"/>
+    <text x="164" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">HR 建面试</text>
+    <text x="164" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 01</text>
+
+    <polygon points="258,152 402,152 438,196 402,240 258,240 294,196" fill="#1565C0"/>
+    <text x="358" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">HR 发邀请码</text>
+    <text x="358" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 02</text>
+
+    <polygon points="453,152 597,152 633,196 597,240 453,240 489,196" fill="#00897B"/>
+    <text x="553" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">候选人激活</text>
+    <text x="553" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 03</text>
+
+    <polygon points="647,152 791,152 827,196 791,240 647,240 683,196" fill="#00897B"/>
+    <text x="747" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">录并关联简历</text>
+    <text x="747" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 04</text>
+
+    <polygon points="842,152 986,152 1022,196 986,240 842,240 878,196" fill="#1565C0"/>
+    <text x="942" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">按简历补题</text>
+    <text x="942" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 05</text>
+
+    <polygon points="1036,152 1180,152 1216,196 1180,240 1036,240 1072,196" fill="#F57C00"/>
+    <text x="1136" y="192" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#FFFFFF">收口与报告</text>
+    <text x="1136" y="216" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#EAF2FB" fill-opacity="0.75">STAGE 06</text>
+  </g>
+
+  <g id="stage-outputs">
+    <text x="164" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">面试 + 8 道题</text>
+    <text x="164" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">HR 发起</text>
+
+    <text x="358" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">一次性邀请码</text>
+    <text x="358" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">HR 发起</text>
+
+    <text x="553" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">账号 + 绑定面试</text>
+    <text x="553" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#00897B">候选人发起</text>
+
+    <text x="747" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">简历归属候选人</text>
+    <text x="747" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#00897B">候选人发起</text>
+
+    <text x="942" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">追加题 + 准备提纲</text>
+    <text x="942" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">HR 发起</text>
+
+    <text x="1136" y="272" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">报告 + DOCX 导出</text>
+    <text x="1136" y="294" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">HR 发起</text>
+  </g>
+
+  <g id="key-calls">
+    <rect x="64" y="318" width="1152" height="74" rx="8" fill="#F2F6FA"/>
+    <text x="88" y="342" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#93A1B0" letter-spacing="1">两处关键调用</text>
+    <rect x="88" y="352" width="336" height="28" rx="4" fill="#00897B" fill-opacity="0.10"/>
+    <text x="102" y="371" font-family="Consolas, Courier New, monospace" font-size="12" fill="#00897B">PUT /candidate/interviews/{id}/resume</text>
+    <text x="436" y="371" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">候选人把简历关联到本场面试</text>
+    <rect x="790" y="352" width="300" height="28" rx="4" fill="#1565C0" fill-opacity="0.10"/>
+    <text x="804" y="371" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">POST /interviews/{id}/questions/match</text>
+    <text x="1102" y="371" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">HR 按简历补题</text>
+  </g>
+
+  <g id="core-facts">
+    <circle cx="72" cy="428" r="3" fill="#1565C0"/>
+    <text x="88" y="434" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">简历由<tspan font-weight="700" fill="#00897B">候选人单侧提交</tspan>，出现在面试创建<tspan font-weight="700" fill="#00897B">之后</tspan> —— 因此关联动作也由候选人发起</text>
+    <circle cx="72" cy="470" r="3" fill="#1565C0"/>
+    <text x="88" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">这是 <tspan font-weight="700" fill="#1565C0">HR 能看到候选人简历的唯一通路</tspan>（简历表不反向依赖任何业务模块）</text>
+    <circle cx="72" cy="512" r="3" fill="#1565C0"/>
+    <text x="88" y="518" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#1F2733">同一份简历可被<tspan font-weight="700" fill="#1565C0">多场面试</tspan>与<tspan font-weight="700" fill="#1565C0">多次练习</tspan>复用 —— 刷题推荐读的是同一张表</text>
+  </g>
+
+  <g id="ownership-band">
+    <rect x="64" y="556" width="1152" height="60" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/route" x="88" y="572" width="28" height="28" fill="#1565C0" stroke-width="2"/>
+    <text x="132" y="580" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1F2733">谁写入、谁消费</text>
+    <text x="132" y="602" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#5A6B7D">候选人写入（唯一写方） · HR 消费（按简历补题） · 候选人消费（按简历推荐刷题）</text>
+  </g>
+</svg>

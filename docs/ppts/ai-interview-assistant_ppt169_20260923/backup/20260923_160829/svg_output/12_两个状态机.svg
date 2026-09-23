@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#C62828"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#93A1B0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">两个状态机</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">02 业务流程</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P12 / 35</text>
+  </g>
+
+  <g id="fsm-a-label">
+    <text x="64" y="158" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">面试状态机 · 5 态</text>
+    <text x="860" y="158" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#93A1B0">与作答邀请<tspan font-weight="700" fill="#5A6B7D">完全解耦</tspan></text>
+  </g>
+
+  <g id="fsm-a-rollback">
+    <path d="M 612,200 C 612,166 462,166 462,196" fill="none" stroke="#C62828" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowRed)"/>
+    <path d="M 645,200 C 645,166 795,166 795,196" fill="none" stroke="#C62828" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrowRed)"/>
+    <text x="543" y="178" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#C62828">失败回退：无旧报告 → completed</text>
+    <text x="720" y="152" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#C62828">有旧报告 → evaluated</text>
+  </g>
+
+  <g id="fsm-a-nodes">
+    <line x1="194" y1="230" x2="226" y2="230" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <line x1="360" y1="230" x2="393" y2="230" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <line x1="527" y1="230" x2="559" y2="230" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <line x1="693" y1="230" x2="726" y2="230" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="64" y="200" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#93A1B0" stroke-width="1.5"/>
+    <text x="129" y="226" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#5A6B7D">draft</text>
+    <text x="129" y="246" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">草稿</text>
+
+    <rect x="230" y="200" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="295" y="226" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">ongoing</text>
+    <text x="295" y="246" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">进行中</text>
+
+    <rect x="397" y="200" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="462" y="226" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">completed</text>
+    <text x="462" y="246" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">已完成</text>
+
+    <rect x="563" y="200" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#F57C00" stroke-width="1.5"/>
+    <text x="628" y="226" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#F57C00">evaluating</text>
+    <text x="628" y="246" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">评估中</text>
+
+    <rect x="730" y="200" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="795" y="226" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#2E7D32">evaluated</text>
+    <text x="795" y="246" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">已评估</text>
+  </g>
+
+  <g id="fsm-a-backedges">
+    <path d="M 430,260 L 430,300 L 336,300 L 336,264" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="8,4" marker-end="url(#arrowBlue)"/>
+    <path d="M 790,260 L 790,304 L 645,304 L 645,264" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="8,4" marker-end="url(#arrowBlue)"/>
+    <path d="M 830,260 L 830,332 L 300,332 L 300,264" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="8,4" marker-end="url(#arrowBlue)"/>
+    <text x="372" y="294" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">completed → ongoing</text>
+    <text x="662" y="320" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">evaluated → evaluating</text>
+    <text x="470" y="348" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#1565C0">evaluated → ongoing（重评）</text>
+  </g>
+
+  <g id="fsm-b-label">
+    <text x="64" y="392" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#00897B">作答邀请状态机 · 4 态</text>
+  </g>
+
+  <g id="fsm-b-nodes">
+    <path d="M 165,412 C 165,386 573,386 573,412" fill="none" stroke="#00897B" stroke-width="1.5" stroke-dasharray="8,4" marker-end="url(#arrowGray)"/>
+    <text x="369" y="396" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#00897B">pending → revoked</text>
+
+    <line x1="194" y1="438" x2="282" y2="438" stroke="#00897B" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+    <line x1="416" y1="438" x2="504" y2="438" stroke="#00897B" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+
+    <path d="M 129,468 C 129,502 795,502 795,468" fill="none" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="8,4" marker-end="url(#arrowGray)"/>
+    <text x="440" y="498" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">pending → expired（读取时派生）</text>
+
+    <rect x="64" y="408" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="129" y="434" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">pending</text>
+    <text x="129" y="454" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">待接受</text>
+
+    <rect x="286" y="408" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="351" y="434" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#2E7D32">accepted</text>
+    <text x="351" y="454" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">已接受</text>
+
+    <rect x="508" y="408" width="130" height="60" rx="6" fill="#FFFFFF" stroke="#C62828" stroke-width="1.5"/>
+    <text x="573" y="434" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#C62828">revoked</text>
+    <text x="573" y="454" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">已撤销</text>
+
+    <rect x="730" y="408" width="130" height="60" rx="6" fill="#F2F6FA" stroke="#93A1B0" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="795" y="434" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#93A1B0">expired</text>
+    <text x="795" y="454" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">已过期 · 不落库</text>
+  </g>
+
+  <g id="fsm-b-note">
+    <rect x="64" y="540" width="796" height="72" rx="8" fill="#F2F6FA"/>
+    <use data-icon="tabler-outline/key" x="88" y="556" width="24" height="24" fill="#00897B" stroke-width="2"/>
+    <text x="124" y="566" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#1F2733"><tspan font-weight="700" fill="#00897B">expired 读取时派生、不落库</tspan> —— 状态由 expires_at 与当前时间比较得出</text>
+    <text x="124" y="594" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#1F2733"><tspan font-weight="700" fill="#C62828">accepted → revoked 有意允许</tspan> —— 这是切断候选人访问的唯一手段</text>
+  </g>
+
+  <g id="migration-table">
+    <rect x="884" y="148" width="332" height="476" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="904" y="176" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#1565C0">合法迁移表</text>
+    <line x1="904" y1="188" x2="1196" y2="188" stroke="#DCE5EE" stroke-width="1"/>
+
+    <text x="904" y="210" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#93A1B0" letter-spacing="1">面试状态机</text>
+    <text x="904" y="234" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">draft → ongoing</text>
+    <text x="904" y="260" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">ongoing → completed</text>
+    <text x="904" y="286" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">completed → ongoing</text>
+    <text x="904" y="312" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">completed → evaluating</text>
+    <text x="904" y="338" font-family="Consolas, Courier New, monospace" font-size="13" fill="#2E7D32">evaluating → evaluated</text>
+    <text x="904" y="364" font-family="Consolas, Courier New, monospace" font-size="13" fill="#C62828">evaluating → completed</text>
+    <text x="904" y="390" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">evaluated → ongoing</text>
+    <text x="904" y="416" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">evaluated → evaluating</text>
+
+    <line x1="904" y1="432" x2="1196" y2="432" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="904" y="454" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" font-weight="700" fill="#93A1B0" letter-spacing="1">作答邀请状态机</text>
+    <text x="904" y="478" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">pending → accepted</text>
+    <text x="904" y="504" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">pending → revoked</text>
+    <text x="904" y="530" font-family="Consolas, Courier New, monospace" font-size="13" fill="#93A1B0">pending → expired</text>
+
+    <rect x="904" y="552" width="292" height="56" rx="6" fill="#F2F6FA"/>
+    <use data-icon="tabler-outline/circle-x" x="918" y="566" width="20" height="20" fill="#C62828" stroke-width="2"/>
+    <text x="946" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#C62828">未列出的迁移一律 409</text>
+    <text x="946" y="598" font-family="Consolas, Courier New, monospace" font-size="12" fill="#5A6B7D">detail: {from, to}</text>
+  </g>
+</svg>

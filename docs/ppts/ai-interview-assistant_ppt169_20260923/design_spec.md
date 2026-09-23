@@ -275,15 +275,15 @@ Catalog read: 71 templates
 | ---- | -------- | ---- | ------------------------------------------------- | ----- |
 | P04 | comparison_table | `templates/charts/comparison_table.svg` | "Pick for 2-4 plans/products compared across many feature rows (dense matrix). Skip for pricing-tier marketing layout (use comparison_columns)." | 「痛点现状 vs 本产品应对」两列稠密对照表，5 行对齐 |
 | P05 | vertical_pillars | `templates/charts/vertical_pillars.svg` | "Pick for 1×3 / 1×4 / 1×5 vertical column layout where each pillar = one independent category with title + bullets — PEST (Political/Economic/Social/Technological), four-pillar strategy overview, side-by-side independent categories. Skip for 2×2 quadrant (use quadrant_text_bullets), pricing tiers (use comparison_columns), or 2×2 parallel aspects (use labeled_card)." | 三条业务闭环并排（HR / 候选人 / 简历驱动），每柱带要点 |
-| P06 | timeline | `templates/charts/timeline.svg` | "Pick for 3-8 milestone events on a horizontal time axis (no duration). Skip for tasks with start/end ranges (use gantt_chart) or vertical layout (use roadmap_vertical)." | MVP-1 → MVP-4 四个版本里程碑（2026-09-15 / 09-20 / 09-20 / 09-22） |
+| P06 | timeline | `templates/charts/timeline.svg` | "Pick for 3-8 milestone events on a horizontal time axis (no duration). Skip for tasks with start/end ranges (use gantt_chart) or vertical layout (use roadmap_vertical)." | MVP-1 → MVP-5 五个版本里程碑（2026-09-15 / 09-20 / 09-20 / 09-22 / 09-23） |
 | P07 | vertical_list | `templates/charts/vertical_list.svg` | "Pick for 3-6 numbered key points each with a short description — design principles, core tenets, action items, key takeaways, recommendations, executive summary points. Skip for icon-style cards (use icon_grid) or sequential steps (use numbered_steps)." | 「刻意不做的六条边界」逐条列出不做 + 允许的替代 |
 | P09 | process_flow | `templates/charts/process_flow.svg` | "Pick for 3-8 sequential steps connected by simple arrows — approval workflows, customer onboarding, request handling, lifecycle stages. Skip if cyclical (use circular_stages) or stages produce named outputs (use pipeline_with_stages)." | HR 主线 7 步：建岗 → 建面试出题 → 准备 → 录答 → 完成 → 评估 → 报告 → 导出 |
 | P10 | process_flow | `templates/charts/process_flow.svg` | "Pick for 3-8 sequential steps connected by simple arrows — approval workflows, customer onboarding, request handling, lifecycle stages. Skip if cyclical (use circular_stages) or stages produce named outputs (use pipeline_with_stages)." | 候选人主线 6 步：拿码 → 激活 → 录简历 → 关联 → 作答交卷 → 读反馈 |
 | P11 | chevron_process | `templates/charts/chevron_process.svg` | "Pick for 3-6 phase methodology with chunky arrow-chain progression and deliverables per phase. Skip for <=2 phases or non-linear flow (use process_flow), or chain ending in an aggregate outcome wedge (use chevron_chain_with_tail)." | 简历驱动链路 6 阶段，与 P09/P10 的 process_flow 做视觉区分 |
 | P14 | icon_grid | `templates/charts/icon_grid.svg` | "Pick for 4-9 parallel features/capabilities/services as icon cards — feature grid, service lineup, benefits matrix, brand values, product highlights. Skip for sequential ordering (use numbered_steps) or hierarchical layers (use pyramid_chart)." | 技术栈八项能力卡（语言 / 框架 / 库 / 前端 / 分层 / AI / 部署 / 测试） |
 | P15 | layered_architecture | `templates/charts/layered_architecture.svg` | "Pick for 3-4 horizontal architecture layers (presentation/service/data), 2-4 module cards per layer, each card = title + 1-line description (description required, even if source brief). Skip if no per-module descriptions (use icon_grid) or no horizontal layering (use module_composition)." | router → service → repository → MySQL 四层，逐层写职责一句话 |
-| P17 | basic_table | `templates/charts/basic_table.svg` | "Pick for plain tabular text/number grid, 3-8 columns. Skip if cells need visual bars (use consulting_table) or qualitative scores (use harvey_balls_table)." | 15 张表按模块分组的实体—关键字段表 |
-| P18 | kpi_cards | `templates/charts/kpi_cards.svg` | "Pick for 4-8 standalone numeric metrics shown as overview cards (2x2 or 1x4) — exec summary opener, dashboard headline, quarterly recap, results-at-a-glance. Skip if metrics have target baselines (use bullet_chart) or single hero number (use gauge_chart)." | 工程规模四指标：1034 项后端测试 / 43 条接口路径 / 15 张表 / 8 个模块 |
+| P17 | basic_table | `templates/charts/basic_table.svg` | "Pick for plain tabular text/number grid, 3-8 columns. Skip if cells need visual bars (use consulting_table) or qualitative scores (use harvey_balls_table)." | 16 张表按模块分组的实体—关键字段表 |
+| P18 | kpi_cards | `templates/charts/kpi_cards.svg` | "Pick for 4-8 standalone numeric metrics shown as overview cards (2x2 or 1x4) — exec summary opener, dashboard headline, quarterly recap, results-at-a-glance. Skip if metrics have target baselines (use bullet_chart) or single hero number (use gauge_chart)." | 工程规模四指标：1601 项后端测试 / 48 条接口路径 / 16 张表 / 10 个 package |
 | P20 | basic_table | `templates/charts/basic_table.svg` | "Pick for plain tabular text/number grid, 3-8 columns. Skip if cells need visual bars (use consulting_table) or qualitative scores (use harvey_balls_table)." | AI 十能力 × 用途 × 调用方 三列契约表 |
 | P33 | vertical_list | `templates/charts/vertical_list.svg` | "Pick for 3-6 numbered key points each with a short description — design principles, core tenets, action items, key takeaways, recommendations, executive summary points. Skip for icon-style cards (use icon_grid) or sequential steps (use numbered_steps)." | 工程收获五条（架构约束可测试 / 契约先于实现 / 失败不静默降级 等） |
 | P34 | vertical_list | `templates/charts/vertical_list.svg` | "Pick for 3-6 numbered key points each with a short description — design principles, core tenets, action items, key takeaways, recommendations, executive summary points. Skip for icon-style cards (use icon_grid) or sequential steps (use numbered_steps)." | 已知局限与踩过的坑（五条，含原型与真实契约对不上的教训） |
@@ -294,7 +294,7 @@ Catalog read: 71 templates
 | Page | 内容 | Fallback 与理由 |
 | ---- | ---- | --------------- |
 | P12 | 两个状态机（面试 5 态 / 作答邀请 4 态） | 状态机不是环形、不是线性流程、不是时间轴：`circular_stages` 要求闭合循环（`Skip for linear flow`），`process_flow` 表达不了「未列出的迁移一律 409」这条反向约束。自定义「节点 + 有向边 + 合法迁移表」 |
-| P16 | 八个模块的依赖有向图 | 依赖是一张 **DAG 而非水平分层**，套 `layered_architecture` 会丢掉「practice 不依赖 interview」「resume 不反向依赖任何业务模块」这两条本项目最关键的约束。自定义有向图，用虚线标出两条**禁止**的反向边 |
+| P16 | 十个模块的依赖有向图 | 依赖是一张 **DAG 而非水平分层**，套 `layered_architecture` 会丢掉「practice 不依赖 interview」「resume 不反向依赖任何业务模块」这两条本项目最关键的约束。自定义有向图，用虚线标出两条**禁止**的反向边 |
 | P21, P23, P25, P26, P28, P30, P32 | 对象交互序列图、问题与解决 | **序列图**（生命线 + 激活条 + 编号消息）在 71 个模板中无对应项 —— 这是本套的技术核心图形，必须自定义绘制 |
 | P19 | 第 ④ 段讲解路线图 | 六个模块的讲解顺序 + 每个模块的固定三段式（实现 / 序列图 / 问题与解决），结构独特，自定义 |
 | P22, P24, P27, P29, P31 | 模块源码级实现页 | 代码块 + 结构标注的组合版式，无匹配模板 |
@@ -304,7 +304,7 @@ Catalog read: 71 templates
 
 - `numbered_steps` | rejected for P09: summary 明确 `Skip if steps need connector arrows (use process_flow)` —— HR 主线的七步之间是**有数据流转与依赖**的，必须用箭头连接器表达先后与产物流向，纯数字编号会丢掉这层信息。
 - `layered_architecture` | rejected for P16: 模块依赖不是水平分层，而是有向无环图。强行套分层模板会让「practice 与 interview 解耦」和「resume 不反向依赖」这两条架构测试钉住的约束在图上消失 —— 而它们恰恰是这一段要证明的东西。
-- `funnel_chart` | rejected for P06: MVP-1 → MVP-4 是**并列的版本里程碑**，不存在单调递减的转化损耗；funnel 的 summary 要求 `sequential conversion stages with monotonic drop-off`，套上去会凭空造出一个错误的「漏斗」语义。
+- `funnel_chart` | rejected for P06: MVP-1 → MVP-5 是**并列的版本里程碑**，不存在单调递减的转化损耗；funnel 的 summary 要求 `sequential conversion stages with monotonic drop-off`，套上去会凭空造出一个错误的「漏斗」语义。
 - `comparison_columns` | rejected for P04: 该模板是定价 / 服务分层的**营销版式**（大卡片 + 价格位），而 P04 需要的是逐行对齐的**稠密对照矩阵**（5 行痛点 × 2 列），用大卡片会把 5 行内容撑爆或被迫截断。
 - `quadrant_text_bullets` | rejected for P07: 「刻意不做的边界」是**并列的六条独立陈述**，不是 2×2 的双轴分类；强行放进四象限需要捏造两个分类轴，属于为套模板而改内容。
 
@@ -374,15 +374,16 @@ Catalog read: 71 templates
   - **简历驱动链路**（把两端缝起来的那条线）：HR 发码 → 候选人激活并关联简历 → HR 读简历并补题 → 准备 → 评估 → 报告
   - 一句话结论：简历由**候选人单侧提交**，被 HR 侧（补题）与候选人侧（刷题推荐）**两个方向消费**
 
-#### Slide 06 - 前世今生：MVP-1 → MVP-4 演进
+#### Slide 06 - 前世今生：MVP-1 → MVP-5 演进
 
-- **Layout**: 横向 timeline，四个里程碑节点；下方两行「新增模块 / 新增依赖」
+- **Layout**: 横向 timeline，**五个**里程碑节点；下方两行「新增模块 / 新增依赖」
 - **Visualization**: timeline (见 VII)
 - **Content**:
   - **MVP-1（2026-09-15）** HR 侧闭环：auth / position / question / interview / evaluation / ai 六模块，461 条用例验证
   - **MVP-2（2026-09-20）** 候选人侧：新增 `candidate` 角色、作答邀请、在线作答、脱敏反馈、`practice` 新模块
   - **MVP-3（2026-09-20）** 简历驱动与导出：`resume` 新模块、按简历补题、准备助手、DOCX 导出（新增依赖 `python-docx`）
   - **MVP-4（2026-09-22）** 简历上传解析与 AI 评估：新增 `pypdf` + `python-multipart`，新增能力 `evaluate_resume`，**不改任何表结构**
+  - **MVP-5（2026-09-23）** 手机验证码登录：新增 `sms` 包；`auth` 加手机号登录与 `accept` 免密分支；**加 1 表 1 列**（`phone_verification_code` + `user.phone`）；**无新依赖**（短信先只实现 Mock）
   - 一条贯穿始终的约束：**技术栈全程不变**（原生前端 + FastAPI + MySQL，不引入新框架与中间件）
 
 #### Slide 07 - 刻意画出的边界
@@ -457,7 +458,7 @@ Catalog read: 71 templates
 - **Content**:
   - 后端语言：**Python 3.11+**（本机验证于 3.13）
   - Web 框架：**FastAPI** —— 纯 API，不渲染页面
-  - 数据库：**MySQL 8.0+**（JSON 列与 ENUM 需 8.0+），单一库 15 张表
+  - 数据库：**MySQL 8.0+**（JSON 列与 ENUM 需 8.0+），单一库 16 张表
   - 前端：原生 **HTML + CSS + JavaScript**，**Vite** 构建 —— 无 UI 框架、无图表库、无状态管理库
   - 架构：前后端分离；开发期经 Vite 代理，演示期由后端托管（同源，无 CORS）
   - 分层：`router → service → repository → MySQL`，严格单向依赖
@@ -475,23 +476,25 @@ Catalog read: 71 templates
   - **ai 包**：能力抽象 —— 只接收原始值，被 interview / evaluation / practice 调用
   - 约束由测试钉住（`tests/test_architecture.py`）：router 不得引用 repository；repository 不得依赖 service / router；service 不得出现 `db.execute`；`ai` 不依赖任何业务模块；`core` 对业务模块只有函数体内延迟导入
 
-#### Slide 16 - 八个模块与依赖方向
+#### Slide 16 - 十个模块与依赖方向
 
-- **Layout**: 自定义有向图 —— 中心 `core` + `ai` 基础设施，外围 7 个业务模块；实线为允许依赖，**两条红色虚线标出被架构测试明确禁止的反向边**
+- **Layout**: 自定义有向图 —— 中心 `core` + `ai · sms` 基础设施，外围 7 个业务模块；实线为允许依赖，**两条红色虚线标出被架构测试明确禁止的反向边**
 - **Visualization**: 自定义（no-template-match，见 VII）
 - **Content**:
-  - 八个 package：`core` / `auth` / `position` / `question` / `resume` / `interview` / `evaluation` / `practice` / `ai`
+  - 十个 package：`core` / `auth` / `position` / `question` / `resume` / `interview` / `evaluation` / `practice` / `ai` / `sms`
   - 两条最关键的约束：
     - **`resume` 只被依赖、不反向依赖任何业务模块** —— 简历由候选人单侧写入，被 `interview`（补题）与 `practice`（推荐）单向依赖。若反向引用，会把 `practice ↔ interview` 的循环依赖引进来
     - **`practice` 不依赖 `interview`** —— 刷题与真实面试完全解耦，两条业务线各有各的记录表
-  - 其余：`ai` 是被调用的基础设施；`evaluation` 读 `interview` 的回答生成报告；各业务模块均依赖 `auth` 做鉴权与数据隔离
+  - 其余：`ai` 与 `sms` 合画**同一个框**（两者结构完全同构：可切换的能力提供方、不反向依赖任何业务模块；`ai` 被 interview / evaluation / practice 调用，`sms` 被 auth 调用）；`evaluation` 读 `interview` 的回答生成报告；各业务模块均依赖 `auth` 做鉴权与数据隔离
 
-#### Slide 17 - 数据模型：15 张表与快照设计
+#### Slide 17 - 数据模型：16 张表与快照设计
 
 - **Layout**: basic_table —— 按模块（auth / position / question / resume / interview / evaluation / practice）分组，列：实体 / 关键字段；右侧竖排「五个快照字段」说明
 - **Visualization**: basic_table (见 VII)
 - **Content**:
-  - 15 张表按包分组列出（`user` / `position` / `question` / `resume` / `interview` / `interview_question` / `answer` / `interview_invitation` / `interview_prep` / `question_score` / `dimension_score` / `report` / `candidate_feedback` / `practice_session` / `practice_item`）
+  - 16 张表按包分组列出（`user` / `phone_verification_code` / `position` / `question` / `resume` / `interview` / `interview_question` / `answer` / `interview_invitation` / `interview_prep` / `question_score` / `dimension_score` / `report` / `candidate_feedback` / `practice_session` / `practice_item`）
+  - **`user.phone` 可空且唯一**（MVP-5）：可空是因为绝大多数账号没有手机号；唯一是因为一个号只能绑一个账号。MySQL 唯一索引允许多个 NULL，所以两个要求可以同时满足，不需要额外机制
+  - **`phone_verification_code` 存哈希不存明文**（MVP-5）：`sha256(salt + code)`；一次性消费，新码发出即作废旧码；**不做后台清理**，过期与否在读取时现算
   - **快照字段是「题库删改不影响历史」的前提**：`content_snapshot` / `dimension_snapshot` / `source_snapshot` / `options_snapshot` / `reference_answer_snapshot`
   - **`candidate_feedback` 独立成表而非给 `report` 加列**：两份文本受众不同、可见性规则不同。独立成表让可见性边界落在**表**这一层 —— HR 报告接口**结构上读不到**候选人字段
   - 两处刻意缺失：**不设 `updated_at`**（报告重评即整行重建）、**不存总分**（改档位不需要重新生成反馈）
@@ -501,11 +504,11 @@ Catalog read: 71 templates
 - **Layout**: 1×4 kpi_cards —— 四个大数字；下方一行「测试不需要网络、不需要任何 API Key」
 - **Visualization**: kpi_cards (见 VII)
 - **Content**:
-  - **1034** 项后端测试（`python -m pytest` 全部走 Mock Provider）
-  - **43** 条接口路径 / 62 个 method-route
-  - **15** 张数据表 / **8** 个业务 package
+  - **1601** 项后端测试（`python -m pytest` 全部走 Mock Provider）
+  - **48** 条接口路径 / 64 个 method-route
+  - **16** 张数据表 / **10** 个 package
   - **128** 项端到端冒烟断言（对真实运行中的服务走通全链路）
-  - 补充：前端另有 25 项 Vitest 单测 + 8 个浏览器端 Mock 联调台（合计 700+ 断言），并做过 33 次**变异检查**（把缺陷植回去，断言必须失败）
+  - 补充：前端另有 145 项 Vitest 单测 + 8 个浏览器端 Mock 联调台（合计 700+ 断言），并做过 33 次**变异检查**（把缺陷植回去，断言必须失败）
 
 ### Part 4: 核心模块技术讲解
 

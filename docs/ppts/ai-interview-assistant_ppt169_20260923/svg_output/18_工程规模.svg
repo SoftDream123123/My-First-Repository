@@ -27,7 +27,7 @@
     <rect x="88" y="178" width="48" height="48" rx="10" fill="#1565C0" fill-opacity="0.10"/>
     <use data-icon="tabler-outline/test-pipe" x="96" y="186" width="32" height="32" fill="#1565C0" stroke-width="2"/>
     <text x="88" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">后端测试</text>
-    <text x="88" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">1034</text>
+    <text x="88" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">1601</text>
     <text x="88" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">项 · pytest</text>
     <text x="88" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">全部走 Mock Provider</text>
   </g>
@@ -37,8 +37,8 @@
     <rect x="382" y="178" width="48" height="48" rx="10" fill="#00897B" fill-opacity="0.10"/>
     <use data-icon="tabler-outline/route" x="390" y="186" width="32" height="32" fill="#00897B" stroke-width="2"/>
     <text x="382" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">接口规模</text>
-    <text x="382" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">43</text>
-    <text x="382" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">条路径 / 62 个 method-route</text>
+    <text x="382" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">48</text>
+    <text x="382" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">条路径 / 64 个 method-route</text>
     <text x="382" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">取自 openapi.json</text>
   </g>
 
@@ -47,8 +47,8 @@
     <rect x="676" y="178" width="48" height="48" rx="10" fill="#F57C00" fill-opacity="0.10"/>
     <use data-icon="tabler-outline/database" x="684" y="186" width="32" height="32" fill="#F57C00" stroke-width="2"/>
     <text x="676" y="264" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" fill="#5A6B7D">数据与模块</text>
-    <text x="676" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">15</text>
-    <text x="676" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">张表 / 8 个 package</text>
+    <text x="676" y="338" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="56" font-weight="700" fill="#1F2733">16</text>
+    <text x="676" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">张表 / 10 个 package</text>
     <text x="676" y="394" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">单一 MySQL 库，无中间件</text>
   </g>
 
@@ -65,7 +65,7 @@
   <g id="supplement-cards">
     <rect x="64" y="436" width="368" height="124" rx="8" fill="#F2F6FA"/>
     <text x="84" y="470" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#93A1B0">前端单测</text>
-    <text x="84" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1F2733">25 项 <tspan font-size="14" font-weight="400" fill="#93A1B0">Vitest</tspan></text>
+    <text x="84" y="506" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" font-weight="700" fill="#1F2733">145 项 <tspan font-size="14" font-weight="400" fill="#93A1B0">Vitest</tspan></text>
     <text x="84" y="536" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">纯函数与状态推导的单元覆盖</text>
 
     <rect x="456" y="436" width="368" height="124" rx="8" fill="#F2F6FA"/>

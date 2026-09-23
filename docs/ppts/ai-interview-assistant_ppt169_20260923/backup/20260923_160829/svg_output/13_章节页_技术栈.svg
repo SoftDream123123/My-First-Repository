@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="deepGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B2E52"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-deep">
+    <rect width="1280" height="720" fill="url(#deepGradient)"/>
+  </g>
+
+  <g id="bg-decor">
+    <rect x="0" y="0" width="6" height="720" fill="#F57C00" fill-opacity="0.85"/>
+    <rect x="700" y="180" width="1" height="360" fill="#EAF2FB" fill-opacity="0.16"/>
+  </g>
+
+  <g id="section-marker">
+    <text x="88" y="330" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="150" font-weight="700" fill="#EAF2FB" fill-opacity="0.14">03</text>
+    <rect x="88" y="372" width="56" height="5" fill="#F57C00"/>
+  </g>
+
+  <g id="section-title">
+    <text x="88" y="440" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="44" font-weight="700" fill="#FFFFFF">技术栈</text>
+    <text x="88" y="484" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.72">选型、分层、模块边界与数据模型</text>
+  </g>
+
+  <g id="section-index">
+    <text x="784" y="256" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="600" fill="#EAF2FB" fill-opacity="0.5" letter-spacing="3">本节内容</text>
+    <text x="784" y="306" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.88">技术栈总览</text>
+    <text x="1216" y="306" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="14" fill="#EAF2FB" fill-opacity="0.45">P14</text>
+    <line x1="784" y1="328" x2="1216" y2="328" stroke="#EAF2FB" stroke-opacity="0.14" stroke-width="1"/>
+
+    <text x="784" y="362" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.88">后端严格分层</text>
+    <text x="1216" y="362" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="14" fill="#EAF2FB" fill-opacity="0.45">P15</text>
+    <line x1="784" y1="384" x2="1216" y2="384" stroke="#EAF2FB" stroke-opacity="0.14" stroke-width="1"/>
+
+    <text x="784" y="418" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.88">十个模块与依赖方向</text>
+    <text x="1216" y="418" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="14" fill="#EAF2FB" fill-opacity="0.45">P16</text>
+    <line x1="784" y1="440" x2="1216" y2="440" stroke="#EAF2FB" stroke-opacity="0.14" stroke-width="1"/>
+
+    <text x="784" y="474" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.88">数据模型：16 张表与快照设计</text>
+    <text x="1216" y="474" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="14" fill="#EAF2FB" fill-opacity="0.45">P17</text>
+    <line x1="784" y1="496" x2="1216" y2="496" stroke="#EAF2FB" stroke-opacity="0.14" stroke-width="1"/>
+
+    <text x="784" y="530" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="18" fill="#EAF2FB" fill-opacity="0.88">工程规模</text>
+    <text x="1216" y="530" text-anchor="end" font-family="Consolas, Courier New, monospace" font-size="14" fill="#EAF2FB" fill-opacity="0.45">P18</text>
+    <line x1="784" y1="552" x2="1216" y2="552" stroke="#EAF2FB" stroke-opacity="0.14" stroke-width="1"/>
+  </g>
+
+  <g id="footer">
+    <text x="88" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#EAF2FB" fill-opacity="0.45">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#EAF2FB" fill-opacity="0.45">P13 / 35</text>
+  </g>
+</svg>

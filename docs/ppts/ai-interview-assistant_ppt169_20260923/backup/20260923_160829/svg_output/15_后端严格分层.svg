@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">后端严格分层</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">03 技术栈</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P15 / 35</text>
+  </g>
+
+  <g id="layer-router">
+    <rect x="64" y="148" width="40" height="114" rx="8" fill="#1565C0"/>
+    <text x="84" y="214" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="22" font-weight="700" fill="#FFFFFF">01</text>
+    <path d="M 112 148 h 800 a 8 8 0 0 1 8 8 v 26 h -816 v -26 a 8 8 0 0 1 8 -8 Z" fill="#1565C0" fill-opacity="0.10"/>
+    <text x="120" y="171" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#1565C0">router 层</text>
+    <text x="300" y="171" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">HTTP 端点 —— 参数校验 · 角色守卫 · 统一响应包装</text>
+
+    <rect x="118" y="186" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="131" y="210" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">参数校验</text>
+    <text x="131" y="232" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">请求体模型校验，非法输入 422</text>
+
+    <rect x="392" y="186" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="405" y="210" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">角色守卫</text>
+    <text x="405" y="232" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">Depends(require_roles(...))</text>
+
+    <rect x="667" y="186" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="680" y="210" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">响应包装</text>
+    <text x="680" y="232" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">错误统一映射到 HTTP 状态码</text>
+  </g>
+
+  <g id="layer-service">
+    <rect x="64" y="270" width="40" height="114" rx="8" fill="#00897B"/>
+    <text x="84" y="336" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="22" font-weight="700" fill="#FFFFFF">02</text>
+    <path d="M 112 270 h 800 a 8 8 0 0 1 8 8 v 26 h -816 v -26 a 8 8 0 0 1 8 -8 Z" fill="#00897B" fill-opacity="0.10"/>
+    <text x="120" y="293" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#00897B">service 层</text>
+    <text x="300" y="293" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">业务逻辑 —— 流程编排 · 事务 · 调用 AI Provider</text>
+
+    <rect x="118" y="308" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="131" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">流程编排</text>
+    <text x="131" y="354" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">跨模块调用只发生在这一层</text>
+
+    <rect x="392" y="308" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="405" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">事务边界</text>
+    <text x="405" y="354" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">commit / rollback 只出现在这里</text>
+
+    <rect x="667" y="308" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="680" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">调用 AI Provider</text>
+    <text x="680" y="354" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">get_provider() 取缓存单例</text>
+  </g>
+
+  <g id="layer-repository">
+    <rect x="64" y="392" width="40" height="114" rx="8" fill="#0B2E52"/>
+    <text x="84" y="458" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="22" font-weight="700" fill="#FFFFFF">03</text>
+    <path d="M 112 392 h 800 a 8 8 0 0 1 8 8 v 26 h -816 v -26 a 8 8 0 0 1 8 -8 Z" fill="#0B2E52" fill-opacity="0.10"/>
+    <text x="120" y="415" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#0B2E52">repository 层</text>
+    <text x="300" y="415" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">数据访问 —— 唯一执行 SQL 的地方 · 对接 MySQL</text>
+
+    <rect x="118" y="430" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="131" y="454" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">唯一 SQL 层</text>
+    <text x="131" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">整个后端只有这里执行查询</text>
+
+    <rect x="392" y="430" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="405" y="454" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">纯数据访问</text>
+    <text x="405" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">只做 CRUD，不含业务判断</text>
+
+    <rect x="667" y="430" width="253" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="680" y="454" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">最底层</text>
+    <text x="680" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">绝不依赖 service / router</text>
+  </g>
+
+  <g id="layer-ai">
+    <rect x="64" y="514" width="40" height="114" rx="8" fill="#F57C00"/>
+    <text x="84" y="580" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="22" font-weight="700" fill="#FFFFFF">04</text>
+    <path d="M 112 514 h 800 a 8 8 0 0 1 8 8 v 26 h -816 v -26 a 8 8 0 0 1 8 -8 Z" fill="#F57C00" fill-opacity="0.10"/>
+    <text x="120" y="537" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" font-weight="700" fill="#F57C00">ai 包</text>
+    <text x="300" y="537" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">能力抽象 —— 横跨三层之外的独立基础设施</text>
+
+    <rect x="118" y="552" width="390" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="131" y="576" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">只接收原始值</text>
+    <text x="131" y="598" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">str / list[str] / float / 本模块 dataclass —— 不收 ORM 对象</text>
+
+    <rect x="529" y="552" width="390" height="72" rx="6" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="542" y="576" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">谁在调用它</text>
+    <text x="542" y="598" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">interview（出题 / 补题）· evaluation（评分 / 报告）· practice（判分）</text>
+  </g>
+
+  <g id="forbidden-list">
+    <rect x="944" y="148" width="272" height="480" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <path d="M 952 148 h 256 a 8 8 0 0 1 8 8 v 36 h -272 v -36 a 8 8 0 0 1 8 -8 Z" fill="#C62828" fill-opacity="0.10"/>
+    <use data-icon="tabler-outline/lock" x="964" y="162" width="22" height="22" fill="#C62828" stroke-width="2"/>
+    <text x="996" y="179" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="15" font-weight="700" fill="#C62828">测试钉住的禁止项</text>
+    <line x1="964" y1="196" x2="1196" y2="196" stroke="#DCE5EE" stroke-width="1"/>
+
+    <circle cx="974" cy="222" r="9" fill="#C62828" fill-opacity="0.12"/>
+    <path d="M 971,219 L 977,225 M 977,219 L 971,225" stroke="#C62828" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <text x="992" y="227" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">router 不得引用 repository</text>
+    <text x="992" y="247" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">端点不得越层直接访问数据</text>
+
+    <circle cx="974" cy="300" r="9" fill="#C62828" fill-opacity="0.12"/>
+    <path d="M 971,297 L 977,303 M 977,297 L 971,303" stroke="#C62828" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <text x="992" y="305" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">repository 不依赖上层</text>
+    <text x="992" y="325" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">不得 import service / router</text>
+
+    <circle cx="974" cy="378" r="9" fill="#C62828" fill-opacity="0.12"/>
+    <path d="M 971,375 L 977,381 M 977,375 L 971,381" stroke="#C62828" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <text x="992" y="383" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">service 无 db.execute</text>
+    <text x="992" y="403" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">SQL 只允许出现在 repository</text>
+
+    <circle cx="974" cy="456" r="9" fill="#C62828" fill-opacity="0.12"/>
+    <path d="M 971,453 L 977,459 M 977,453 L 971,459" stroke="#C62828" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <text x="992" y="461" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">ai 不依赖业务模块</text>
+    <text x="992" y="481" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">因此可脱离数据库单测</text>
+
+    <circle cx="974" cy="534" r="9" fill="#C62828" fill-opacity="0.12"/>
+    <path d="M 971,531 L 977,537 M 977,531 L 971,537" stroke="#C62828" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <text x="992" y="539" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#1F2733">core 只做延迟导入</text>
+    <text x="992" y="559" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">对业务模块仅在函数体内导入</text>
+
+    <rect x="964" y="580" width="232" height="32" rx="6" fill="#F2F6FA"/>
+    <text x="1080" y="601" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">由 tests/test_architecture.py 断言</text>
+  </g>
+</svg>

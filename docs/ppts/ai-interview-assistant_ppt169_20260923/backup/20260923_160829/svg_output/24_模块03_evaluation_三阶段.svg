@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块③ evaluation：三阶段编排与运行注册表</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P24 / 35</text>
+  </g>
+
+  <g id="stage-1">
+    <rect x="64" y="148" width="536" height="110" rx="8" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <rect x="64" y="148" width="4" height="110" fill="#1565C0"/>
+    <circle cx="104" cy="180" r="14" fill="#1565C0" fill-opacity="0.12"/>
+    <text x="104" y="185" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#1565C0">1</text>
+    <text x="130" y="186" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">逐题评分</text>
+    <rect x="438" y="164" width="142" height="24" rx="4" fill="#1565C0" fill-opacity="0.10"/>
+    <text x="509" y="181" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">question 事件</text>
+    <text x="104" y="218" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">对每道题分别调用 provider.evaluate_answer，</text>
+    <text x="104" y="240" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">产出 QuestionScoreResult；按 seq 升序推送</text>
+  </g>
+
+  <g id="stage-2">
+    <rect x="64" y="274" width="536" height="110" rx="8" fill="#FFFFFF" stroke="#00897B" stroke-width="1.5"/>
+    <rect x="64" y="274" width="4" height="110" fill="#00897B"/>
+    <circle cx="104" cy="306" r="14" fill="#00897B" fill-opacity="0.12"/>
+    <text x="104" y="311" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#00897B">2</text>
+    <text x="130" y="312" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">多维评分</text>
+    <rect x="438" y="290" width="142" height="24" rx="4" fill="#00897B" fill-opacity="0.10"/>
+    <text x="509" y="307" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#00897B">dimension 事件</text>
+    <text x="104" y="344" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">把该场全部回答按岗位评估维度汇总，</text>
+    <text x="104" y="366" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">产出 DimensionScoreResult</text>
+  </g>
+
+  <g id="stage-3">
+    <rect x="64" y="400" width="536" height="110" rx="8" fill="#FFFFFF" stroke="#2E7D32" stroke-width="1.5"/>
+    <rect x="64" y="400" width="4" height="110" fill="#2E7D32"/>
+    <circle cx="104" cy="432" r="14" fill="#2E7D32" fill-opacity="0.12"/>
+    <text x="104" y="437" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#2E7D32">3</text>
+    <text x="130" y="438" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="17" font-weight="700" fill="#1F2733">汇总报告</text>
+    <rect x="438" y="416" width="142" height="24" rx="4" fill="#2E7D32" fill-opacity="0.10"/>
+    <text x="509" y="433" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#2E7D32">report 事件</text>
+    <text x="104" y="470" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">生成 overall_score + conclusion +</text>
+    <text x="104" y="492" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#5A6B7D">strengths / weaknesses，写入 report 表</text>
+  </g>
+
+  <g id="code-block">
+    <rect x="624" y="182" width="592" height="328" fill="#F2F6FA"/>
+    <path d="M 632 148 h 576 a 8 8 0 0 1 8 8 v 26 h -592 v -26 a 8 8 0 0 1 8 -8 Z" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/codeblock" x="640" y="156" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="668" y="171" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">backend/app/evaluation/stream.py:137-154 · 114</text>
+    <rect x="624" y="148" width="592" height="362" rx="8" fill="none" stroke="#DCE5EE" stroke-width="1"/>
+
+    <text x="644" y="202" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">def <tspan fill="#1565C0" font-weight="700">_evaluate_in_thread</tspan>(interview_id: int, run) -&gt; None:</text>
+    <text x="644" y="217" font-family="Consolas, Courier New, monospace" font-size="15" fill="#5A6B7D">    """后台线程：拥有独立的 DB 会话（Session 非线程安全）。"""</text>
+    <text x="644" y="232" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">    db: Session = SessionLocal()</text>
+    <text x="644" y="247" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">    try:</text>
+    <text x="644" y="262" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        evaluation_service.evaluate_interview(</text>
+    <text x="644" y="277" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">            db, interview_id,</text>
+    <text x="644" y="292" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">            lambda event: publish(run, event.name, event.payload),</text>
+    <text x="644" y="307" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        )</text>
+    <text x="644" y="322" font-family="Consolas, Courier New, monospace" font-size="15" fill="#2E7D32">        publish_terminal(run, "done", {...}, RUN_DONE)</text>
+    <text x="644" y="337" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">    except Exception as exc:</text>
+    <text x="644" y="352" font-family="Consolas, Courier New, monospace" font-size="15" fill="#93A1B0">        logger.exception("面试 %s 评估失败", interview_id)</text>
+    <text x="644" y="367" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        db.rollback()</text>
+    <text x="644" y="382" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        _rollback_status(interview_id)</text>
+    <text x="644" y="397" font-family="Consolas, Courier New, monospace" font-size="15" fill="#C62828">        publish_terminal(run, "error", _error_payload(exc), RUN_FAILED)</text>
+    <text x="644" y="412" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">    finally:</text>
+    <text x="644" y="427" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        db.close()</text>
+    <text x="644" y="442" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        _signal_end(run)</text>
+    <text x="644" y="457" font-family="Consolas, Courier New, monospace" font-size="15" fill="#1F2733">        _schedule_eviction(run)</text>
+    <text x="644" y="487" font-family="Consolas, Courier New, monospace" font-size="15" fill="#93A1B0"># stream.py:114 —— 终结事件与运行状态在同一把锁内写入</text>
+    <text x="644" y="502" font-family="Consolas, Courier New, monospace" font-size="15" fill="#F57C00">def publish_terminal(run, name, payload, status) -&gt; None:</text>
+  </g>
+
+  <g id="note-push-then-write">
+    <rect x="64" y="530" width="370" height="94" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/activity" x="84" y="546" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="112" y="562" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">先推后写</text>
+    <text x="84" y="590" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">结果在<tspan font-weight="700">最后一次性落库</tspan>（单事务）——</text>
+    <text x="84" y="612" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">库里永不存在混合态；失败也不丢旧数据</text>
+  </g>
+
+  <g id="note-registry">
+    <rect x="454" y="530" width="370" height="94" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/refresh" x="474" y="546" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="502" y="562" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">运行注册表 _runs</text>
+    <text x="474" y="590" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">dict[int, EvaluationRun]</text>
+    <text x="474" y="612" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">守护线程 + 独立 Session，TTL 300 秒</text>
+  </g>
+
+  <g id="note-separation">
+    <rect x="844" y="530" width="370" height="94" rx="8" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/arrows-split" x="864" y="546" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="892" y="562" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">业务与传输分离</text>
+    <text x="864" y="590" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">编排同步 · SSE 只是传输适配</text>
+    <text x="864" y="612" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">业务逻辑因此可脱离异步设施单测</text>
+  </g>
+</svg>

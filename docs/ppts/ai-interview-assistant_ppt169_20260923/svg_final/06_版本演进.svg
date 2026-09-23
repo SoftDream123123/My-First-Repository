@@ -11,7 +11,7 @@
   </g>
 
   <g id="header">
-    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">前世今生：MVP-1 → MVP-4 演进</text>
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">前世今生：MVP-1 → MVP-5 演进</text>
     <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">01 项目概述与背景</text>
     <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
   </g>
@@ -23,50 +23,60 @@
   </g>
 
   <g id="milestone-cards">
-    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M91,140 H325 A8,8 0 0 1 333,148 V254 A8,8 0 0 1 325,262 H91 A8,8 0 0 1 83,254 V148 A8,8 0 0 1 91,140 Z" />
-    <path fill="#1565C0" d="M110,154 H152 A11,11 0 0 1 163,165 V165 A11,11 0 0 1 152,176 H110 A11,11 0 0 1 99,165 V165 A11,11 0 0 1 110,154 Z" />
-    <text x="131" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-1</text>
-    <text x="99" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-15</text>
-    <text x="99" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">HR 侧闭环</text>
-    <text x="99" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">461 条用例验证</text>
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M72,140 H268 A8,8 0 0 1 276,148 V254 A8,8 0 0 1 268,262 H72 A8,8 0 0 1 64,254 V148 A8,8 0 0 1 72,140 Z" />
+    <path fill="#1565C0" d="M91,154 H133 A11,11 0 0 1 144,165 V165 A11,11 0 0 1 133,176 H91 A11,11 0 0 1 80,165 V165 A11,11 0 0 1 91,154 Z" />
+    <text x="112" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-1</text>
+    <text x="80" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-15</text>
+    <text x="80" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">HR 侧闭环</text>
+    <text x="80" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">461 条用例验证</text>
 
-    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M379,140 H613 A8,8 0 0 1 621,148 V254 A8,8 0 0 1 613,262 H379 A8,8 0 0 1 371,254 V148 A8,8 0 0 1 379,140 Z" />
-    <path fill="#1565C0" d="M398,154 H440 A11,11 0 0 1 451,165 V165 A11,11 0 0 1 440,176 H398 A11,11 0 0 1 387,165 V165 A11,11 0 0 1 398,154 Z" />
-    <text x="419" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-2</text>
-    <text x="387" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-20</text>
-    <text x="387" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">候选人侧</text>
-    <text x="387" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">受邀者自助作答</text>
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M307,140 H503 A8,8 0 0 1 511,148 V254 A8,8 0 0 1 503,262 H307 A8,8 0 0 1 299,254 V148 A8,8 0 0 1 307,140 Z" />
+    <path fill="#1565C0" d="M326,154 H368 A11,11 0 0 1 379,165 V165 A11,11 0 0 1 368,176 H326 A11,11 0 0 1 315,165 V165 A11,11 0 0 1 326,154 Z" />
+    <text x="347" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-2</text>
+    <text x="315" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-20</text>
+    <text x="315" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">候选人侧</text>
+    <text x="315" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">受邀者自助作答</text>
 
-    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M667,140 H901 A8,8 0 0 1 909,148 V254 A8,8 0 0 1 901,262 H667 A8,8 0 0 1 659,254 V148 A8,8 0 0 1 667,140 Z" />
-    <path fill="#1565C0" d="M686,154 H728 A11,11 0 0 1 739,165 V165 A11,11 0 0 1 728,176 H686 A11,11 0 0 1 675,165 V165 A11,11 0 0 1 686,154 Z" />
-    <text x="707" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-3</text>
-    <text x="675" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-20</text>
-    <text x="675" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">简历驱动与导出</text>
-    <text x="675" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">按简历补题</text>
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M542,140 H738 A8,8 0 0 1 746,148 V254 A8,8 0 0 1 738,262 H542 A8,8 0 0 1 534,254 V148 A8,8 0 0 1 542,140 Z" />
+    <path fill="#1565C0" d="M561,154 H603 A11,11 0 0 1 614,165 V165 A11,11 0 0 1 603,176 H561 A11,11 0 0 1 550,165 V165 A11,11 0 0 1 561,154 Z" />
+    <text x="582" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-3</text>
+    <text x="550" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-20</text>
+    <text x="550" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">简历驱动与导出</text>
+    <text x="550" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">按简历补题</text>
 
-    <path fill="#FFFFFF" stroke="#F57C00" stroke-width="1.5" d="M955,140 H1189 A8,8 0 0 1 1197,148 V254 A8,8 0 0 1 1189,262 H955 A8,8 0 0 1 947,254 V148 A8,8 0 0 1 955,140 Z" />
-    <path fill="#F57C00" d="M974,154 H1016 A11,11 0 0 1 1027,165 V165 A11,11 0 0 1 1016,176 H974 A11,11 0 0 1 963,165 V165 A11,11 0 0 1 974,154 Z" />
-    <text x="995" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-4</text>
-    <text x="963" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-22</text>
-    <text x="963" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">简历解析与 AI 评估</text>
-    <text x="963" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#F57C00">不改任何表结构</text>
+    <path fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1" d="M777,140 H973 A8,8 0 0 1 981,148 V254 A8,8 0 0 1 973,262 H777 A8,8 0 0 1 769,254 V148 A8,8 0 0 1 777,140 Z" />
+    <path fill="#1565C0" d="M796,154 H838 A11,11 0 0 1 849,165 V165 A11,11 0 0 1 838,176 H796 A11,11 0 0 1 785,165 V165 A11,11 0 0 1 796,154 Z" />
+    <text x="817" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-4</text>
+    <text x="785" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-22</text>
+    <text x="785" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">简历解析与 AI 评估</text>
+    <text x="785" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">不改任何表结构</text>
+
+    <path fill="#FFFFFF" stroke="#F57C00" stroke-width="1.5" d="M1012,140 H1208 A8,8 0 0 1 1216,148 V254 A8,8 0 0 1 1208,262 H1012 A8,8 0 0 1 1004,254 V148 A8,8 0 0 1 1012,140 Z" />
+    <path fill="#F57C00" d="M1031,154 H1073 A11,11 0 0 1 1084,165 V165 A11,11 0 0 1 1073,176 H1031 A11,11 0 0 1 1020,165 V165 A11,11 0 0 1 1031,154 Z" />
+    <text x="1052" y="170" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" font-weight="700" fill="#FFFFFF">MVP-5</text>
+    <text x="1020" y="200" font-family="Consolas, Courier New, monospace" font-size="12" fill="#93A1B0">2026-09-23</text>
+    <text x="1020" y="228" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="15" font-weight="700" fill="#1F2733">手机验证码登录</text>
+    <text x="1020" y="250" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#F57C00">新增 1 表 + 1 列</text>
   </g>
 
   <g id="timeline-axis">
-    <line x1="208" y1="262" x2="208" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
-    <line x1="496" y1="262" x2="496" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
-    <line x1="784" y1="262" x2="784" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
-    <line x1="1072" y1="262" x2="1072" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="170" y1="262" x2="170" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="405" y1="262" x2="405" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="640" y1="262" x2="640" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="875" y1="262" x2="875" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="1110" y1="262" x2="1110" y2="281" stroke="#DCE5EE" stroke-width="2" stroke-dasharray="4,4" />
     <line x1="64" y1="290" x2="1216" y2="290" stroke="#DCE5EE" stroke-width="3" />
-    <line x1="64" y1="290" x2="1072" y2="290" stroke="#1565C0" stroke-opacity="0.35" stroke-width="3" />
-    <circle cx="208" cy="290" r="9" fill="#1565C0" />
-    <path d="M 204,290 L 207,293 L 213,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="496" cy="290" r="9" fill="#1565C0" />
-    <path d="M 492,290 L 495,293 L 501,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="784" cy="290" r="9" fill="#1565C0" />
-    <path d="M 780,290 L 783,293 L 789,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-    <circle cx="1072" cy="290" r="9" fill="#F57C00" />
-    <path d="M 1068,290 L 1071,293 L 1077,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="64" y1="290" x2="1110" y2="290" stroke="#1565C0" stroke-opacity="0.35" stroke-width="3" />
+    <circle cx="170" cy="290" r="9" fill="#1565C0" />
+    <path d="M 166,290 L 169,293 L 175,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="405" cy="290" r="9" fill="#1565C0" />
+    <path d="M 401,290 L 404,293 L 410,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="640" cy="290" r="9" fill="#1565C0" />
+    <path d="M 636,290 L 639,293 L 645,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="875" cy="290" r="9" fill="#1565C0" />
+    <path d="M 871,290 L 874,293 L 880,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="1110" cy="290" r="9" fill="#F57C00" />
+    <path d="M 1106,290 L 1109,293 L 1115,286" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
   </g>
 
   <g id="row-modules">
@@ -75,19 +85,23 @@
 
     <text x="64" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">auth · position · question ·</text>
     <text x="64" y="394" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">interview · evaluation · ai</text>
-    <text x="64" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">八个 package 中的六个，一次到位</text>
+    <text x="64" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">十个 package 中的六个，一次到位</text>
 
-    <text x="352" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">+ practice</text>
-    <text x="352" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">新增 candidate 角色驱动两件事：</text>
-    <text x="352" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">作答邀请、在线作答与脱敏反馈</text>
+    <text x="299" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">+ practice</text>
+    <text x="299" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">新增 candidate 角色驱动两件事</text>
+    <text x="299" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">作答邀请、在线作答与脱敏反馈</text>
 
-    <text x="640" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">+ resume</text>
-    <text x="640" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">按简历补题 · 准备助手 · DOCX 导出</text>
-    <text x="640" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">简历成为两端之间的缝合线</text>
+    <text x="534" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">+ resume</text>
+    <text x="534" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">按简历补题 · 准备助手 · DOCX 导出</text>
+    <text x="534" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">简历成为两端之间的缝合线</text>
 
-    <text x="928" y="374" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#F57C00">无新模块 —— 只加能力</text>
-    <text x="928" y="394" font-family="Consolas, Courier New, monospace" font-size="13" fill="#F57C00">evaluate_resume</text>
-    <text x="928" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">上传解析 + 简历匹配度评估</text>
+    <text x="769" y="374" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">无新模块 —— 只加能力</text>
+    <text x="769" y="394" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">evaluate_resume</text>
+    <text x="769" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">上传解析 + 简历匹配度评估</text>
+
+    <text x="1004" y="374" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">+ sms</text>
+    <text x="1004" y="394" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#1F2733">auth 增加手机验证码登录</text>
+    <text x="1004" y="416" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">免密登录 · 自动建号</text>
 
     <line x1="64" y1="440" x2="1216" y2="440" stroke="#DCE5EE" stroke-width="1" />
   </g>
@@ -99,14 +113,17 @@
     <text x="64" y="496" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1F2733">FastAPI · SQLAlchemy · MySQL</text>
     <text x="64" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">选定后至今未换</text>
 
-    <text x="352" y="496" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">无新依赖</text>
-    <text x="352" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">复用既有栈</text>
+    <text x="299" y="496" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#93A1B0">无新依赖</text>
+    <text x="299" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">复用既有栈</text>
 
-    <text x="640" y="496" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">python-docx</text>
-    <text x="640" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">服务 DOCX 导出</text>
+    <text x="534" y="496" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">python-docx</text>
+    <text x="534" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">服务 DOCX 导出</text>
 
-    <text x="928" y="496" font-family="Consolas, Courier New, monospace" font-size="13" fill="#F57C00">pypdf · python-multipart</text>
-    <text x="928" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">服务上传解析</text>
+    <text x="769" y="496" font-family="Consolas, Courier New, monospace" font-size="13" fill="#00897B">pypdf · python-multipart</text>
+    <text x="769" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">服务上传解析</text>
+
+    <text x="1004" y="496" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="13" fill="#F57C00">无新依赖</text>
+    <text x="1004" y="518" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5A6B7D">只实现 Mock，不接运营商</text>
   </g>
 
   <g id="constraint-band">
@@ -117,7 +134,7 @@
     <path d="M8 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -8" />
     <path d="M4 10a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -8" />
   </g>
-    <text x="132" y="586" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">一条贯穿四个版本的约束：技术栈全程不变</text>
+    <text x="132" y="586" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" font-weight="700" fill="#1F2733">一条贯穿五个版本的约束：技术栈全程不变</text>
     <text x="132" y="608" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#5A6B7D">原生 HTML/CSS/JS + FastAPI + MySQL —— 不引入新框架，不引入中间件（无 Redis / 无消息队列）</text>
   </g>
 </svg>

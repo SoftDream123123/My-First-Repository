@@ -17,7 +17,7 @@
   </g>
 
   <g id="header">
-    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">八个模块与依赖方向</text>
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">十个模块与依赖方向</text>
     <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">03 技术栈</text>
     <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
   </g>
@@ -84,7 +84,7 @@
   <g id="node-auth">
     <rect x="64" y="442" width="1152" height="48" rx="6" fill="#1565C0" fill-opacity="0.08" stroke="#1565C0" stroke-width="1"/>
     <text x="88" y="464" font-family="Consolas, Courier New, monospace" font-size="15" font-weight="700" fill="#1565C0">auth</text>
-    <text x="88" y="482" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">账号 · 角色 · 令牌</text>
+    <text x="88" y="482" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">账号 · 角色 · 令牌 · 手机验证码（依赖 sms）</text>
     <text x="1216" y="474" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">所有业务模块均依赖它做<tspan font-weight="700" fill="#1565C0">鉴权与数据隔离</tspan></text>
   </g>
 
@@ -94,8 +94,8 @@
     <text x="88" y="572" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">配置 · 数据库会话 · 依赖注入 · 错误体系 —— 所有模块依赖它</text>
 
     <rect x="656" y="530" width="560" height="54" rx="6" fill="#F2F6FA" stroke="#DCE5EE" stroke-width="1"/>
-    <text x="680" y="552" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#5A6B7D">ai</text>
-    <text x="680" y="572" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">被 interview（出题）· evaluation（评分）· practice（判分）调用</text>
+    <text x="680" y="552" font-family="Consolas, Courier New, monospace" font-size="14" font-weight="700" fill="#5A6B7D">ai · sms</text>
+    <text x="680" y="572" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">两条能力包：ai（出题 / 评分 / 判分）· sms（短信通道）—— 均 mock 可切换</text>
   </g>
 
   <g id="legend">
@@ -103,6 +103,6 @@
     <text x="106" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">实线：允许的依赖，依赖方向向下</text>
     <line x1="420" y1="612" x2="450" y2="612" stroke="#C62828" stroke-width="2" stroke-dasharray="7,4" marker-end="url(#arrowRed)"/>
     <text x="462" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#C62828">红线：被架构测试禁止的反向边</text>
-    <text x="800" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">core / ai 的依赖关系以框内文字标注</text>
+    <text x="800" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">core / ai / sms 的依赖关系以框内文字标注</text>
   </g>
 </svg>

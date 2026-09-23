@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="headerRule" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#1565C0" stop-opacity="0"/>
+    </linearGradient>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+  </defs>
+
+  <g id="bg-base">
+    <rect width="1280" height="720" fill="#FFFFFF"/>
+  </g>
+
+  <g id="header">
+    <text x="64" y="82" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="32" font-weight="700" fill="#1565C0">模块④ interview：作答邀请的并发接受</text>
+    <text x="1216" y="82" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" fill="#93A1B0">04 核心模块技术讲解</text>
+    <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3"/>
+  </g>
+
+  <g id="footer">
+    <line x1="64" y1="636" x2="1216" y2="636" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="64" y="658" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">AI 智能面试助手 · 技术解构</text>
+    <text x="1216" y="658" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#93A1B0">P27 / 35</text>
+  </g>
+
+  <g id="code-block">
+    <rect x="64" y="182" width="536" height="318" fill="#F2F6FA"/>
+    <path d="M 72 148 h 520 a 8 8 0 0 1 8 8 v 26 h -536 v -26 a 8 8 0 0 1 8 -8 Z" fill="#E3EDF9"/>
+    <use data-icon="tabler-outline/codeblock" x="80" y="156" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="108" y="171" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1565C0">backend/app/interview/service.py:1094-1116</text>
+    <rect x="64" y="148" width="536" height="352" rx="8" fill="none" stroke="#DCE5EE" stroke-width="1"/>
+
+    <text x="84" y="202" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">candidate = auth_service.create_candidate_account(</text>
+    <text x="84" y="218" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    db, username, password</text>
+    <text x="84" y="234" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">)</text>
+    <text x="84" y="250" font-family="Consolas, Courier New, monospace" font-size="14" fill="#C62828"># ---- 临界区：一次性接受必须串行化 ----</text>
+    <text x="84" y="266" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 加锁放在 create_candidate_account 之后：</text>
+    <text x="84" y="282" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 新建账号会 commit，而 commit 释放本事务</text>
+    <text x="84" y="298" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 已持有的锁 —— 先加锁等于白加。</text>
+    <text x="84" y="314" font-family="Consolas, Courier New, monospace" font-size="14" fill="#F57C00">repository.lock_interview(db, invitation.interview_id)</text>
+    <text x="84" y="330" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 用当前读：本事务快照可能早于并发事务的提交，</text>
+    <text x="84" y="346" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 快照读会漏判这条已被写入的接受记录。</text>
+    <text x="84" y="362" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">if repository.get_accepted_invitation(</text>
+    <text x="84" y="378" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    db, invitation.interview_id, candidate.id, for_update=True</text>
+    <text x="84" y="394" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">) is not None:</text>
+    <text x="84" y="410" font-family="Consolas, Courier New, monospace" font-size="14" fill="#C62828">    raise BusinessError("你已接受过该面试的邀请")</text>
+    <text x="84" y="426" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 同一条码被并发接受：拿到锁后重新当前读，</text>
+    <text x="84" y="442" font-family="Consolas, Courier New, monospace" font-size="14" fill="#93A1B0"># 确认它仍是 pending。</text>
+    <text x="84" y="458" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">invitation = repository.get_invitation_by_code(</text>
+    <text x="84" y="474" font-family="Consolas, Courier New, monospace" font-size="14" fill="#1F2733">    db, code, for_update=True</text>
+  </g>
+
+  <g id="concurrency-diagram">
+    <rect x="648" y="168" width="240" height="44" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="768" y="187" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">请求 A  accept(code₁)</text>
+    <text x="768" y="204" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">同一候选人的第一条码</text>
+
+    <rect x="928" y="168" width="240" height="44" rx="6" fill="#FFFFFF" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="1048" y="187" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#1565C0">请求 B  accept(code₂)</text>
+    <text x="1048" y="204" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">同一候选人的第二条码</text>
+
+    <line x1="768" y1="212" x2="768" y2="228" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <line x1="1048" y1="212" x2="1048" y2="228" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="648" y="232" width="520" height="36" rx="6" fill="#C62828" fill-opacity="0.10" stroke="#C62828" stroke-width="1.5"/>
+    <use data-icon="tabler-outline/lock" x="666" y="241" width="18" height="18" fill="#C62828" stroke-width="2"/>
+    <text x="694" y="255" font-family="Consolas, Courier New, monospace" font-size="13" font-weight="700" fill="#C62828">SELECT … FOR UPDATE</text>
+    <text x="1150" y="255" text-anchor="end" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#C62828">面试行锁 · 串行化同一场面试的接受</text>
+
+    <line x1="768" y1="268" x2="768" y2="284" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+    <line x1="1048" y1="268" x2="1048" y2="284" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+    <rect x="648" y="288" width="240" height="44" rx="6" fill="#2E7D32" fill-opacity="0.08" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="768" y="308" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#2E7D32">① 先到者：写入绑定 → 200</text>
+    <text x="768" y="325" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">接受记录落库</text>
+
+    <rect x="928" y="288" width="240" height="44" rx="6" fill="#C62828" fill-opacity="0.08" stroke="#C62828" stroke-width="1.5"/>
+    <text x="1048" y="308" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" font-weight="700" fill="#C62828">② 后到者：复查命中 → 拒绝</text>
+    <text x="1048" y="325" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="11" fill="#5A6B7D">「你已接受过该面试的邀请」</text>
+  </g>
+
+  <g id="invalidation-panel">
+    <rect x="648" y="356" width="520" height="144" rx="8" fill="#F2F6FA"/>
+    <text x="668" y="384" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">四种失效原因 · 返回同一文案</text>
+    <rect x="668" y="398" width="118" height="28" rx="4" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="727" y="417" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">码不存在</text>
+    <rect x="798" y="398" width="118" height="28" rx="4" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="857" y="417" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">已撤销</text>
+    <rect x="928" y="398" width="118" height="28" rx="4" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="987" y="417" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">已接受</text>
+    <rect x="1058" y="398" width="118" height="28" rx="4" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <text x="1117" y="417" text-anchor="middle" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">已过期</text>
+
+    <text x="668" y="452" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">响应里<tspan font-weight="700" fill="#C62828">不出现任何面试信息</tspan> —— 否则这个公开端点会变成邀请码探测接口。</text>
+    <text x="668" y="476" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="13" fill="#1F2733">码为 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">secrets.token_urlsafe(16)</tspan>：22 个 URL-safe 字符、约 128 位熵。</text>
+  </g>
+
+  <g id="design-decisions">
+    <rect x="64" y="520" width="368" height="104" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/key" x="84" y="536" width="20" height="20" fill="#00897B" stroke-width="2"/>
+    <text x="112" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#00897B">accept 是公开端点</text>
+    <text x="84" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">拿码的人往往<tspan font-weight="700">还没有账号</tspan>；要求他</text>
+    <text x="84" y="598" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">先登录才能激活，会让整条邀请链</text>
+    <text x="84" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">自相矛盾（没账号 → 没 token）。</text>
+
+    <rect x="456" y="520" width="368" height="104" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/user-check" x="476" y="536" width="20" height="20" fill="#1565C0" stroke-width="2"/>
+    <text x="504" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#1565C0">账号创建委托 auth</text>
+    <text x="476" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">调 <tspan font-family="Consolas, Courier New, monospace" fill="#1565C0">create_candidate_account</tspan>，</text>
+    <text x="476" y="598" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">不在 interview 里复制「用户名唯一性 /</text>
+    <text x="476" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">密码哈希 / 角色约束」这三条规则。</text>
+
+    <rect x="848" y="520" width="368" height="104" rx="8" fill="#FFFFFF" stroke="#DCE5EE" stroke-width="1"/>
+    <use data-icon="tabler-outline/shield-lock" x="868" y="536" width="20" height="20" fill="#F57C00" stroke-width="2"/>
+    <text x="896" y="552" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="14" font-weight="700" fill="#F57C00">签名刻意不接 user</text>
+    <text x="868" y="578" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">绑定到哪个账号由请求体的 username</text>
+    <text x="868" y="598" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#1F2733">决定，与调用者身份无关。签名里放一个</text>
+    <text x="868" y="616" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5A6B7D">不用的 user 会误导「绑定当前登录者」。</text>
+  </g>
+</svg>

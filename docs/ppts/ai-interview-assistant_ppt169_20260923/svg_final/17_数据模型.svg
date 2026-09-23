@@ -11,7 +11,7 @@
   </g>
 
   <g id="header">
-    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">数据模型：15 张表与快照设计</text>
+    <text x="64" y="82" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="32" font-weight="700" fill="#1565C0">数据模型：16 张表与快照设计</text>
     <text x="1216" y="82" text-anchor="end" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="14" fill="#93A1B0">03 技术栈</text>
     <line x1="64" y1="104" x2="1216" y2="104" stroke="url(#headerRule)" stroke-width="3" />
   </g>
@@ -26,87 +26,92 @@
     <rect x="64" y="148" width="796" height="34" fill="#F2F6FA" />
     <text x="84" y="170" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6B7D" letter-spacing="1">所属模块</text>
     <text x="184" y="170" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6B7D" letter-spacing="1">表名</text>
-    <text x="334" y="170" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6B7D" letter-spacing="1">关键字段</text>
+    <text x="364" y="170" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" font-weight="700" fill="#5A6B7D" letter-spacing="1">关键字段</text>
     <line x1="64" y1="182" x2="860" y2="182" stroke="#DCE5EE" stroke-width="2" />
     <line x1="164" y1="148" x2="164" y2="632" stroke="#DCE5EE" stroke-width="1" />
-    <line x1="314" y1="148" x2="314" y2="632" stroke="#DCE5EE" stroke-width="1" />
+    <line x1="344" y1="148" x2="344" y2="632" stroke="#DCE5EE" stroke-width="1" />
     <line x1="64" y1="632" x2="860" y2="632" stroke="#DCE5EE" stroke-width="2" />
   </g>
 
   <g id="table-rows">
-    <text x="84" y="212" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">auth</text>
-    <text x="184" y="212" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">user</text>
-    <text x="334" y="212" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">username · password_hash · role · is_active</text>
-    <line x1="64" y1="222" x2="860" y2="222" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="204" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">auth</text>
+    <text x="184" y="204" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">user</text>
+    <text x="364" y="204" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">username · password_hash · <tspan fill="#F57C00">phone</tspan> · role · is_active</text>
+    <line x1="64" y1="210" x2="860" y2="210" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="242" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">position</text>
-    <text x="184" y="242" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">position</text>
-    <text x="334" y="242" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">name · jd · evaluation_dimensions (JSON)</text>
-    <line x1="64" y1="252" x2="860" y2="252" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="232" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">auth</text>
+    <text x="184" y="232" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">phone_verification_code</text>
+    <text x="364" y="232" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">phone · code_hash · expires_at · consumed_at · attempts</text>
+    <line x1="64" y1="238" x2="860" y2="238" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="272" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">question</text>
-    <text x="184" y="272" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">question</text>
-    <text x="334" y="272" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">content · dimension · difficulty · source · tags</text>
-    <line x1="64" y1="282" x2="860" y2="282" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="260" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">position</text>
+    <text x="184" y="260" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">position</text>
+    <text x="364" y="260" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">name · jd · evaluation_dimensions (JSON)</text>
+    <line x1="64" y1="266" x2="860" y2="266" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="302" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">resume</text>
-    <text x="184" y="302" font-family="Consolas, Courier New, monospace" font-size="12" fill="#F57C00">resume</text>
-    <text x="334" y="302" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">owner_id · title · content（不存原文件）</text>
-    <line x1="64" y1="312" x2="860" y2="312" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="288" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">question</text>
+    <text x="184" y="288" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">question</text>
+    <text x="364" y="288" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">content · dimension · difficulty · source · tags</text>
+    <line x1="64" y1="294" x2="860" y2="294" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="332" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
-    <text x="184" y="332" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview</text>
-    <text x="334" y="332" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">position_id · candidate_name · status · created_by</text>
-    <line x1="64" y1="342" x2="860" y2="342" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="316" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">resume</text>
+    <text x="184" y="316" font-family="Consolas, Courier New, monospace" font-size="12" fill="#F57C00">resume</text>
+    <text x="364" y="316" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">owner_id · title · content（不存原文件）</text>
+    <line x1="64" y1="322" x2="860" y2="322" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="362" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
-    <text x="184" y="362" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">interview_question</text>
-    <text x="334" y="362" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">seq · <tspan fill="#F57C00">content_snapshot</tspan> · <tspan fill="#F57C00">dimension_snapshot</tspan> · <tspan fill="#F57C00">source_snapshot</tspan></text>
-    <line x1="64" y1="372" x2="860" y2="372" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="344" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
+    <text x="184" y="344" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview</text>
+    <text x="364" y="344" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">position_id · candidate_name · status · created_by</text>
+    <line x1="64" y1="350" x2="860" y2="350" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="392" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
-    <text x="184" y="392" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">answer</text>
-    <text x="334" y="392" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_question_id · content · answered_at · submitted_at</text>
-    <line x1="64" y1="402" x2="860" y2="402" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="372" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
+    <text x="184" y="372" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">interview_question</text>
+    <text x="364" y="372" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">seq · <tspan fill="#F57C00">content_snapshot</tspan> · <tspan fill="#F57C00">dimension_snapshot</tspan> · <tspan fill="#F57C00">source_snapshot</tspan></text>
+    <line x1="64" y1="378" x2="860" y2="378" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="422" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
-    <text x="184" y="422" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview_invitation</text>
-    <text x="334" y="422" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">code · status · expires_at · accepted_at · candidate_user_id</text>
-    <line x1="64" y1="432" x2="860" y2="432" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="400" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
+    <text x="184" y="400" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">answer</text>
+    <text x="364" y="400" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_question_id · content · answered_at · submitted_at</text>
+    <line x1="64" y1="406" x2="860" y2="406" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="452" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
-    <text x="184" y="452" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview_prep</text>
-    <text x="334" y="452" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_id · content · generated_at</text>
+    <text x="84" y="428" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
+    <text x="184" y="428" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview_invitation</text>
+    <text x="364" y="428" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">code · status · expires_at · accepted_at · candidate_user_id</text>
+    <line x1="64" y1="434" x2="860" y2="434" stroke="#DCE5EE" stroke-width="1" />
+
+    <text x="84" y="456" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">interview</text>
+    <text x="184" y="456" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">interview_prep</text>
+    <text x="364" y="456" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_id · content · generated_at</text>
     <line x1="64" y1="462" x2="860" y2="462" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="482" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
-    <text x="184" y="482" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">question_score</text>
-    <text x="334" y="482" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_question_id · score · comment</text>
-    <line x1="64" y1="492" x2="860" y2="492" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="484" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
+    <text x="184" y="484" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">question_score</text>
+    <text x="364" y="484" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">interview_question_id · score · comment</text>
+    <line x1="64" y1="490" x2="860" y2="490" stroke="#DCE5EE" stroke-width="1" />
 
     <text x="84" y="512" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
     <text x="184" y="512" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">dimension_score</text>
-    <text x="334" y="512" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">dimension · score · comment</text>
-    <line x1="64" y1="522" x2="860" y2="522" stroke="#DCE5EE" stroke-width="1" />
+    <text x="364" y="512" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">dimension · score · comment</text>
+    <line x1="64" y1="518" x2="860" y2="518" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="542" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
-    <text x="184" y="542" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">report</text>
-    <text x="334" y="542" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">overall_score · conclusion · strengths · weaknesses</text>
-    <line x1="64" y1="552" x2="860" y2="552" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="540" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
+    <text x="184" y="540" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">report</text>
+    <text x="364" y="540" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">overall_score · conclusion · strengths · weaknesses</text>
+    <line x1="64" y1="546" x2="860" y2="546" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="572" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
-    <text x="184" y="572" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">candidate_feedback</text>
-    <text x="334" y="572" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">conclusion · strengths · weaknesses · overall_score</text>
-    <line x1="64" y1="582" x2="860" y2="582" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="568" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">evaluation</text>
+    <text x="184" y="568" font-family="Consolas, Courier New, monospace" font-size="12" font-weight="700" fill="#F57C00">candidate_feedback</text>
+    <text x="364" y="568" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">conclusion · strengths · weaknesses · overall_score</text>
+    <line x1="64" y1="574" x2="860" y2="574" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="602" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">practice</text>
-    <text x="184" y="602" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">practice_session</text>
-    <text x="334" y="602" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">user_id · resume_id · status · started_at</text>
-    <line x1="64" y1="612" x2="860" y2="612" stroke="#DCE5EE" stroke-width="1" />
+    <text x="84" y="596" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">practice</text>
+    <text x="184" y="596" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">practice_session</text>
+    <text x="364" y="596" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">user_id · resume_id · status · started_at</text>
+    <line x1="64" y1="602" x2="860" y2="602" stroke="#DCE5EE" stroke-width="1" />
 
-    <text x="84" y="632" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">practice</text>
-    <text x="184" y="626" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">practice_item</text>
-    <text x="334" y="626" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">question_id · answer · score · is_correct</text>
+    <text x="84" y="624" font-family="Consolas, Courier New, monospace" font-size="11" fill="#93A1B0">practice</text>
+    <text x="184" y="624" font-family="Consolas, Courier New, monospace" font-size="12" fill="#1F2733">practice_item</text>
+    <text x="364" y="624" font-family="Consolas, Courier New, monospace" font-size="11" fill="#5A6B7D">question_id · answer · score · is_correct</text>
   </g>
 
   <g id="snapshot-panel">
