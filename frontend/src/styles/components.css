@@ -232,6 +232,17 @@
   color: var(--danger);
 }
 
+/* 输入框 + 行内按钮（手机验证码的「验证码 + 获取验证码」）。
+   input 用 `min-width: 0` 才能被 flex 压缩 —— 否则它的默认最小宽度会
+   把按钮挤出容器（flex 项的 min-width 默认是 auto，即内容宽度）。 */
+.field-row {
+  display: flex;
+  gap: var(--s2);
+  align-items: stretch;
+}
+.field-row > .input { flex: 1 1 auto; min-width: 0; }
+.field-row > .btn { flex: 0 0 auto; }
+
 .input, .select, .textarea {
   width: 100%;
   padding: 0 var(--s3);

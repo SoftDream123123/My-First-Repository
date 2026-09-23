@@ -7,7 +7,7 @@
   · core 无对业务模块的顶层导入，只有函数体内延迟导入（§5.3-6）
   · 业务模块之间无反向依赖（§5.4-3）
   · 分层单向：router → service → repository → models（§5.4-2、§5.4-6）
-  · 九个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
+  · 十个独立 package 且各层文件齐备（§5.4-1、§5.4-2）
 
 判定只看**模块级**导入：写在函数体内的延迟导入、以及 `if TYPE_CHECKING:`
 块内的类型专用导入都不算运行时依赖 —— 后者正是 core.deps 保持单向的手法。
@@ -30,6 +30,7 @@ ALL_MODULES = [
     "ai",
     "practice",
     "resume",
+    "sms",
 ]
 BUSINESS_MODULES = {
     "auth",
@@ -121,16 +122,21 @@ def _own_module_refs(path: Path, module: str) -> set[str]:
 # ---------------------------- 包与分层存在性 ----------------------------
 
 
-def test_nine_modules_exist():
-    """九个独立 package 齐备。
+def test_ten_modules_exist():
+    """十个独立 package 齐备。
 
-    `len(ALL_MODULES) == 9` 是**防漏登记**的断言：只写 `<=` 时，新增包却忘了
+    `len(ALL_MODULES) == 10` 是**防漏登记**的断言：只写 `<=` 时，新增包却忘了
     登记进本文件，会表现为「这个包的分层与依赖方向不受任何测试保护」，
     而全部用例依然全绿 —— 这是最容易被忽视的一类失效。
+
+    测试名随包数演进（8 → 9 → 10），与本项目既有的
+    `test_eight_modules_exist` → `test_nine_modules_exist` 同款处理：
+    名字里的数字过期比改名字本身更有害 —— 一个叫 `test_nine_modules_exist`
+    却断言 10 的用例，会让读的人先怀疑自己看错了。
     """
     actual = {p.name for p in APP.iterdir() if p.is_dir() and (p / "__init__.py").exists()}
     assert set(ALL_MODULES) <= actual
-    assert len(ALL_MODULES) == 9
+    assert len(ALL_MODULES) == 10
 
 
 @pytest.mark.parametrize("module", LAYERED_MODULES)
@@ -147,6 +153,18 @@ def test_ai_depends_on_no_business_module(path):
     """§5.3-5：ai 是被调用的能力包，不得反向依赖任何业务模块。"""
     offenders = _module_deps(path) & BUSINESS_MODULES
     assert not offenders, f"ai/{path.name} 依赖了业务模块: {sorted(offenders)}"
+
+
+@pytest.mark.parametrize("path", sorted((APP / "sms").glob("*.py")), ids=lambda p: p.name)
+def test_sms_depends_on_no_business_module(path):
+    """与 ai 同规：sms 是基础设施，不得反向依赖任何业务模块（§3.3、§6）。
+
+    它只被 auth 单向依赖，且**不依赖 auth** —— 它不感知验证码的业务语义，
+    只负责「把一个字符串发到某个手机号」。这条用例是给新包配的同一道闸门：
+    `ai` 有这个保护而 `sms` 没有的话，往 sms 里 import auth 不会被任何测试拦住。
+    """
+    offenders = _module_deps(path) & BUSINESS_MODULES
+    assert not offenders, f"sms/{path.name} 依赖了业务模块: {sorted(offenders)}"
 
 
 @pytest.mark.parametrize("path", sorted((APP / "core").glob("*.py")), ids=lambda p: p.name)

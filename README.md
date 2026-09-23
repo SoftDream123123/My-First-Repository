@@ -14,6 +14,9 @@
 它会构建前端、检查数据库、启动后端，然后自动打开 <http://127.0.0.1:8000>。
 登录：`admin` / `admin12345`。
 
+> 登录页也支持**手机验证码登录**：不接真实短信通道（默认配置）时，验证码会**直接显示在
+> 页面上**，照着填即可。候选人端尤其方便 —— 用一个没绑过的手机号就能直接建号登录。
+
 **要改前端代码：双击根目录的 [`启动开发模式.bat`](启动开发模式.bat)。**
 
 它同时起**两个**进程 —— 后端 <http://127.0.0.1:8000>（纯 API）与 Vite 开发服务器
@@ -46,8 +49,9 @@
 | 前端 | Vite 8 + 原生 HTML/CSS/JS（无 UI 框架、无图表库、无状态管理库） |
 | 数据库 | MySQL 8.0+ |
 | 分层 | `router → service → repository → MySQL`，严格单向依赖 |
-| 模块 | 八个独立 package：`core` / `auth` / `position` / `question` / `interview` / `evaluation` / `practice` / `ai` |
+| 模块 | 十个独立 package：`core` / `auth` / `position` / `question` / `resume` / `interview` / `evaluation` / `practice` / `ai` / `sms` |
 | AI | 抽象 Provider 接口，`mock` 与 `openai` 可配置切换 |
+| 短信 | 抽象 Provider 接口，**目前只有 `mock`**（验证码写日志 + 回显，不真发短信） |
 
 ---
 
@@ -87,18 +91,21 @@ cp .env.example .env
 #   必须填写：DATABASE_URL、JWT_SECRET
 #   生成密钥：python -c "import secrets; print(secrets.token_urlsafe(48))"
 
-# 4) 建库建表（一次到位，15 张表）
+# 4) 建库建表（一次到位，16 张表）
 mysql -u root -p --default-character-set=utf8mb4 < script.sql
 
 #    script.sql 里已含建库语句（utf8mb4 + utf8mb4_unicode_ci），不必先手工建库。
 #
 #    ⚠️ 不要用 `alembic upgrade head` 建库。迁移只到 b7f1c2a4d8e6（user.role 加
-#       candidate 取值），MVP-2 / MVP-3 的 6 张表与 9 个列按项目约定**没有写迁移**
-#       （PRD §11「只改模型、不写迁移」）。跑迁移得到的是半套结构，应用起不来。
-#       当前 schema 的事实来源是 `app/**/models.py` 与 script.sql，不是 alembic/versions/。
+#       candidate 取值），MVP-2 / MVP-3 / MVP-5 的 7 张表与 10 个列按项目约定
+#       **没有写迁移**（PRD §11「只改模型、不写迁移」）。跑迁移得到的是半套结构，
+#       应用起不来。当前 schema 的事实来源是 `app/**/models.py` 与 script.sql，
+#       不是 alembic/versions/。
 #
-#    已有 MVP-1 库、且库里有数据不想丢：不要重复跑 §2（表已存在会明确报错），
-#    改用 script.sql 里的 §3「存量库升级」，那一段就是为这种情况写的。
+#    已有库、且库里有数据不想丢：不要重复跑 §2（表已存在会明确报错），
+#    改用 script.sql 里的 §3「存量库升级」——
+#      §3.1 ~ §3.4 只对「MVP-1 时期的库」需要；
+#      **§3.5（MVP-5 的 user.phone + phone_verification_code）对任何已存在的库都必跑**。
 
 # 5) 创建初始管理员（幂等，重复执行不会重复创建）
 python scripts/seed_admin.py
@@ -178,6 +185,32 @@ npm run dev        # → http://127.0.0.1:5173（localhost 也可），/api 被�
 
 ---
 
+## 短信通道切换（手机验证码登录）
+
+与 AI Provider **同构**的可切换设计，通过 `.env` 的 `SMS_PROVIDER` 选择：
+
+| 场景 | 配置 | 说明 |
+|---|---|---|
+| **默认** | `SMS_PROVIDER=mock` | **不真的发短信**：验证码写进后端日志，并**在发码响应里回显**（`dev_code`），前端会自动填好并提示「演示环境：验证码 xxxxxx」 |
+| 真实运营商 | 待实现 | 只留了接口位置（`app/sms/factory.py` 的 `_build`），接阿里云 / 腾讯云时加一个实现即可，**调用方（`auth`）无需改动** |
+
+三条重要行为：
+
+1. ⚠️ **生产部署必须把 `SMS_PROVIDER` 配成真实值**。留在 `mock` 上，验证码会被写进生产
+   日志**并回显给浏览器** —— 任何人填自己的手机号就能拿到码并登录。
+2. `dev_code` 出现与否**完全由这个配置决定**，前端不判断、也不知道当前是不是 mock。
+3. `SMS_PROVIDER` 取值非法时服务**拒绝启动**（fail fast），**不会静默退回 Mock** ——
+   静默退回的后果就是第 1 条，而运维会以为配置生效了。
+
+**限流是三层**（防短信轰炸，也是防真金白银被刷）：单号 60 秒重发间隔 / 单号 24 小时 10 次 /
+单 IP 1 小时 20 次。超限返回 **429 `TOO_MANY_REQUESTS`**，`detail.retry_after_seconds`
+给出重试秒数。
+
+> ⚠️ **429 与刷题限流的 409 刻意不一致**：发码限流有明确的重试时机，429 是 HTTP 为该场景
+> 预定义的语义，前端要据此显示倒计时；刷题那条契约已固化且前端没做倒计时，因此不回溯改。
+
+---
+
 ## 出题数量配置
 
 | 配置项 | 默认 | 含义 |
@@ -199,6 +232,11 @@ npm run dev        # → http://127.0.0.1:5173（localhost 也可），/api 被�
 | `RESUME_MATCH_COUNT` | **3** | 按简历补题的**默认**追加题数（请求体可覆盖，上限 20） |
 | `RESUME_CONTENT_MAX_LENGTH` | **20000** | 简历正文长度上限（字符）。超限返回 **422** —— 全项目唯一一处 422 |
 | `RESUME_UPLOAD_MAX_BYTES` | **5242880** | 简历文件上传的体积上限（字节，即 5 MB）。超限返回 400 |
+| `PHONE_CODE_TTL_SECONDS` | **300** | 手机验证码有效期（秒） |
+| `PHONE_CODE_MAX_ATTEMPTS` | **5** | 单个验证码的错误次数上限，达到即作废 |
+| `PHONE_CODE_RESEND_INTERVAL_SECONDS` | **60** | 同一手机号的重发间隔（秒）。**前端倒计时用的是同一个数**（各写一份，有常量守门测试钉住） |
+| `PHONE_CODE_MAX_PER_PHONE_PER_DAY` | **10** | 同一手机号 24 小时内的发码上限 |
+| `PHONE_CODE_MAX_PER_IP_PER_HOUR` | **20** | 同一 IP 1 小时内的发码上限 |
 
 > **简历文件上传只取文字**：支持 `.docx` / `.pdf`，解析出的纯文本回填正文框、由候选人确认后再保存。
 > 上传**不落库、不落盘、不存原文件** —— 解析完文件即丢弃，服务器上不留副本。
@@ -221,7 +259,7 @@ npm run dev        # → http://127.0.0.1:5173（localhost 也可），/api 被�
 
 ```bash
 cd backend
-python -m pytest                       # 全部（1034 项）
+python -m pytest                       # 全部（1601 项）
 python -m pytest tests/test_interview.py -v
 ```
 
@@ -267,17 +305,20 @@ python scripts/smoke_e2e.py http://127.0.0.1:5173/api
 > 本节只是速查表，且**只列 HR 侧**；候选人侧（`/api/candidate/*`、`/api/practice/*`）
 > 与刷题端点见完整文档，或 `GET /api/openapi.json`。
 
-统一前缀 `/api`，除登录与候选人自助注册外均需 `Authorization: Bearer <token>`。
+统一前缀 `/api`，除**六个公开端点**（登录 / 发送手机验证码 / 手机验证码登录 / 候选人自助注册 /
+凭邀请码激活 / 健康检查）外均需 `Authorization: Bearer <token>`。
 
 ### 认证与用户
 
 | 方法 | 路径 | 权限 |
 |---|---|---|
 | POST | `/auth/login` | 公开 |
+| POST | `/auth/phone/code` | 公开（发手机验证码，三层限流） |
+| POST | `/auth/phone/login` | 公开（手机验证码登录，**响应体同 `/auth/login`**） |
 | POST | `/auth/register` | 公开（候选人自助注册，可用 `CANDIDATE_SELF_REGISTER` 关闭） |
 | GET | `/auth/me` | 登录 |
 | POST / GET | `/users` | admin |
-| PATCH | `/users/{id}` | admin |
+| PATCH | `/users/{id}` | admin（改角色 / 启用禁用 / **绑定解绑手机号**） |
 
 ### 岗位 / 题库
 

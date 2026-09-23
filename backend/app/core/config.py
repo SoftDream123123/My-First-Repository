@@ -103,6 +103,33 @@ class Settings(BaseSettings):
             )
         return value
 
+    # ---- 短信通道与手机验证码（PRD §4.16、§6）----
+    # 短信 Provider 名称。默认 mock：不真发短信，验证码写日志并由端点回显给前端，
+    # 使开发与演示无需任何运营商账号即可走通全流程。
+    # ⚠️ **生产部署必须换成真实值**（届时实现真实 Provider）—— 否则验证码会被
+    # 写进生产日志并回给浏览器。取值非法时 **sms.factory 会拒绝启动**（fail fast），
+    # 不静默退回 Mock。
+    sms_provider: str = "mock"
+
+    # 验证码有效期（秒）。5 分钟是「够用户切到短信 App 再切回来」与
+    # 「暴露窗口尽量短」之间的常规取值。
+    phone_code_ttl_seconds: int = 300
+
+    # 单个验证码允许的错误次数，达到即作废。
+    # 它挡的是「拿 10^6 的空间在线暴力猜」——5 次之后该码失效，
+    # 想把 10^6 试完需要重发 20 万次，而重发受下面的三层限流约束。
+    phone_code_max_attempts: int = 5
+
+    # 同一手机号的重发间隔（秒）。前端倒计时用同一个数（各写一份，见 module-32）。
+    phone_code_resend_interval_seconds: int = 60
+
+    # 同一手机号 24 小时内的发码上限 —— 防短信轰炸，也是防真金白银被刷。
+    phone_code_max_per_phone_per_day: int = 10
+
+    # 同一 IP 1 小时内的发码上限 —— 防「换号刷」，与上一条互补：
+    # 只限手机号时，攻击者可以用一批号码绕开单号上限。
+    phone_code_max_per_ip_per_hour: int = 20
+
     # ---- 其他 ----
     cors_origins: list[str] = ["http://localhost:5173"]
     sql_echo: bool = False

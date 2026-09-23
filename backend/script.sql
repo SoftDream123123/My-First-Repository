@@ -4,21 +4,26 @@
 -- 用法：
 --     mysql -uroot -p --default-character-set=utf8mb4 < script.sql
 --
--- 覆盖范围：MVP-1 + MVP-2 + MVP-3，共 15 张表。
+-- 覆盖范围：MVP-1 ~ MVP-5，共 16 张表。
 --
 --     §1  建库
 --     §2  建表            —— 空库直接跑这一节（全新安装）
---     §3  存量库升级      —— 已有 MVP-1 库才需要，**默认整段注释掉**
+--     §3  存量库升级      —— 已有库才需要，**默认整段注释掉**（§3.5 对现有库是必跑的）
 --     §4  与 Alembic 对齐
 --     §5  推倒重建        —— 默认注释掉，会丢数据
 --
 -- ---------------------------------------------------------------------------
--- 本批次（MVP-2 / MVP-3）的 schema 事实来源
+-- 本文件是 schema 的事实来源（MVP-2 起的各批次）
 --
---     按项目约定，这两批**只改模型、不写 Alembic 迁移**（PRD §11）。因此本文件
+--     按项目约定，这些批次**只改模型、不写 Alembic 迁移**（PRD §11）。因此本文件
 --     与 `backend/app/**/models.py` 才是当前 schema 的事实来源，而非 alembic/versions/。
 --     Alembic 目前停在 b7f1c2a4d8e6（user.role 加 candidate 取值），其后的结构变更
---     （6 张新表、9 个新列、1 处枚举扩值）都不在迁移里。
+--     全部不在迁移里 —— 别指望 `alembic upgrade head` 能得到一个可用的库。
+--
+--     各批次的结构变更：
+--         MVP-2 / MVP-3   6 张新表、9 个新列、1 处枚举扩值  → §3.1 ~ §3.4
+--         MVP-4           **无**（上传解析不落库、AI 评估不落库）
+--         MVP-5           1 个新列（user.phone）、1 张新表   → §3.5
 --
 --     本脚本的 DDL 由模型**编译得到**（不是手抄），列序 / 类型 / 可空性 / 索引 /
 --     外键与模型逐项对应。改动模型后必须回头同步本文件。
@@ -93,11 +98,37 @@ CREATE TABLE `user` (
   `id`            BIGINT       NOT NULL AUTO_INCREMENT,
   `username`      VARCHAR(50)  NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL COMMENT 'bcrypt 哈希，绝不存明文',
+  -- 绑定的手机号（MVP-5，PRD §4.16）。只存 11 位纯数字、不带国家码 ——
+  -- 允许 `+86…` 与 `138…` 两种写法会让唯一键挡不住「一个号占两行」。
+  -- 唯一键**允许多个 NULL**，正好表达「有号的不许重复、没号的不算重复」。
+  `phone`         VARCHAR(20)  NULL COMMENT '11 位大陆手机号，纯数字不带国家码；NULL = 未绑定',
   `role`          ENUM('admin','hr','candidate') NOT NULL DEFAULT 'hr',
   `is_active`     BOOL         NOT NULL DEFAULT 1,
   `created_at`    DATETIME     NOT NULL DEFAULT (now()),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `ix_user_username` (`username`)
+  UNIQUE KEY `ix_user_username` (`username`),
+  UNIQUE KEY `ix_user_phone` (`phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- phone_verification_code —— 手机验证码（MVP-5，PRD §4.16）-------------------
+-- 不存明文：code_hash = sha256(code_salt + code)，库被读走也不等于能登录。
+-- 过期**不做后台清理**（与邀请码过期同一取舍，项目不引入调度器）：判定只在读取时
+-- 派生（查询带 expires_at > now）。行数增长有界 —— 限流已把单个手机号限制在每天 10 条内。
+CREATE TABLE `phone_verification_code` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT,
+  `phone`       VARCHAR(20) NOT NULL COMMENT '11 位大陆手机号，纯数字不带国家码',
+  `code_hash`   VARCHAR(64) NOT NULL COMMENT 'sha256(code_salt + code)，绝不存明文',
+  `code_salt`   VARCHAR(32) NOT NULL COMMENT '每行独立随机盐',
+  `expires_at`  DATETIME    NOT NULL,
+  `consumed_at` DATETIME    NULL     COMMENT '非空 = 已被使用或被新码作废，不可再用',
+  `attempts`    INT         NOT NULL DEFAULT 0 COMMENT '校验失败次数，达上限即作废',
+  `request_ip`  VARCHAR(45) NULL     COMMENT '发起请求的 IP（IPv6 最长 45 字符），供 IP 维度限流',
+  `created_at`  DATETIME    NOT NULL DEFAULT (now()),
+  PRIMARY KEY (`id`),
+  KEY `ix_phone_verification_code_phone` (`phone`),
+  KEY `ix_phone_verification_code_created_at` (`created_at`),
+  KEY `ix_phone_verification_code_request_ip` (`request_ip`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -527,6 +558,13 @@ CREATE TABLE `practice_item` (
 -- 里已是「建到位的最终形态」（含 MVP-3 的 resume_id / resume_match_applied），
 -- 不存在「先按 MVP-2 建、再改」的中间态。
 --
+-- ⚠️ **§3.5 与 §3.1 ~ §3.4 的适用范围不同**：
+--     §3.1 ~ §3.4 只对「MVP-1 时期的库」需要，它对当前分支上已有的库是**多余的**
+--     （那些库早就跑过 2026-09-21 的统一收口）。
+--     **§3.5 则对任何已存在的库都必跑** —— 无论是 MVP-1 库还是 MVP-4 库升上来，
+--     都缺 `user.phone` 与 `phone_verification_code`。判断方法：看
+--     `information_schema.COLUMNS` 里 `user` 表有没有 `phone` 列，没有就跑 §3.5。
+--
 -- 存量数据如何自洽（这就是 §3.2 / §3.3 里的默认值与回填存在的理由）：
 --     · 46 道存量题无选项 → 回填空数组，题型默认 'short_answer'（存量题都是纯文本题）
 --     · 34 条存量作答     → source 默认 'hr'，归到「HR 手工录入」，语义正确
@@ -573,12 +611,39 @@ CREATE TABLE `practice_item` (
 -- ALTER TABLE `interview_question`
 --   MODIFY COLUMN `source_snapshot` ENUM('bank','ai','resume_match') NOT NULL;
 
+-- ---- §3.5 user / phone_verification_code：手机验证码登录（MVP-5，PRD §4.16）----
+-- ⚠️ 本小节对**任何已存在的库**都必跑（见上方说明），不只是 MVP-1 库。
+--
+-- `user.phone` 的两点：
+--   · **可空**是必须的 —— 绝大多数账号没有手机号；
+--   · 唯一键**允许多个 NULL**，因此「可空 + 唯一」正好表达「有手机号的不许重复、
+--     没手机号的不算重复」，不需要哨兵值或额外约束。
+--
+-- ALTER TABLE `user`
+--   ADD COLUMN `phone` VARCHAR(20) NULL
+--       COMMENT '11 位大陆手机号，纯数字不带国家码；NULL = 未绑定' AFTER `password_hash`,
+--   ADD UNIQUE KEY `ix_user_phone` (`phone`);
+--
+-- 建表语句与 §2 中同名表的段落**逐字相同**，请直接从 §2 复制执行：
+--     CREATE TABLE `phone_verification_code` ( … )
+-- 它没有外键、不被任何表引用，因此**执行顺序无约束**，可与上面的 ALTER 颠倒。
+--
+-- 冒烟：`SELECT VERSION();` 后各跑一次 `SHOW COLUMNS FROM user LIKE 'phone';`
+-- 与 `SHOW CREATE TABLE phone_verification_code;`，与 §2 的段落逐项核对
+-- （列序 / 类型 / 可空 / 三个索引名 / 唯一键名）。这就是 module-31 §2.2 的
+-- 「与 information_schema 实测比对」那一步。
+
 
 -- ---------------------------------------------------------------------------
 -- §4 收尾：与 Alembic 对齐
 --
 -- 本脚本落地的结构**超出** Alembic 当前 head：迁移只到 b7f1c2a4d8e6
--- （user.role 加 candidate），MVP-2 / MVP-3 的表与列按约定没有写迁移。
+-- （user.role 加 candidate），MVP-2 / MVP-3 / MVP-5 的表与列按约定没有写迁移
+-- （MVP-4 不改结构，无迁移可写）。
+--
+-- ⚠️ 补写 MVP-5 迁移**已被明确否决**（PRD §11）：迁移链自 MVP-2 起就已不完整，
+--    此时补一条只会让「alembic upgrade head 能得到一个可用的库」这个错觉更难被发现。
+--    留着一个明确不完整的链，比留下一个看起来完整、实际缺表的链更安全。
 --
 -- 因此若这个库还要用 Alembic 做增量演进，只需让它知道「已经处在 head 版本」，
 -- 否则 upgrade head 会重复执行 b7f1c2a4d8e6：
@@ -610,5 +675,7 @@ CREATE TABLE `practice_item` (
 -- DROP TABLE IF EXISTS `resume`;
 -- DROP TABLE IF EXISTS `position`;
 -- DROP TABLE IF EXISTS `user`;
+-- -- MVP-5：无外键、也无人引用它，位置随意
+-- DROP TABLE IF EXISTS `phone_verification_code`;
 -- SET FOREIGN_KEY_CHECKS = 1;
 -- ---------------------------------------------------------------------------

@@ -1071,16 +1071,20 @@ def get_interview_for_candidate(db: Session, user: User, interview_id: int) -> I
 
 
 def accept_invitation(
-    db: Session, code: str, username: str, password: str
+    db: Session, code: str, username: str, password: str | None, actor: User | None = None
 ) -> InvitationAcceptResult:
     """凭邀请码激活并绑定面试。
 
     账号创建**委托 auth**（auth_service.create_candidate_account），不在本模块
     复制「用户名唯一性 / 密码哈希 / 角色约束」规则。
 
-    刻意不接 `user` 参数：绑定到哪个账号由请求体里的 username 决定（§5.3），
-    与调用者身份无关。角色守卫在 router 层。签名里放一个不用的 user 会让人
-    误以为「绑定的是当前登录者」。
+    刻意不接「当前登录用户」来做权限判定：绑定到哪个账号由请求体里的 username
+    决定（§5.3），与调用者身份无关。角色守卫在 router 层。签名里放一个用于权限的
+    user 会让人误以为「绑定的是当前登录者」。
+
+    `actor` 唯一的用途是**传下去当身份证明**（PRD §4.1 免密分支）：请求带的有效
+    JWT 指向的账号就是目标账号时，`create_candidate_account` 跳过密码比对。
+    它不改变任何权限判定 —— 持自己的 token 只能绑定自己的账号。
     """
     invitation = repository.get_invitation_by_code(db, code)
 
@@ -1091,7 +1095,7 @@ def accept_invitation(
     ):
         raise BusinessError(_INVITATION_INVALID_MESSAGE)
 
-    candidate = auth_service.create_candidate_account(db, username, password)
+    candidate = auth_service.create_candidate_account(db, username, password, actor)
 
     # ---- 临界区：一次性接受必须串行化 ----
     # 加锁放在 create_candidate_account **之后**：新建账号会 commit，而 commit

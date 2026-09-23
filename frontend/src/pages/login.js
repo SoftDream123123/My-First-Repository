@@ -6,6 +6,9 @@
  *
  * ⚠️ **登录端点三个角色共用一个**（API 文档 §5.1）。返回的 `user.role` 决定该去
  * 哪一端，因此这里必须按角色分流，不能默认来者都是 HR。
+ *
+ * MVP-5 起本页有**两种登录模式**（密码 / 手机验证码）。两种模式共用同一段分流逻辑
+ * —— 见 `buildCard` 里的 `enter`。
  */
 
 import { el, mount } from '../dom.js';
@@ -13,6 +16,7 @@ import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
 import { fieldError, fieldErrors } from '../components/form.js';
+import { buildPhoneLoginForm } from '../components/phone-login.js';
 import { navigate, defaultRoute } from '../router.js';
 
 const FLOW = [
@@ -53,81 +57,129 @@ function buildAside() {
   );
 }
 
-function buildForm() {
-  const username = el('input', {
-    class: 'input', id: 'login-username', maxlength: '50', autocomplete: 'username',
-  });
-  const usernameError = fieldError();
+function buildCard() {
+  let mode = 'password';
 
-  const password = el('input', {
-    class: 'input', id: 'login-password', type: 'password', maxlength: '128',
-    autocomplete: 'current-password',
-  });
-  const passwordError = fieldError();
+  const switcher = el('div', { class: 'seg' });
+  const area = el('div', {});
 
-  const errors = fieldErrors({ username: usernameError, password: passwordError });
+  /**
+   * 两种模式**共用**的角色分流（PRD §4.16）。
+   *
+   * ⚠️ 手机号模式同样必须按 `role` 分流：用一个**未绑定过**的手机号在 HR 页登录，
+   * 后端会自动建一个候选人账号并原样返回 `role: "candidate"`。此时若不分流，就会出现
+   * 「在 HR 页用手机号登录 → 进了 HR 工作台 → 里面空空如也」—— 症状（进去了但是空的）
+   * 与原因（那是个候选人账号）离得很远。
+   *
+   * 抽成一个函数而不是写两份：分叉的那一份一定是最新加的手机号模式，
+   * 也就是这条注释要防的那个 bug 本身。
+   */
+  function enter(result) {
+    if (result.user?.role === 'candidate') {
+      auth.saveTokenOn(result.token, result.user, 'candidate');
+      navigate(defaultRoute('candidate'));
+      return;
+    }
+    auth.saveToken(result.token, result.user);
+    navigate(defaultRoute('hr', auth.isAdmin()));
+  }
 
-  const submit = el('button', { class: 'btn btn--primary btn--wide', type: 'submit', text: '登录' });
+  function buildPasswordForm() {
+    const username = el('input', {
+      class: 'input', id: 'login-username', maxlength: '50', autocomplete: 'username',
+    });
+    const usernameError = fieldError();
+
+    const password = el('input', {
+      class: 'input', id: 'login-password', type: 'password', maxlength: '128',
+      autocomplete: 'current-password',
+    });
+    const passwordError = fieldError();
+
+    const errors = fieldErrors({ username: usernameError, password: passwordError });
+
+    const submit = el('button', { class: 'btn btn--primary btn--wide', type: 'submit', text: '登录' });
+
+    return el(
+      'form',
+      {
+        class: 'login-form',
+        onSubmit: async (event) => {
+          event.preventDefault();
+          errors.clear();
+
+          if (!username.value.trim()) { errors.show('username', '请填写用户名'); username.focus(); return; }
+          if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
+
+          submit.disabled = true;
+          submit.textContent = '登录中…';
+          try {
+            const result = await api.post('/auth/login', {
+              username: username.value.trim(),
+              password: password.value,
+            });
+            enter(result);
+          } catch (error) {
+            // 400 落到字段；「用户名或密码错误」这类业务错误用后端文案提示
+            if (!errors.fromServer(error)) toast.error(error.message);
+          } finally {
+            submit.disabled = false;
+            submit.textContent = '登录';
+          }
+        },
+      },
+      el('h2', { text: '登录' }),
+      el('p', { class: 'login-card-lede', text: '用管理员分配给你的账号登录。' }),
+      el(
+        'div',
+        { class: 'field' },
+        el('label', { class: 'field-label', for: 'login-username', text: '用户名' }),
+        username,
+        usernameError,
+      ),
+      el(
+        'div',
+        { class: 'field' },
+        el('label', { class: 'field-label', for: 'login-password', text: '密码' }),
+        password,
+        passwordError,
+      ),
+      submit,
+    );
+  }
+
+  function paint() {
+    switcher.replaceChildren();
+    [['password', '密码登录'], ['phone', '手机号登录']].forEach(([key, label]) => {
+      switcher.append(el('button', {
+        class: `seg-btn${mode === key ? ' is-on' : ''}`,
+        type: 'button',
+        text: label,
+        onClick: () => { mode = key; paint(); },
+      }));
+    });
+
+    // 两个 form 是兄弟而非嵌套（HTML 不允许 form 套 form），因此按模式整体替换
+    area.replaceChildren(
+      mode === 'password'
+        ? buildPasswordForm()
+        : buildPhoneLoginForm({
+          onSubmit: enter,
+          title: '登录',
+          lede: '用手机号接收验证码登录。管理员已给你绑过手机号的话，就用这个入口。',
+        }),
+    );
+  }
+
+  paint();
 
   return el(
-    'form',
-    {
-      class: 'login-form',
-      onSubmit: async (event) => {
-        event.preventDefault();
-        errors.clear();
-
-        if (!username.value.trim()) { errors.show('username', '请填写用户名'); username.focus(); return; }
-        if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
-
-        submit.disabled = true;
-        submit.textContent = '登录中…';
-        try {
-          const result = await api.post('/auth/login', {
-            username: username.value.trim(),
-            password: password.value,
-          });
-
-          // 登录端点是**三个角色共用**的（API 文档 §5.1），因此这里要按返回的
-          // `role` 分流，不能默认来者都是 HR。候选人的登录态写进 `candidate.*`：
-          // 两端登录态分开存，同一个浏览器可以同时开着两个端（PRD §9）。
-          if (result.user?.role === 'candidate') {
-            auth.saveTokenOn(result.token, result.user, 'candidate');
-            navigate(defaultRoute('candidate'));
-            return;
-          }
-
-          auth.saveToken(result.token, result.user);
-          navigate(defaultRoute('hr', auth.isAdmin()));
-        } catch (error) {
-          // 400 落到字段；「用户名或密码错误」这类业务错误用后端文案提示
-          if (!errors.fromServer(error)) toast.error(error.message);
-        } finally {
-          submit.disabled = false;
-          submit.textContent = '登录';
-        }
-      },
-    },
-    el('h2', { text: '登录' }),
-    el('p', { class: 'login-card-lede', text: '用管理员分配给你的账号登录。' }),
-    el(
-      'div',
-      { class: 'field' },
-      el('label', { class: 'field-label', for: 'login-username', text: '用户名' }),
-      username,
-      usernameError,
-    ),
-    el(
-      'div',
-      { class: 'field' },
-      el('label', { class: 'field-label', for: 'login-password', text: '密码' }),
-      password,
-      passwordError,
-    ),
-    submit,
+    'div',
+    {},
+    switcher,
+    area,
+    // 旁路与提示放在两种模式**之外**：切模式不该让「演示账号」和「去候选人端」消失
     el('p', { class: 'note-box' }, '演示账号：admin / admin12345'),
-    // 候选人本来也有账号，但这一页是 HR 工作台。与其让他登进来再被弹走，
-    // 不如在入口处就把路指对（候选人账号在这一页登录也仍会被送到候选人端）。
     el(
       'div',
       { class: 'login-alt-row' },
@@ -145,6 +197,6 @@ function buildForm() {
 export function render(container) {
   mount(
     container,
-    el('div', { class: 'login' }, buildAside(), el('section', { class: 'login-main' }, el('div', { class: 'login-card' }, buildForm()))),
+    el('div', { class: 'login' }, buildAside(), el('section', { class: 'login-main' }, el('div', { class: 'login-card' }, buildCard()))),
   );
 }

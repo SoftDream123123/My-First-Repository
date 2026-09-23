@@ -281,3 +281,204 @@ class TestRoleEnumMigration:
         ensure_no_candidates = _migration_module().ensure_no_candidates
 
         ensure_no_candidates(db.connection())
+
+
+# ===========================================================================
+# accept 的免密分支（MVP-5，PRD §4.1）
+# ===========================================================================
+
+
+CANDIDATE_PASSWORD = "cand12345678"
+
+
+def _make_invitation(client, hr_headers, position) -> dict:
+    """HR 建面试 → 生成邀请码。返回邀请码响应体。"""
+    interview = client.post(
+        "/api/interviews",
+        json={"position_id": position.id, "candidate_name": "李四"},
+        headers=hr_headers,
+    ).json()
+    return client.post(
+        f"/api/interviews/{interview['id']}/invitations", headers=hr_headers
+    ).json()
+
+
+def _accept(client, code: str, payload: dict, headers: dict | None = None):
+    return client.post(
+        f"/api/candidate/invitations/{code}/accept", json=payload, headers=headers or {}
+    )
+
+
+class TestAcceptPasswordlessBranch:
+    """已持有该账号的有效 JWT 时免密（PRD §4.1，2026-09-23）。
+
+    这不是可选的便利功能：**手机号自动建号的账号没有可用密码**
+    （见 `auth.service._create_phone_candidate`），没有这条分支，用手机号注册的
+    候选人拿到邀请码后将永远无法激活 —— 报「用户名或密码错误」，而他根本没有密码。
+
+    免密能成立的理由：密码的职责是「证明你是这个账号的主人」，而已持有该账号的
+    有效 JWT 是同一件事的**更强证明**。
+    """
+
+    def test_own_token_without_password_succeeds(
+        self, client, hr_headers, position, candidate_user, candidate_headers
+    ):
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username},  # 刻意不带 password
+            candidate_headers,
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["interview_id"] == invitation["interview_id"]
+
+    def test_own_token_with_wrong_password_still_succeeds(
+        self, client, hr_headers, position, candidate_user, candidate_headers
+    ):
+        """免密分支下密码**根本不参与** —— 连错密码也不影响。"""
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username, "password": "totally-wrong-1"},
+            candidate_headers,
+        )
+
+        assert resp.status_code == 200, resp.text
+
+    def test_another_users_token_is_rejected(
+        self, client, hr_headers, position, candidate_user, other_candidate_headers
+    ):
+        """⚠️ 判据的核心：只满足「带 token」不够，token 必须**指向目标账号**。
+
+        只认前者会让攻击者用自己的 token 去绑他人的账号 —— 那正是
+        「密码不符即拒绝」要防的同一件事。文案与密码不符完全一致。
+        """
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username},
+            other_candidate_headers,
+        )
+
+        assert resp.status_code == 401
+        assert resp.json()["message"] == "用户名或密码错误"
+
+    def test_another_users_token_with_correct_password_succeeds(
+        self, client, hr_headers, position, candidate_user, other_candidate_headers
+    ):
+        """既有行为不变：免密只是**少输一次密码**，没有放宽也无所谓收紧。"""
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username, "password": CANDIDATE_PASSWORD},
+            other_candidate_headers,
+        )
+
+        assert resp.status_code == 200, resp.text
+
+    def test_no_token_and_no_password_is_rejected(self, client, hr_headers, position, candidate_user):
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(client, invitation["code"], {"username": candidate_user.username})
+
+        assert resp.status_code == 401
+        assert resp.json()["message"] == "用户名或密码错误"
+
+    def test_no_token_with_correct_password_succeeds(
+        self, client, hr_headers, position, candidate_user
+    ):
+        """公开端点的既有主路径 —— 一行改动都不能碰。"""
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username, "password": CANDIDATE_PASSWORD},
+        )
+
+        assert resp.status_code == 200, resp.text
+
+    def test_own_token_does_not_let_you_create_a_new_account_without_password(
+        self, client, hr_headers, position, candidate_headers
+    ):
+        """免密只对「账号已存在且就是持 token 者本人」生效。
+
+        新建路径没有「本人的账号」可以证明，因此仍必须有密码。
+        """
+        invitation = _make_invitation(client, hr_headers, position)
+
+        without_password = _accept(
+            client,
+            invitation["code"],
+            {"username": "brand_new_candidate"},
+            candidate_headers,
+        )
+        assert without_password.status_code == 401
+        assert without_password.json()["message"] == "用户名或密码错误"
+
+        with_password = _accept(
+            client,
+            invitation["code"],
+            {"username": "brand_new_candidate", "password": "brandnew12345"},
+            candidate_headers,
+        )
+        assert with_password.status_code == 200, with_password.text
+
+    def test_disabled_account_cannot_activate_with_own_token(
+        self, client, db, admin_user, hr_headers, position, candidate_user, candidate_headers
+    ):
+        """禁用账号不得借免密分支被复用绑定（module-12 的既有结论）。
+
+        ⚠️ 文案是**通用那句**而不是「账号已禁用」，这是有意的：`get_optional_user`
+        对已禁用用户返回 None（与 `get_current_user` 保持同一条规则 ——
+        它只认「get_current_user 也会接受」的用户），因此请求根本没走到免密分支，
+        而是退回密码校验，而它没有密码。
+        两处的结果一致：**绑定不发生**。这条用例钉住的就是这个结果。
+        """
+        invitation = _make_invitation(client, hr_headers, position)
+        service.update_user(db, admin_user, candidate_user.id, is_active=False)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username},
+            candidate_headers,
+        )
+
+        assert resp.status_code == 401
+
+        # 断言真正重要的那件事：邀请**没有被消费**
+        from app.interview import repository as interview_repository
+
+        row = interview_repository.get_invitation_by_code(db, invitation["code"])
+        assert row.status == "pending"
+        assert row.candidate_user_id is None
+
+    def test_garbage_token_degrades_to_password_path_not_500(
+        self, client, hr_headers, position, candidate_user
+    ):
+        """坏 token 不是错误，只是「没有加速可用」（PRD §4.1）。
+
+        若 `get_optional_user` 改成像 `get_current_user` 那样抛 401，
+        「带过期 token 去激活」会从「按密码正常激活」退化成「激活失败」——
+        一个纯粹的功能退化，且症状与原因离得很远。
+        """
+        invitation = _make_invitation(client, hr_headers, position)
+
+        resp = _accept(
+            client,
+            invitation["code"],
+            {"username": candidate_user.username, "password": CANDIDATE_PASSWORD},
+            {"Authorization": "Bearer not-a-real-token"},
+        )
+
+        assert resp.status_code == 200, resp.text

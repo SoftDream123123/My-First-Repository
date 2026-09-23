@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.ai.base import FEEDBACK_LEVEL_FULL
 from app.auth.models import User
 from app.core.config import get_settings
-from app.core.deps import get_db, require_roles
+from app.core.deps import get_db, get_optional_user, require_roles
 from app.interview import service
 from app.interview.schemas import (
     CandidateAnswerCreate,
@@ -49,17 +49,26 @@ def accept_invitation(
     code: str,
     payload: InvitationAcceptRequest,
     db: Session = Depends(get_db),
+    actor: User | None = Depends(get_optional_user),
 ) -> InvitationAcceptResult:
     """**公开端点：不要求 JWT**（本文件里唯一一个）。
 
-    账号不存在则创建（role=candidate），已存在且为 candidate 时**校验密码后**复用
-    （密码不符 → 401「用户名或密码错误」，见 `auth.service.create_candidate_account`）。
+    账号不存在则创建（role=candidate），已存在且为 candidate 时**校验身份后**复用
+    （身份不成立 → 401「用户名或密码错误」，见 `auth.service.create_candidate_account`）。
+
+    `actor` 用 `get_optional_user` 而非 `get_current_user`：本端点**必须**对未登录
+    请求可用，因此 token 无效不能算错误。它只做一件事 —— 带的有效 JWT 指向的账号
+    就是目标账号时，免去再输一次密码（PRD §4.1 的免密分支）。
+    未带 / 无效 / 过期 token 一律退化为 `None`，随后走既有的密码校验，**权限不放宽**。
+    若这里改抛 401，「带过期 token 去激活」会从「按密码正常激活」退化成「激活失败」。
 
     **响应不含 token** —— 与自助注册一致，登录态由 /auth/login 单独获取。
     四种失效原因（码不存在 / 已撤销 / 已接受 / 已过期）返回同一文案，
     且响应中不出现任何面试信息，避免成为邀请码探测接口。
     """
-    return service.accept_invitation(db, code, payload.username, payload.password)
+    return service.accept_invitation(
+        db, code, payload.username, payload.password, actor
+    )
 
 
 @router.get(

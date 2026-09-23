@@ -200,6 +200,13 @@ from app.ai.factory import validate_provider_config  # noqa: E402
 
 validate_provider_config()
 
+# 启动期校验短信 Provider 配置（fail fast）：
+# SMS_PROVIDER 取值非法时直接失败 —— 不静默退回 Mock，否则生产会在无人察觉的
+# 情况下把验证码写进日志并回显给浏览器（PRD §6、§9）。
+from app.sms.factory import validate_provider_config as validate_sms_provider_config  # noqa: E402
+
+validate_sms_provider_config()
+
 
 # --------------------------- 前端静态托管（可选） ---------------------------
 # 前端构建产物 frontend/dist 存在时，由后端一并托管，于是**一个进程、一个端口**

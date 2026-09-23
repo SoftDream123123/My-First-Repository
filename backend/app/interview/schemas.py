@@ -92,12 +92,27 @@ class InvitationView(BaseModel):
 class InvitationAcceptRequest(BaseModel):
     """凭邀请码建号。
 
-    password 在「账号已存在且角色为 candidate」时被**忽略** ——
-    否则「凭邀请码重置他人密码」会成为一条越权路径。
+    账号已存在且角色为 candidate 时，password 是**身份凭据**：必须与库中密码
+    一致才复用该账号，否则「知道对方用户名」就等于能把他人的账号绑到自己的
+    邀请上（PRD §4.1）。
+
+    password 可省略（2026-09-23，PRD §4.1 的免密分支）：请求带的有效 JWT 指向的
+    账号**就是**这次要绑定的账号时，身份已由此证明，不必再输一次密码。
+    这是手机验证码登录能走通邀请链的前提 —— 手机号自动建号的账号没有可用密码。
+
+    ⚠️ 长度约束仅在**提供了密码**时生效（`min_length=8` 对 None 不适用）。
+    不能因为字段可省略就把 `min_length` 一并去掉：它保护的是**新建账号**那条
+    路径（password 会成为账号的新密码），去掉会允许 3 位密码注册。
     """
 
     username: str = Field(min_length=1, max_length=50)
-    password: str = Field(min_length=8, max_length=128, description="最少 8 字符")
+    password: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=128,
+        description="账号已存在时用它证明身份；新建账号时它就是新密码；"
+        "持有该账号的有效 JWT 时可省略",
+    )
 
 
 # ==================== 候选人侧 ====================

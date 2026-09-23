@@ -32,9 +32,31 @@ export class ApiError extends Error {
   }
 }
 
-/** 这两个端点的 401 是「凭据不符」，不是「会话失效」。 */
-function isCredentialCheck(path) {
-  return path === '/auth/login' || /^\/candidate\/invitations\/[^/]+\/accept$/.test(path);
+/**
+ * 这几个端点的 401 是「凭据不符」，不是「会话失效」。
+ *
+ * 导出是为了可测（module-32 §6）：它是纯函数，而它判错的后果很难排查。
+ *
+ * ⚠️ 关于 `/auth/phone/login` 这一条，**如实说明它的作用**（2026-09-23 核对）：
+ * 它今天**不是**在修一个可复现的 bug。已核对过两条防线：
+ *   · `router.decide` 会把已登录用户从**同端**登录页重定向走（`router.js:164`），
+ *     而 `loggedIn` 取的是该路由所属那一端的状态；
+ *   · `session.clear()` 是**按端**作用域的（`session.js:31`）—— 即便它触发，
+ *     登录页上那一端本来就没有 token。
+ * 所以「输错验证码被登出」在今天的路由表下不可达。
+ *
+ * 那为什么还要登记？因为**同一个类别的端点已经在别处需要过这一条**：
+ * `/candidate/invitations/{code}/accept` 挂在一条 `open: true` 的路由上
+ * （登录与否都可达、不重定向），它就需要。凭据类的端点与路由是否 open 是两件
+ * 独立的事，让它们必须彼此吻合才正确，是一种不必要的耦合 —— 将来给某个
+ * 同端路由加 `open: true`，或去掉守卫的重定向，漏掉这一条就会变成真的 bug，
+ * 而症状（莫名被登出）与原因（这个字符串比对）离得极远。
+ */
+export function isCredentialCheck(path) {
+  return path === '/auth/login'
+    || path === '/auth/phone/login'
+    // 发码端点不需要登记：它只返回 200 / 400 / 429，永不 401。
+    || /^\/candidate\/invitations\/[^/]+\/accept$/.test(path);
 }
 
 let unauthorizedHandler = null;

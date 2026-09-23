@@ -14,6 +14,74 @@ import { currentNavId } from '../router.js';
 
 const ROLE_LABELS = { admin: '管理员', hr: 'HR' };
 
+/**
+ * 绑定 / 解绑手机号（MVP-5，PRD §4.16）。
+ *
+ * 只有 admin 能设置 —— 手机号 → 账号的映射因此由 admin 独家控制，这也是
+ * 「谁能用手机号登录 HR 端」的唯一开关。候选人则是另一条路径：未绑定过的
+ * 手机号在登录页直接建 candidate 账号，**不需要**这里插手。
+ */
+function openPhoneModal(user, onSaved) {
+  const phoneInput = el('input', {
+    class: 'input', id: 'user-phone', maxlength: '20', autocomplete: 'off',
+    placeholder: '例如 13800138000', value: user.phone ?? '',
+  });
+  const phoneError = el('p', { class: 'field-error', hidden: true });
+
+  function clearErrors() { phoneError.textContent = ''; phoneError.hidden = true; }
+  function showError(message) { phoneError.textContent = message; phoneError.hidden = false; }
+
+  const body = el(
+    'div',
+    {},
+    el(
+      'div',
+      { class: 'field' },
+      el('label', { class: 'field-label', for: 'user-phone', text: '手机号' }),
+      phoneInput,
+      // 「留空即解绑」必须**明说**：否则这是一步有后果的操作却没有预告 ——
+      // 用户以为空着就是「不改」，实际会解绑。
+      el('p', { class: 'field-note', text: '11 位大陆手机号，不必带 +86 前缀。留空并保存即解绑（该账号此后不能用手机号登录）。' }),
+      phoneError,
+    ),
+  );
+
+  const submit = el('button', { class: 'btn btn--primary', text: '保存' });
+
+  const handle = openModal({
+    title: `设置「${user.username}」的手机号`,
+    body,
+    footer: [
+      el('button', { class: 'btn btn--ghost', text: '取消', onClick: () => handle.close() }),
+      submit,
+    ],
+  });
+
+  submit.addEventListener('click', async () => {
+    clearErrors();
+    const raw = phoneInput.value.trim();
+
+    handle.setBusy(true);
+    try {
+      // 空串 → **显式传 null**（解绑）。必须显式传：不传这个键表示「不改」，
+      // 后端用 `model_fields_set` 区分这两者（module-31 §4.2）。
+      await api.patch(`/users/${user.id}`, { phone: raw === '' ? null : raw });
+      handle.close();
+      toast.success(raw === '' ? '已解绑手机号' : '手机号已绑定');
+      onSaved();
+    } catch (error) {
+      handle.setBusy(false);
+      // 400（格式不合法）落到字段；409「该手机号已被占用」等用后端文案提示
+      const fields = error.detail?.fields;
+      if (error.code === 'VALIDATION_ERROR' && Array.isArray(fields) && fields.length) {
+        showError(fields[0].message);
+      } else {
+        toast.error(error.message);
+      }
+    }
+  });
+}
+
 function openCreateModal(onSaved) {
   const usernameInput = el('input', {
     class: 'input', id: 'user-username', maxlength: '50', autocomplete: 'off',
@@ -191,6 +259,8 @@ export async function render(container) {
         isSelf ? el('span', { class: 'mine-badge', text: '（你自己）' }) : null,
       ),
       el('td', {}, el('span', { class: 'tag tag--dim', text: ROLE_LABELS[user.role] ?? user.role })),
+      // 未绑定显示破折号而不是留空 —— 空白看起来像加载失败或列错位
+      el('td', { class: 'meta', text: user.phone ?? '—' }),
       el('td', {}, el('span', {
         class: `tag ${user.is_active ? 'tag--evaluated' : 'tag--off'}`,
         text: user.is_active ? '已启用' : '已禁用',
@@ -199,6 +269,12 @@ export async function render(container) {
       el(
         'td',
         { class: 'cell-actions' },
+        el('button', {
+          class: 'btn btn--quiet btn--sm',
+          text: user.phone ? '改手机号' : '绑手机号',
+          title: '绑定后，本人可以用手机验证码直接登录',
+          onClick: () => openPhoneModal(user, () => render(container)),
+        }),
         el('button', {
           class: 'btn btn--quiet btn--sm',
           text: user.role === 'admin' ? '降为 HR' : '升为管理员',
@@ -226,7 +302,7 @@ export async function render(container) {
         'div',
         {},
         el('h1', { text: '用户管理' }),
-        el('p', { class: 'page-lede' }, 'HR 只能看到自己创建的岗位、题目和面试；管理员可以看到全部数据。'),
+        el('p', { class: 'page-lede' }, 'HR 只能看到自己创建的岗位、题目和面试；管理员可以看到全部数据。给账号绑上手机号后，本人就能用手机验证码免密登录。'),
       ),
       el(
         'div',
@@ -252,6 +328,7 @@ export async function render(container) {
             {},
             el('th', { text: '用户名' }),
             el('th', { text: '角色' }),
+            el('th', { text: '手机号' }),
             el('th', { text: '状态' }),
             el('th', { text: '创建时间' }),
             el('th', {}),

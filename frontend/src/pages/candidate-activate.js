@@ -43,6 +43,21 @@ function buildCard() {
   });
   const passwordError = fieldError();
 
+  // 已登录时**整块隐藏**（MVP-5，PRD §4.1 的免密分支）：身份已由当前 JWT 证明，
+  // 后端会跳过密码比对，再要一次密码是对同一事实的重复索取。
+  //
+  // 这是手机验证码登录能走通邀请链的前提 —— 手机号自动建号的账号没有可用密码，
+  // 若无免密分支，用手机号注册的候选人拿到邀请码后将永远无法激活。
+  //
+  // 前端只做「不发 password」这一件事，**不自己判断**该不该要密码
+  // （那是后端的知识；前端猜错会退化成「必填却不填」）。
+  const passwordField = el('div', { class: 'field', hidden: signedIn },
+    el('label', { class: 'field-label', for: 'activate-password', text: '密码' }),
+    password,
+    // 这句必须跟着**真实契约**走：账号已存在时要校验密码，不是「忽略」
+    el('p', { class: 'field-note', text: '账号已存在时用它核对身份；新建账号时它就是新密码。' }),
+    passwordError);
+
   const errors = fieldErrors({
     code: codeError, username: usernameError, password: passwordError,
   });
@@ -70,16 +85,11 @@ function buildCard() {
       el('label', { class: 'field-label', for: 'activate-username', text: '用户名' }),
       username,
       signedIn
-        ? el('p', { class: 'field-note', text: '已登录，固定为当前账号。' })
+        ? el('p', { class: 'field-note', text: '已登录，固定为当前账号 —— 无需再输入密码。' })
         : el('p', { class: 'field-note', text: '已经注册过就填原来的用户名 —— 会复用那个账号，不会新建。' }),
       usernameError),
 
-    el('div', { class: 'field' },
-      el('label', { class: 'field-label', for: 'activate-password', text: '密码' }),
-      password,
-      // 这句必须跟着**真实契约**走：账号已存在时要校验密码，不是「忽略」
-      el('p', { class: 'field-note', text: '账号已存在时用它核对身份；新建账号时它就是新密码。' }),
-      passwordError),
+    passwordField,
 
     submit,
     el('div', { class: 'login-alt-row' },
@@ -105,14 +115,21 @@ function buildCard() {
     const name = username.value.trim();
     if (!codeValue) { errors.show('code', '请填写邀请码'); code.focus(); return; }
     if (!name) { errors.show('username', '请填写用户名'); username.focus(); return; }
-    if (!password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
+    if (!signedIn && !password.value) { errors.show('password', '请填写密码'); password.focus(); return; }
 
     submit.disabled = true;
     submit.textContent = '激活中…';
     try {
+      // 已登录 → **不发 password**，由后端的免密分支处理（PRD §4.1）。
+      // 独立成变量是为了让「发什么」这件事一眼可见：漏掉这层分支会退化成
+      // 「隐藏了密码框却仍必填」，症状是点了按钮没反应（静默 return）。
+      const payload = signedIn
+        ? { username: name }
+        : { username: name, password: password.value };
+
       const result = await api.post(
         `/candidate/invitations/${encodeURIComponent(codeValue)}/accept`,
-        { username: name, password: password.value },
+        payload,
       );
 
       // 已经在本端登录时 token 就在手上，不必再登一次
@@ -130,9 +147,12 @@ function buildCard() {
       toast.success(`已绑定面试：${result.interview?.position_name ?? ''}`);
       navigate(`/candidate/interviews/${result.interview_id}`);
     } catch (error) {
-      // 这个端点只在一个地方返回 401：账号已是候选人但**密码不符**
+      // 这个端点只在一个地方返回 401：账号已是候选人但**身份不成立**
       // （API 文档 §10.2）。文案仍用后端那一句，不自己另写。
-      if (error.status === 401 && errors.show('password', error.message)) {
+      //
+      // ⚠️ 已登录时密码框是隐藏的，把 401 写到那里等于**报错报给了一个看不见的
+      // 元素**（用户点了按钮、什么都没发生）—— 那种情况下改用 toast。
+      if (error.status === 401 && !signedIn && errors.show('password', error.message)) {
         password.focus();
       } else if (!errors.fromServer(error)) {
         // 409 的三种原因（码失效 / 用户名被 HR 占用 / 已接受过）**原样展示**：

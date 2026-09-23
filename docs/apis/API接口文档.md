@@ -128,7 +128,8 @@ const list = await fetch('/api/interviews', {
 
 ### 2.2 认证
 
-**只有四个接口不需要认证**：`GET /api/health`、`POST /api/auth/login`、
+**只有六个接口不需要认证**：`GET /api/health`、`POST /api/auth/login`、
+`POST /api/auth/phone/code`、`POST /api/auth/phone/login`（手机验证码登录，MVP-5）、
 `POST /api/auth/register`（候选人自助注册）、
 `POST /api/candidate/invitations/{code}/accept`（凭邀请码激活）。其余全部需要：
 
@@ -140,7 +141,7 @@ Authorization: Bearer <token>
 
 | 路径前缀 | 允许的角色 | 不符合时 |
 |---|---|---|
-| `/api/health`、`/api/auth/login`、`/api/auth/register`、`/api/candidate/invitations/{code}/accept` | **公开** | — |
+| `/api/health`、`/api/auth/login`、`/api/auth/phone/code`、`/api/auth/phone/login`、`/api/auth/register`、`/api/candidate/invitations/{code}/accept` | **公开** | — |
 | `/api/auth/me` | 任意已登录角色 | 401 |
 | `/api/users*` | **仅 `admin`** | 403 |
 | `/api/positions*`、`/api/questions*`、`/api/interviews*`（含 `report` / `export` / `stream`） | `admin` · `hr` | 403 |
@@ -149,13 +150,17 @@ Authorization: Bearer <token>
 > ⚠️ **`accept` 是 `/api/candidate` 前缀下唯一的公开端点**（见 [§10.2](#102-接受邀请码)）。
 > **不要按前缀推断权限** —— 前缀只是分类，守卫是逐个端点挂的。
 
+> ℹ️ **`accept` 是唯一「可选认证」的端点**（MVP-5 起）：它不要求 token，但**带了有效
+> token 时行为会变** —— 见 [§10.2](#102-接受邀请码) 的免密分支。另外五个公开端点
+> 完全不看 `Authorization`。
+
 > ⚠️ **`admin` 不通过候选人端的守卫**。`require_roles` 是集合精确匹配，不是「admin 通吃」。
 > 反之 `candidate` 调 HR 端接口也是 403。两个方向都是 `403 FORBIDDEN`，
 > 且**守卫先于请求体校验** —— 即使 body 是空的，角色不符仍返回 403 而不是 400。
 
 | 项 | 说明 |
 |---|---|
-| token 获取 | `POST /api/auth/login` 响应中的 `token` 字段 |
+| token 获取 | `POST /api/auth/login`（密码）或 `POST /api/auth/phone/login`（手机验证码，[§5.8](#58-手机验证码登录)）响应中的 `token` 字段。两者响应结构**完全相同** |
 | token 内容 | `sub`（用户 id）、`iat`、`exp`；**不包含 role** |
 | 默认有效期 | 720 分钟（12 小时），由 `JWT_EXPIRE_MINUTES` 配置 |
 | 过期策略 | 过期后需**重新登录**（未实现 refresh token） |
@@ -248,13 +253,27 @@ Authorization: Bearer <token>
 | `INVALID_TOKEN` | 401 | token 过期 / 篡改 / 换密钥签发 | `登录状态已失效，请重新登录` |
 | `FORBIDDEN` | 403 | 访问他人资源、非 admin 访问管理接口 | `无权限执行此操作`（默认）· `无权限访问该岗位` · `无权限访问该面试` |
 | `NOT_FOUND` | 404 | 资源不存在、题目不属该面试 | `资源不存在`（默认）· `岗位不存在` · `面试不存在` · `题目不属于该面试` |
-| `BUSINESS_ERROR` | 409 | 状态机非法迁移、重名、被引用不可删 | `业务规则冲突`（默认）· `该岗位名称已存在` · `该岗位已被题库或面试引用，无法删除` |
+| `BUSINESS_ERROR` | 409 | 状态机非法迁移、重名、被引用不可删、**手机号被占用** | `业务规则冲突`（默认）· `该岗位名称已存在` · `该岗位已被题库或面试引用，无法删除` · `该手机号已被占用` |
+| `TOO_MANY_REQUESTS` | **429** | **仅一处**：`POST /api/auth/phone/code` 的发码限流 | `发送过于频繁，请稍后再试` 等；`detail.retry_after_seconds` 给出重试秒数 |
 | `INTERNAL_ERROR` | 500 | 未预期异常（**响应体不含堆栈**） | `服务器内部错误` |
 | `AI_PROVIDER_ERROR` | 502 | AI 调用失败（重试 1 次后仍失败）：出题 / 补题 / 准备提纲 / 评估 / 候选人反馈 | `AI 服务调用失败，请稍后重试` |
+| `SMS_PROVIDER_ERROR` | 502 | **仅一处**：`POST /api/auth/phone/code` 的短信通道调用失败 | `短信服务发送失败，请稍后重试` |
 | `VALIDATION_ERROR` | **422** | **仅一处**：简历正文超过 20000 字符 | `简历正文不能超过 20000 字符` |
 
 > 表中「默认」为异常类自带的文案；业务代码可在抛出时覆盖为更具体的文案
 > （如 `面试不存在`），未覆盖时回落到默认值。**前端展示 `message` 即可，不必自己映射**。
+
+#### 关于 429 与 422（各只有一处，都是有意为之）
+
+这两个状态码都是全项目的**孤例**，理由记在此以免被「顺手统一」掉：
+
+- **429**（MVP-5）只用于**手机验证码发码**限流。它与刷题限流（`practice`，返回 **409**）
+  **刻意不一致**：发码限流**有明确的重试时机**，429 + `retry_after_seconds` 是 HTTP 为该
+  场景预定义的语义，前端要据此显示「45 秒后可重发」的倒计时；合并进 400/409 会让前端
+  **永久失去这个信息**。刷题的契约已固化、它的窗口只有 60 秒、前端也没做倒计时，
+  因此**不回溯改**它。
+- **422** 只用于简历正文超长（它刻意绕开 Pydantic，否则会被统一收口成 400）。
+  **手机号格式非法走的是 400**，不是 422 —— 它是纯格式校验，没有理由再开第二个例外。
 
 #### AI 不可用时，「降级」与「失败」要分开处理
 
@@ -323,73 +342,81 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 
 ## 三、接口总览
 
-`/api` 下共 **43 条路径 / 62 个 method-route**。「鉴权」列写的是**允许的角色**，
+`/api` 下共 **48 条路径 / 64 个 method-route**。「鉴权」列写的是**允许的角色**，
 不带 token 一律 401，角色不符一律 403（见 [§2.2](#22-认证)）。
+
+> 📌 **两个数字都是按本表实测的**（2026-09-23）。此前写的是「43 条路径 / 62 个
+> method-route」—— method-route 数正确，**路径数则与表内实际（46）对不上**，属于
+> 既有偏差。本次新增 2 个端点（[§5.7](#57-发送手机验证码)、[§5.8](#58-手机验证码登录)）
+> 后实测为 48。路径数少于 method-route 数，是因为同一个路径有多种提交方式
+> （如 `/api/interviews/{id}/answers` 上的 `POST` 与 `GET` 各算一条）。
 
 | # | 提交方式 | URL | 鉴权 | 说明 | 详见 |
 |---:|---|---|---|---|---|
 | 1 | `GET` | `/api/health` | 公开 | 健康检查 | [§4.1](#41-健康检查) |
 | 2 | `POST` | `/api/auth/login` | 公开 | 登录，签发 JWT | [§5.1](#51-登录) |
-| 3 | `POST` | `/api/auth/register` | 公开 | **候选人自助注册**（仅刷题权限） | [§5.6](#56-候选人自助注册) |
-| 4 | `GET` | `/api/auth/me` | 任意登录 | 当前登录用户信息 | [§5.2](#52-当前登录用户) |
-| 5 | `POST` | `/api/users` | `admin` | 创建用户（`hr` / `admin`） | [§5.3](#53-创建用户仅-admin) |
-| 6 | `GET` | `/api/users` | `admin` | 用户列表 | [§5.4](#54-用户列表仅-admin) |
-| 7 | `PATCH` | `/api/users/{user_id}` | `admin` | 改角色 / 启用禁用 | [§5.5](#55-修改角色--启用禁用仅-admin) |
-| 8 | `POST` | `/api/positions` | `admin` `hr` | 创建岗位 | [§6.1](#61-创建岗位) |
-| 9 | `GET` | `/api/positions` | `admin` `hr` | 岗位列表（可按名模糊搜） | [§6.2](#62-岗位列表) |
-| 10 | `GET` | `/api/positions/{position_id}` | `admin` `hr` | 岗位详情 | [§6.3](#63-岗位详情) |
-| 11 | `PUT` | `/api/positions/{position_id}` | `admin` `hr` | 更新岗位（全量替换） | [§6.4](#64-更新岗位) |
-| 12 | `DELETE` | `/api/positions/{position_id}` | `admin` `hr` | 删除岗位（204） | [§6.5](#65-删除岗位) |
-| 13 | `POST` | `/api/questions` | `admin` `hr` | 创建题目 | [§7.1](#71-创建题目) |
-| 14 | `GET` | `/api/questions` | `admin` `hr` | 题目列表（多维筛选） | [§7.2](#72-题目列表) |
-| 15 | `GET` | `/api/questions/{question_id}` | `admin` `hr` | 题目详情 | [§7.3](#73-题目详情) |
-| 16 | `PUT` | `/api/questions/{question_id}` | `admin` `hr` | 更新题目（全量替换） | [§7.4](#74-更新题目) |
-| 17 | `DELETE` | `/api/questions/{question_id}` | `admin` `hr` | 删除题目（204） | [§7.5](#75-删除题目) |
-| 18 | `POST` | `/api/questions/{question_id}/reference-answer` | `admin` `hr` | **调 AI 生成参考答案与解析** | [§7.6](#76-生成参考答案与解析) |
-| 19 | `POST` | `/api/interviews` | `admin` `hr` | 创建面试（**同步出题**） | [§8.2](#82-创建面试同步出题) |
-| 20 | `GET` | `/api/interviews` | `admin` `hr` | 面试列表 | [§8.3](#83-面试列表) |
-| 21 | `GET` | `/api/interviews/{interview_id}` | `admin` `hr` | 面试详情（含题目与回答） | [§8.4](#84-面试详情) |
-| 22 | `PATCH` | `/api/interviews/{interview_id}` | `admin` `hr` | 更新候选人信息 | [§8.5](#85-更新候选人信息) |
-| 23 | `POST` | `/api/interviews/{interview_id}/answers` | `admin` `hr` | 录入 / 修改某题回答 | [§8.6](#86-录入--修改回答) |
-| 24 | `POST` | `/api/interviews/{interview_id}/complete` | `admin` `hr` | 标记完成 | [§8.7](#87-标记完成) |
-| 25 | `POST` | `/api/interviews/{interview_id}/rollback` | `admin` `hr` | 回退到进行中 | [§8.8](#88-回退到进行中) |
-| 26 | `POST` | `/api/interviews/{interview_id}/invitations` | `admin` `hr` | **生成作答邀请码**（201） | [§8.9](#89-生成作答邀请码) |
-| 27 | `GET` | `/api/interviews/{interview_id}/invitations` | `admin` `hr` | 邀请列表与状态 | [§8.10](#810-邀请列表与状态) |
-| 28 | `DELETE` | `/api/interviews/{interview_id}/invitations/{invitation_id}` | `admin` `hr` | 撤销邀请（**200，非 204**） | [§8.11](#811-撤销邀请) |
-| 29 | `POST` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | **生成 / 重新生成面试前准备提纲** | [§8.12](#812-生成--重新生成准备提纲) |
-| 30 | `GET` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | 查看准备提纲（未生成 404） | [§8.13](#813-查看准备提纲) |
-| 31 | `PUT` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | 编辑准备提纲（整体覆盖） | [§8.14](#814-编辑准备提纲) |
-| 32 | `POST` | `/api/interviews/{interview_id}/questions/match` | `admin` `hr` | **按简历补题**（追加、幂等） | [§8.15](#815-按简历补题) |
-| 33 | `GET` | `/api/interviews/{interview_id}/resume` | `admin` `hr` | **读取该面试关联的简历**（未关联 404） | [§8.16](#816-读取面试关联的简历) |
-| 34 | `POST` | `/api/interviews/{interview_id}/resume-review` | `admin` `hr` | **评估简历与岗位的匹配度**（不落库、不限状态） | [§8.17](#817-评估简历与岗位的匹配度) |
-| 35 | `POST` | `/api/interviews/{interview_id}/evaluate` | `admin` `hr` | 触发评估（**202**） | [§9.1](#91-触发评估) |
-| 36 | `GET` | `/api/interviews/{interview_id}/evaluation/stream` | `admin` `hr` | **SSE** 评估进度 | [§9.2](#92-sse-流式评估进度) |
-| 37 | `GET` | `/api/interviews/{interview_id}/report` | `admin` `hr` | 获取完整报告 | [§9.3](#93-获取报告) |
-| 38 | `GET` | `/api/interviews/{interview_id}/report/export` | `admin` `hr` | **导出报告为 DOCX**（文件流） | [§9.4](#94-导出报告为-docx) |
-| 39 | `GET` | `/api/candidate/interviews/{interview_id}/feedback` | `candidate` | 候选人**脱敏**反馈 | [§9.5](#95-候选人脱敏反馈) |
-| 40 | `GET` | `/api/candidate/positions` | `candidate` | 刷题岗位筛选项（有题目的岗位） | [§10.1](#101-刷题岗位筛选项) |
-| 41 | `POST` | `/api/candidate/invitations/{code}/accept` | **公开** | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
-| 42 | `GET` | `/api/candidate/interviews` | `candidate` | 我参与的面试列表 | [§10.3](#103-我的面试列表) |
-| 43 | `GET` | `/api/candidate/interviews/{interview_id}` | `candidate` | 面试详情（仅题目与我的作答） | [§10.4](#104-面试详情候选人视图) |
-| 44 | `POST` | `/api/candidate/interviews/{interview_id}/answers` | `candidate` | 保存 / 更新我的作答 | [§10.5](#105-保存--更新我的作答) |
-| 45 | `POST` | `/api/candidate/interviews/{interview_id}/submit` | `candidate` | **交卷**（幂等） | [§10.6](#106-交卷) |
-| 46 | `PUT` | `/api/candidate/interviews/{interview_id}/resume` | `candidate` | **关联 / 解除关联我的简历** | [§10.7](#107-关联--解除关联简历) |
-| 47 | `POST` | `/api/candidate/interviews/{interview_id}/resume-review` | `candidate` | **评估我的简历与岗位的匹配度**（脱敏） | [§10.8](#108-评估我的简历与岗位的匹配度) |
-| 48 | `POST` | `/api/candidate/resumes` | `candidate` | 新建我的简历 | [§11.1](#111-新建简历) |
-| 49 | `GET` | `/api/candidate/resumes` | `candidate` | 我的简历列表 | [§11.2](#112-我的简历列表) |
-| 50 | `GET` | `/api/candidate/resumes/{resume_id}` | `candidate` | 简历详情 | [§11.3](#113-简历详情) |
-| 51 | `PUT` | `/api/candidate/resumes/{resume_id}` | `candidate` | 更新我的简历（部分更新） | [§11.4](#114-更新我的简历) |
-| 52 | `DELETE` | `/api/candidate/resumes/{resume_id}` | `candidate` | 删除我的简历（204） | [§11.5](#115-删除我的简历) |
-| 53 | `POST` | `/api/candidate/resumes/parse` | `candidate` | **上传 DOCX / PDF 解析为纯文本**（不落库、不落盘） | [§11.6](#116-上传解析简历文件) |
-| 54 | `GET` | `/api/practice/questions` | `candidate` | 刷题取题（**不含答案与解析**） | [§12.1](#121-刷题取题预览) |
-| 55 | `GET` | `/api/practice/sessions` | `candidate` | 我的练习会话列表（含进行中） | [§12.2](#122-我的练习会话列表) |
-| 56 | `POST` | `/api/practice/sessions` | `candidate` | 开始一次练习（**201**） | [§12.3](#123-开始一次练习) |
-| 57 | `GET` | `/api/practice/sessions/{session_id}` | `candidate` | 练习详情与进度 | [§12.4](#124-练习详情与进度) |
-| 58 | `POST` | `/api/practice/sessions/{session_id}/items` | `candidate` | 提交某题作答 → **即时判分** | [§12.5](#125-提交作答即时判分) |
-| 59 | `POST` | `/api/practice/items/{item_id}/rescore` | `candidate` | 对**未判分**的题重新判分 | [§12.6](#126-重新判分) |
-| 60 | `POST` | `/api/practice/sessions/{session_id}/finish` | `candidate` | 结束练习，出小结 | [§12.7](#127-结束练习) |
-| 61 | `GET` | `/api/practice/wrong-book` | `candidate` | 错题本（派生查询） | [§12.8](#128-错题本) |
-| 62 | `GET` | `/api/practice/stats` | `candidate` | 我的练习统计 | [§12.9](#129-练习统计) |
+| 3 | `POST` | `/api/auth/phone/code` | 公开 | **发送手机验证码**（三层限流） | [§5.7](#57-发送手机验证码) |
+| 4 | `POST` | `/api/auth/phone/login` | 公开 | **手机验证码登录**，签发 JWT | [§5.8](#58-手机验证码登录) |
+| 5 | `POST` | `/api/auth/register` | 公开 | **候选人自助注册**（仅刷题权限） | [§5.6](#56-候选人自助注册) |
+| 6 | `GET` | `/api/auth/me` | 任意登录 | 当前登录用户信息 | [§5.2](#52-当前登录用户) |
+| 7 | `POST` | `/api/users` | `admin` | 创建用户（`hr` / `admin`） | [§5.3](#53-创建用户仅-admin) |
+| 8 | `GET` | `/api/users` | `admin` | 用户列表 | [§5.4](#54-用户列表仅-admin) |
+| 9 | `PATCH` | `/api/users/{user_id}` | `admin` | 改角色 / 启用禁用 | [§5.5](#55-修改角色--启用禁用仅-admin) |
+| 10 | `POST` | `/api/positions` | `admin` `hr` | 创建岗位 | [§6.1](#61-创建岗位) |
+| 11 | `GET` | `/api/positions` | `admin` `hr` | 岗位列表（可按名模糊搜） | [§6.2](#62-岗位列表) |
+| 12 | `GET` | `/api/positions/{position_id}` | `admin` `hr` | 岗位详情 | [§6.3](#63-岗位详情) |
+| 13 | `PUT` | `/api/positions/{position_id}` | `admin` `hr` | 更新岗位（全量替换） | [§6.4](#64-更新岗位) |
+| 14 | `DELETE` | `/api/positions/{position_id}` | `admin` `hr` | 删除岗位（204） | [§6.5](#65-删除岗位) |
+| 15 | `POST` | `/api/questions` | `admin` `hr` | 创建题目 | [§7.1](#71-创建题目) |
+| 16 | `GET` | `/api/questions` | `admin` `hr` | 题目列表（多维筛选） | [§7.2](#72-题目列表) |
+| 17 | `GET` | `/api/questions/{question_id}` | `admin` `hr` | 题目详情 | [§7.3](#73-题目详情) |
+| 18 | `PUT` | `/api/questions/{question_id}` | `admin` `hr` | 更新题目（全量替换） | [§7.4](#74-更新题目) |
+| 19 | `DELETE` | `/api/questions/{question_id}` | `admin` `hr` | 删除题目（204） | [§7.5](#75-删除题目) |
+| 20 | `POST` | `/api/questions/{question_id}/reference-answer` | `admin` `hr` | **调 AI 生成参考答案与解析** | [§7.6](#76-生成参考答案与解析) |
+| 21 | `POST` | `/api/interviews` | `admin` `hr` | 创建面试（**同步出题**） | [§8.2](#82-创建面试同步出题) |
+| 22 | `GET` | `/api/interviews` | `admin` `hr` | 面试列表 | [§8.3](#83-面试列表) |
+| 23 | `GET` | `/api/interviews/{interview_id}` | `admin` `hr` | 面试详情（含题目与回答） | [§8.4](#84-面试详情) |
+| 24 | `PATCH` | `/api/interviews/{interview_id}` | `admin` `hr` | 更新候选人信息 | [§8.5](#85-更新候选人信息) |
+| 25 | `POST` | `/api/interviews/{interview_id}/answers` | `admin` `hr` | 录入 / 修改某题回答 | [§8.6](#86-录入--修改回答) |
+| 26 | `POST` | `/api/interviews/{interview_id}/complete` | `admin` `hr` | 标记完成 | [§8.7](#87-标记完成) |
+| 27 | `POST` | `/api/interviews/{interview_id}/rollback` | `admin` `hr` | 回退到进行中 | [§8.8](#88-回退到进行中) |
+| 28 | `POST` | `/api/interviews/{interview_id}/invitations` | `admin` `hr` | **生成作答邀请码**（201） | [§8.9](#89-生成作答邀请码) |
+| 29 | `GET` | `/api/interviews/{interview_id}/invitations` | `admin` `hr` | 邀请列表与状态 | [§8.10](#810-邀请列表与状态) |
+| 30 | `DELETE` | `/api/interviews/{interview_id}/invitations/{invitation_id}` | `admin` `hr` | 撤销邀请（**200，非 204**） | [§8.11](#811-撤销邀请) |
+| 31 | `POST` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | **生成 / 重新生成面试前准备提纲** | [§8.12](#812-生成--重新生成准备提纲) |
+| 32 | `GET` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | 查看准备提纲（未生成 404） | [§8.13](#813-查看准备提纲) |
+| 33 | `PUT` | `/api/interviews/{interview_id}/prep` | `admin` `hr` | 编辑准备提纲（整体覆盖） | [§8.14](#814-编辑准备提纲) |
+| 34 | `POST` | `/api/interviews/{interview_id}/questions/match` | `admin` `hr` | **按简历补题**（追加、幂等） | [§8.15](#815-按简历补题) |
+| 35 | `GET` | `/api/interviews/{interview_id}/resume` | `admin` `hr` | **读取该面试关联的简历**（未关联 404） | [§8.16](#816-读取面试关联的简历) |
+| 36 | `POST` | `/api/interviews/{interview_id}/resume-review` | `admin` `hr` | **评估简历与岗位的匹配度**（不落库、不限状态） | [§8.17](#817-评估简历与岗位的匹配度) |
+| 37 | `POST` | `/api/interviews/{interview_id}/evaluate` | `admin` `hr` | 触发评估（**202**） | [§9.1](#91-触发评估) |
+| 38 | `GET` | `/api/interviews/{interview_id}/evaluation/stream` | `admin` `hr` | **SSE** 评估进度 | [§9.2](#92-sse-流式评估进度) |
+| 39 | `GET` | `/api/interviews/{interview_id}/report` | `admin` `hr` | 获取完整报告 | [§9.3](#93-获取报告) |
+| 40 | `GET` | `/api/interviews/{interview_id}/report/export` | `admin` `hr` | **导出报告为 DOCX**（文件流） | [§9.4](#94-导出报告为-docx) |
+| 41 | `GET` | `/api/candidate/interviews/{interview_id}/feedback` | `candidate` | 候选人**脱敏**反馈 | [§9.5](#95-候选人脱敏反馈) |
+| 42 | `GET` | `/api/candidate/positions` | `candidate` | 刷题岗位筛选项（有题目的岗位） | [§10.1](#101-刷题岗位筛选项) |
+| 43 | `POST` | `/api/candidate/invitations/{code}/accept` | **公开** | **凭邀请码激活并绑定面试** | [§10.2](#102-接受邀请码) |
+| 44 | `GET` | `/api/candidate/interviews` | `candidate` | 我参与的面试列表 | [§10.3](#103-我的面试列表) |
+| 45 | `GET` | `/api/candidate/interviews/{interview_id}` | `candidate` | 面试详情（仅题目与我的作答） | [§10.4](#104-面试详情候选人视图) |
+| 46 | `POST` | `/api/candidate/interviews/{interview_id}/answers` | `candidate` | 保存 / 更新我的作答 | [§10.5](#105-保存--更新我的作答) |
+| 47 | `POST` | `/api/candidate/interviews/{interview_id}/submit` | `candidate` | **交卷**（幂等） | [§10.6](#106-交卷) |
+| 48 | `PUT` | `/api/candidate/interviews/{interview_id}/resume` | `candidate` | **关联 / 解除关联我的简历** | [§10.7](#107-关联--解除关联简历) |
+| 49 | `POST` | `/api/candidate/interviews/{interview_id}/resume-review` | `candidate` | **评估我的简历与岗位的匹配度**（脱敏） | [§10.8](#108-评估我的简历与岗位的匹配度) |
+| 50 | `POST` | `/api/candidate/resumes` | `candidate` | 新建我的简历 | [§11.1](#111-新建简历) |
+| 51 | `GET` | `/api/candidate/resumes` | `candidate` | 我的简历列表 | [§11.2](#112-我的简历列表) |
+| 52 | `GET` | `/api/candidate/resumes/{resume_id}` | `candidate` | 简历详情 | [§11.3](#113-简历详情) |
+| 53 | `PUT` | `/api/candidate/resumes/{resume_id}` | `candidate` | 更新我的简历（部分更新） | [§11.4](#114-更新我的简历) |
+| 54 | `DELETE` | `/api/candidate/resumes/{resume_id}` | `candidate` | 删除我的简历（204） | [§11.5](#115-删除我的简历) |
+| 55 | `POST` | `/api/candidate/resumes/parse` | `candidate` | **上传 DOCX / PDF 解析为纯文本**（不落库、不落盘） | [§11.6](#116-上传解析简历文件) |
+| 56 | `GET` | `/api/practice/questions` | `candidate` | 刷题取题（**不含答案与解析**） | [§12.1](#121-刷题取题预览) |
+| 57 | `GET` | `/api/practice/sessions` | `candidate` | 我的练习会话列表（含进行中） | [§12.2](#122-我的练习会话列表) |
+| 58 | `POST` | `/api/practice/sessions` | `candidate` | 开始一次练习（**201**） | [§12.3](#123-开始一次练习) |
+| 59 | `GET` | `/api/practice/sessions/{session_id}` | `candidate` | 练习详情与进度 | [§12.4](#124-练习详情与进度) |
+| 60 | `POST` | `/api/practice/sessions/{session_id}/items` | `candidate` | 提交某题作答 → **即时判分** | [§12.5](#125-提交作答即时判分) |
+| 61 | `POST` | `/api/practice/items/{item_id}/rescore` | `candidate` | 对**未判分**的题重新判分 | [§12.6](#126-重新判分) |
+| 62 | `POST` | `/api/practice/sessions/{session_id}/finish` | `candidate` | 结束练习，出小结 | [§12.7](#127-结束练习) |
+| 63 | `GET` | `/api/practice/wrong-book` | `candidate` | 错题本（派生查询） | [§12.8](#128-错题本) |
+| 64 | `GET` | `/api/practice/stats` | `candidate` | 我的练习统计 | [§12.9](#129-练习统计) |
 
 ---
 
@@ -431,6 +458,10 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 | URL | `/api/auth/login` |
 | 鉴权 | **不需要** |
 
+> ℹ️ **另一种登录方式**：手机号 + 验证码，见 [§5.8](#58-手机验证码登录)。
+> 两者**响应体逐字段一致**，因此前端按 `user.role` 分流的逻辑只需写一套。
+> 本端点用密码，那条用短信验证码。
+
 **请求体**
 
 | 字段 | 类型 | 必填 | 约束 | 说明 |
@@ -449,7 +480,7 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `token` | string | JWT，后续所有请求放在 `Authorization: Bearer` 中 |
-| `user` | object | 用户对象，见 [§10.1](#131-userout) |
+| `user` | object | 用户对象，见 [§13.1](#131-userout) |
 
 **响应示例**
 
@@ -581,12 +612,13 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 |---|---|---|
 | `user_id` | integer | 目标用户 id |
 
-**请求体**（两个字段**均可选**，只传需要改的）
+**请求体**（三个字段**均可选**，只传需要改的）
 
 | 字段 | 类型 | 约束 | 说明 |
 |---|---|---|---|
 | `role` | string \| null | `admin` \| `hr` | 改角色 |
 | `is_active` | boolean \| null | — | `false` 即禁用，旧 token 立即失效 |
+| `phone` | string \| null | 11 位大陆手机号 | **绑定手机号**（MVP-5）。传 `null` 表示**解绑** |
 
 **请求示例**
 
@@ -598,18 +630,45 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 { "is_active": false }
 ```
 
+```json
+{ "phone": "13800138000" }
+```
+
+```json
+{ "phone": null }
+```
+
+> ⚠️ **`phone` 的「不传」与「传 null」语义不同**：**不传 = 不改，传 `null` = 解绑**。
+> 前两个字段没有这个区别（没有「清空角色」的需求），手机号则有。
+> 因此前端**必须显式传 `null`** 才能解绑 —— 提交空表单字段时不要把它省略掉。
+>
+> 手机号会被服务端**归一化**（去空格 / 连字符 / 括号 / `+86` 前缀）后再落库，
+> 因此 `" 138 0013 8000 "` 与 `"13800138000"` 绑定的是同一个号。
+>
+> **绑定手机号之后，本人即可用 [§5.8](#58-手机验证码登录) 免密登录**（角色不变）。
+> 这是「谁能用手机号登录 HR 端」的唯一控制点 —— 因此**只有 admin 能调本端点**。
+
 **响应 `200`** —— 更新后的用户对象。
 
 **错误**
 
 | HTTP | code | 触发场景 | message |
 |---|---|---|---|
+| 400 | `VALIDATION_ERROR` | 手机号格式非法 | `请求参数不合法`，`detail.fields` 指出是 `phone` |
 | 403 | `FORBIDDEN` | 非 admin 调用 | `无权限执行此操作` |
 | 404 | `NOT_FOUND` | 目标用户不存在 | `用户不存在` |
 | 409 | `BUSINESS_ERROR` | **admin 修改自己的角色或状态** | `不能修改自己的角色或状态` |
+| 409 | `BUSINESS_ERROR` | **该手机号已被其他账号绑定** | `该手机号已被占用` |
 
 > 防自锁死：admin 不能把自己降级或禁用，否则系统将没有任何管理员。
-> 前端应在界面上直接禁用「当前登录 admin 自己那一行」的开关。
+> 前端应在界面上直接禁用「当前登录 admin 自己那一行」的角色 / 状态开关。
+>
+> ⚠️ **该防呆只拦角色与状态，不拦手机号**（MVP-5）：admin **可以给自己绑手机号** ——
+> 那不会让任何人失去管理能力，没有理由要求他请另一个 admin 代劳。
+> 因此前端可以在自己那一行保留「绑手机号」按钮，只禁用另外两个。
+>
+> **「手机号已被占用」不区分占用者的角色**，与「用户名已被占用」同一口径：区分等于
+> 提供了一个账号探测接口。
 
 ### 5.6 候选人自助注册
 
@@ -672,6 +731,146 @@ AI 失败**不总是**报错。有些场景按设计**静默降级**，请求仍
 > ```
 
 ---
+
+### 5.7 发送手机验证码
+
+| 项 | 内容 |
+|---|---|
+| 提交方式 | `POST` |
+| URL | `/api/auth/phone/code` |
+| 鉴权 | **不需要**（公开） |
+
+手机验证码登录（[§5.8](#58-手机验证码登录)）两步中的第一步。
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 约束 | 说明 |
+|---|---|---|---|---|
+| `phone` | string | 是 | 11 位大陆手机号 | 可带空格 / 连字符 / 括号 / `+86`、`86` 前缀，服务端**归一化**后使用 |
+
+```json
+{ "phone": "13800138000" }
+```
+
+**响应 `200`**
+
+```json
+{ "expires_in": 300, "dev_code": "483920" }
+```
+
+| 字段 | 说明 |
+|---|---|
+| `expires_in` | 验证码有效期（秒），由 `PHONE_CODE_TTL_SECONDS` 配置，默认 300 |
+| `dev_code` | **仅当 `SMS_PROVIDER=mock` 时非 null**。它是把验证码回显出来的开发 / 演示通道 |
+
+> ⚠️ **`dev_code` 与「手机号是否已注册」都不可作为安全假设**：
+>
+> - **`dev_code` 出现与否完全由后端配置决定**。默认的 Mock Provider「不真发短信」，
+>   它存在的全部意义就是让开发与演示无需运营商账号即可走通流程，因此会回显验证码。
+>   **生产部署必须把 `SMS_PROVIDER` 配成真实值**，届时该字段恒为 `null`。
+>   配置取值非法时服务**拒绝启动**，不会静默退回 Mock。
+> - **响应刻意不区分手机号是否已注册** —— 一律返回同一结构。否则这个端点就是一个
+>   **手机号枚举接口**：攻击者能借它判断某个号码是不是本系统用户。前端也不要据此
+>   推断，让它只做一件事。
+
+**错误**
+
+| HTTP | code | 触发场景 | message |
+|---|---|---|---|
+| 400 | `VALIDATION_ERROR` | 手机号缺失 / 格式非法（非 11 位大陆号） | `请求参数不合法`，`detail.fields` 指出是 `phone` |
+| **429** | `TOO_MANY_REQUESTS` | **发码被限流**（见下） | `发送过于频繁，请稍后再试` · `该手机号今日验证码次数已达上限，请明天再试` · `当前网络发送次数过多，请稍后再试` |
+| 502 | `SMS_PROVIDER_ERROR` | 短信通道调用失败 | `短信服务发送失败，请稍后重试` |
+
+**限流（三层，任一不过即 429）**
+
+| 层 | 默认阈值 | 配置项 |
+|---|---|---|
+| 同一手机号的重发间隔 | 60 秒 | `PHONE_CODE_RESEND_INTERVAL_SECONDS` |
+| 同一手机号 24 小时内 | 10 次 | `PHONE_CODE_MAX_PER_PHONE_PER_DAY` |
+| 同一 IP 1 小时内 | 20 次 | `PHONE_CODE_MAX_PER_IP_PER_HOUR` |
+
+429 的 `detail` 带重试秒数，**前端应据此显示倒计时**而不是只弹一句提示：
+
+```json
+{ "code": "TOO_MANY_REQUESTS",
+  "message": "发送过于频繁，请稍后再试",
+  "detail": { "retry_after_seconds": 42 } }
+```
+
+> ⚠️ **502 时验证码仍有效**：短信发送失败**不会回滚**已落库的验证码。真实运营商接口的
+> 失败往往是超时而非未送达，回滚会制造「码已作废」的假象 —— 用户手机上收到一条永远
+> 用不了的验证码，而库里查不到它。因此 502 后用户**可以直接重试发码**（间隔照算）。
+>
+> 前端拿到 502 应**立即恢复按钮可点**，而不是沿用发码成功的 60 秒倒计时 ——
+> 通道故障不是用户的问题。
+
+### 5.8 手机验证码登录
+
+| 项 | 内容 |
+|---|---|
+| 提交方式 | `POST` |
+| URL | `/api/auth/phone/login` |
+| 鉴权 | **不需要**（公开） |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 约束 | 说明 |
+|---|---|---|---|---|
+| `phone` | string | 是 | 同 [§5.7](#57-发送手机验证码) | 归一化规则相同 |
+| `code` | string | 是 | 6 位数字 | 由 [§5.7](#57-发送手机验证码) 发出 |
+
+```json
+{ "phone": "13800138000", "code": "483920" }
+```
+
+**响应 `200`** —— **与 [§5.1](#51-登录) 逐字段一致**：
+
+```json
+{ "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": { "id": 7, "username": "phone_13800138000", "phone": "13800138000",
+            "role": "candidate", "is_active": true, "created_at": "2026-09-23T10:00:00" } }
+```
+
+> ⚠️ **响应体与 `/api/auth/login` 完全相同是有意的**：前端按 `user.role` 分流到 HR 端或
+> 候选人端的逻辑因此**不需要第二套实现**。给手机登录另加字段会破坏这个性质。
+
+**手机号与账号的衔接（本端点的核心）**
+
+| 情形 | 行为 |
+|---|---|
+| 手机号**已绑定**某账号 | 以该账号身份登录，**角色不变**（绑的是 `hr` 就是 `hr`，是 `admin` 就是 `admin`） |
+| 手机号**未绑定**任何账号 | **自动创建 `candidate` 账号**并登录：`username = "phone_" + 手机号` |
+| 绑定的账号已被**禁用** | 401，且**不消费该验证码** |
+
+> ⚠️ **自动建号的角色恒为 `candidate`，不可配置**。这是本功能唯一的安全红线：
+> 若「手机号 → 账号」这条路径可能产出 `hr` / `admin`，那么「知道某个手机号」就等于
+> 「拿到 HR 身份」。
+>
+> **HR / admin 想用手机号登录，只能由 admin 在用户管理页把号码绑到已存在的账号上**
+> （[§5.5](#55-修改角色--启用禁用仅-admin)），那条路径受 admin 守卫保护。
+>
+> **自动建号的账号没有可用密码**：其 `password_hash` 是一个**不可知的随机值**的原像，
+> 因此用 [§5.1](#51-登录) 永远登不进去（这正是设计意图 —— 不必给 `password_hash`
+> 加可空分支）。该账号要凭邀请码绑定面试时，走 [§10.2](#102-接受邀请码) 的**免密分支**。
+
+**错误**
+
+| HTTP | code | 触发场景 | message |
+|---|---|---|---|
+| 400 | `VALIDATION_ERROR` | 手机号缺失 / 格式非法 / 验证码缺失 | `请求参数不合法` |
+| 401 | `UNAUTHORIZED` | **验证码不存在 / 已过期 / 已消费 / 不匹配**（四者**同一句**，不可区分） | `验证码错误或已失效` |
+| 401 | `UNAUTHORIZED` | 手机号绑定的账号已被禁用（`detail.reason = "account_disabled"`） | `账号已禁用，请联系管理员` |
+
+> ⚠️ **四种失败共用同一句文案是有意的**：任何可区分的差异（含响应时间）都会把这个
+> 端点变成**验证码状态探测器**。前端也无从区分，因此应把 401 展示在验证码输入框下方。
+>
+> **验证码错误的第 5 次会使该码作废**（`PHONE_CODE_MAX_ATTEMPTS`，默认 5）：
+> 此后即使改填正确的码，返回的仍是同一句 401。用户需要重新发码。
+>
+> **两条 401 的判别用 `detail.reason`，不要用文案**：「验证码错」的 `detail` 是 `null`，
+> 「账号禁用」的 `detail.reason` 是 `"account_disabled"`。
+
+**一次成功的验证码只能登录一次**（消费即失效），且同一手机号**新码发出即作废旧码**。
 
 ## 六、岗位
 
@@ -2072,7 +2271,8 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 |---|---|
 | 提交方式 | `POST` |
 | URL | `/api/candidate/invitations/{code}/accept` |
-| 鉴权 | **不需要**（公开端点，全项目第四个 —— 见 [§2.2](#22-认证)） |
+| 鉴权 | **不需要**（公开端点，全项目六个公开端点之一 —— 见 [§2.2](#22-认证)） |
+| `Authorization` | **可选**。带了有效 token 且它指向本请求要绑定的那个账号时，**免输密码**（见下） |
 
 > ⚠️ **这是唯一挂在 `/api/candidate` 前缀下、却不要求 `candidate` 角色的接口。**
 > 拿码的人往往**还没有账号**，要求他先登录才能激活会让邀请链自相矛盾
@@ -2090,25 +2290,52 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 | 字段 | 类型 | 必填 | 约束 | 说明 |
 |---|---|---|---|---|
 | `username` | string | 是 | 1–50 字符 | **由请求体决定绑定哪个账号** |
-| `password` | string | 是 | **最少 8 字符**，最多 128 | 账号不存在时用作**新密码**；账号已存在时用作**身份凭据**（见下） |
+| `password` | string \| null | **视情况** | 若提供：**最少 8 字符**，最多 128 | 账号不存在时用作**新密码**；账号已存在时用作**身份凭据**。**满足免密分支时可省略** |
 
 ```json
 { "username": "cand_li", "password": "cand12345678" }
 ```
 
+```json
+{ "username": "phone_13800138000" }
+```
+
 **绑定到哪个账号由 body 里的 `username` 决定，与调用者身份无关**（公开端点，本来也没有调用者身份）。
-三种情况：
+四种情况：
 
 | 该用户名的现状 | 行为 |
 |---|---|
-| 不存在 | 按请求体里的密码**创建** `candidate` 账号，绑定 |
-| 已存在、角色是 `candidate`、账号**启用** | **校验密码一致**后复用该账号绑定；**密码不符 → 401** |
+| 不存在 | 按请求体里的密码**创建** `candidate` 账号，绑定。**此时必须提供 `password`** |
+| 已存在、角色是 `candidate`、账号**启用** | **校验身份**后复用该账号绑定 |
 | 已存在、角色是 `candidate`、账号**已禁用** | **拒绝（401 `账号已禁用，请联系管理员`）**，邀请码不被消耗 |
 | 已存在、角色是 `hr` / `admin` | 拒绝（409 `用户名已被占用`） |
 
-> ⚠️ **复用已有账号必须密码对得上**（2026-09-21 修正）。缺了这条校验，
+> ⚠️ **复用已有账号必须先证明身份**（2026-09-21 修正）。缺了这条校验，
 > 「知道对方用户名」就等于能把自己的邀请码绑到对方账号上，进而读到对方的面试。
-> 密码不符时的 401 文案与 [§5.1 登录](#51-登录) 失败**完全相同**，不新增可区分的信号。
+> 身份不成立时的 401 文案与 [§5.1 登录](#51-登录) 失败**完全相同**，不新增可区分的信号。
+
+**身份证明有两条路径**（2026-09-23 新增第二条）：
+
+| 路径 | 条件 | 判定 |
+|---|---|---|
+| **密码**（既有） | 请求体带 `password` | 与库中密码比对一致 |
+| **免密**（MVP-5） | 请求带 `Authorization`，且该 token 指向的账号**就是**本次要绑定的账号 | **跳过密码比对** |
+
+> ⚠️ **免密分支的两条判据必须同时满足**：只认「带了 token」会让攻击者用自己的 token 去绑
+> 他人的账号 —— 那正是「密码不符即拒绝」要防的同一件事。两条同时满足时，攻击者能绑的
+> 只有他自己的账号，而那是合法操作，因此**不引入任何新的越权口**。
+>
+> 免密为何合理：密码的职责是「证明你是这个账号的主人」，而已持有该账号的**有效 JWT 是
+> 同一件事的更强证明**（token 只可能来自一次成功登录）。
+>
+> ⚠️ **这是手机验证码登录能走通邀请链的前提**：[§5.8](#58-手机验证码登录) 自动建号的账号
+> **没有可用密码**，若无免密分支，用手机号注册的候选人拿到邀请码后将**永远无法激活**。
+>
+> **前端配合**：已登录且是候选人时，激活页应**隐藏密码字段**并**不发送 `password`** 键。
+> 注意是「不发这个键」而不是「发空串」—— 空串会触发 400 `VALIDATION_ERROR`（`min_length=8`）。
+>
+> **被禁用的账号无法借这条分支**：被禁用用户的 token 在鉴权阶段就不会被接受，
+> 因此它退化成「不带 token」，仍走密码路径；而它没有密码。两种情况下结果一致：**绑定不发生**。
 
 > ⚠️ **被禁用的账号也不得复用绑定**（2026-09-22 修正）。绑定会消耗掉一次性邀请码，而该
 > 账号此后登录与鉴权都会拒绝它 —— 候选人永远打不开这场面试，HR 也无法重新发码。
@@ -2974,13 +3201,19 @@ HR 生成邀请码 ──► 候选人 accept 激活并绑定 ──► 关联�
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `id` | integer | |
-| `username` | string | 全局唯一 |
+| `username` | string | 全局唯一。手机号自动建号的账号形如 `phone_13800138000` |
+| `phone` | string \| null | 绑定的手机号（11 位纯数字，不带国家码）；`null` = 未绑定 |
 | `role` | string | `admin` \| `hr` \| **`candidate`** |
 | `is_active` | boolean | 禁用后旧 token 立即失效 |
 | `created_at` | datetime | |
 
-> `POST /api/users` 只能建出 `admin` / `hr`；`candidate` 账号只能来自自助注册
-> （[§5.6](#56-候选人自助注册)）或凭邀请码激活（[§10.2](#102-接受邀请码)）。
+> `POST /api/users` 只能建出 `admin` / `hr`。`candidate` 账号有**三个**来源：
+> 自助注册（[§5.6](#56-候选人自助注册)）、凭邀请码激活（[§10.2](#102-接受邀请码)）、
+> 以及**手机验证码首次登录时的自动建号**（[§5.8](#58-手机验证码登录)）——
+> 后者角色**恒为 `candidate`**，请求体无法指定。
+>
+> `phone` 出现在本对象里是安全的：它只出现在 `/api/auth/me`（本人）、两个登录端点的响应
+> （本人）、以及 `/api/users`（仅 admin）中，没有任何一条会把它发给「别人」。
 
 ### 13.2 PositionOut
 
@@ -3540,6 +3773,17 @@ HR 读到的候选人简历（[§8.16](#816-读取面试关联的简历)）。
 }
 ```
 
+### 13.28 PhoneCodeResponse
+
+发码响应（[§5.7](#57-发送手机验证码)）。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `expires_in` | integer | 验证码有效期（秒），默认 300 |
+| `dev_code` | string \| null | **仅 `SMS_PROVIDER=mock` 时非 null**；生产配置下恒为 `null` |
+
+> ⚠️ 该结构**不区分手机号是否已注册** —— 否则这个端点就是一个手机号枚举接口。
+
 ---
 
 ## 十四、完整流程示例
@@ -4012,3 +4256,8 @@ python -c "from app.main import app; \
 | 3 | 刷题取题**不按 `created_by` 过滤题库**（有意的隔离放宽） | [§2.5](#25-数据隔离规则) |
 | 4 | 撤销邀请返回 **200 带体**，而其他 `DELETE` 是 204 | [§8.11](#811-撤销邀请) |
 | 5 | 导出 DOCX **不含雷达图**（需要图形走前端打印 PDF） | [§9.4](#94-导出报告为-docx) |
+| 6 | 发码限流保留 **429**（全项目唯一的 429）。与刷题限流的 **409** **刻意不一致**，见 [§2.4](#24-错误码表) 的说明 | [§5.7](#57-发送手机验证码) |
+| 7 | **手机号格式非法走 400，不是 422** —— 422 只留给第 1 条 | [§5.7](#57-发送手机验证码) |
+| 8 | `PATCH /users/{id}` 的防自锁死**只拦角色与状态，不拦手机号**（admin 可给自己绑号） | [§5.5](#55-修改角色--启用禁用仅-admin) |
+| 9 | `accept` 的 `password` **可省略**（免密分支）；它是全项目唯一「**可选认证**」的端点 | [§10.2](#102-接受邀请码) |
+| 10 | 发码响应的 `dev_code` **只在 `SMS_PROVIDER=mock` 时出现**（生产必须换真实 Provider） | [§5.7](#57-发送手机验证码) |

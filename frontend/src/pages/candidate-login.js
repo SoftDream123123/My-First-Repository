@@ -1,8 +1,9 @@
 /**
- * pages/candidate-login.js —— 候选人登录 / 注册
+ * pages/candidate-login.js —— 候选人登录 / 注册 / 手机验证码登录
  *
  * 登录与注册是**同一张卡片的两个模式**，不新增路由：候选人心里装的是
  * 「我要进去」，而不是「我走的是哪条接口」。切换成本低于跳转成本。
+ * MVP-5 起多了第三个模式「手机号登录」，同理不新增路由。
  *
  * 左栏换成本人视角的闭环：HR 那条「出题 → 记录 → 评估 → 报告」对候选人
  * 毫无意义 —— 他在这里做的事只有一件：把题练到答得出来。
@@ -10,7 +11,8 @@
  * ⚠️ **登录端点是三个角色共用的**（API 文档 §5.1）。本页只发候选人端的入口，
  * 但若有 HR / admin 账号在这里登录，必须明确拒绝 —— 把 HR 的登录态写进
  * `candidate.*` 会让这个人下一次进 HR 页时反而「未登录」，而症状（进去了却是空的）
- * 与原因离得很远。
+ * 与原因离得很远。手机号登录同理（未绑定过的手机号在本页登录会建 candidate 号，
+ * 那是正确的；绑过 HR 账号的手机号会返回 hr，必须拒）。
  */
 
 import { el, mount } from '../dom.js';
@@ -18,6 +20,7 @@ import * as api from '../api.js';
 import * as auth from '../auth.js';
 import { toast } from '../components/toast.js';
 import { fieldError, fieldErrors } from '../components/form.js';
+import { buildPhoneLoginForm } from '../components/phone-login.js';
 import { navigate, defaultRoute } from '../router.js';
 
 const FLOW = [
@@ -49,6 +52,17 @@ function buildAside() {
   );
 }
 
+/** 候选人端的登录态落地 —— 两种模式共用，且都必须拒绝非 candidate 角色。 */
+function enter(result) {
+  if (result.user?.role !== 'candidate') {
+    // 不写登录态：写进 candidate.* 会让他在 HR 页上变成「未登录」，而症状与原因离得很远
+    toast.error('这是候选人端，HR 账号请从 HR 工作台登录。');
+    return;
+  }
+  auth.saveToken(result.token, result.user);
+  navigate(defaultRoute('candidate'));
+}
+
 function buildCard() {
   let mode = 'login';
   // 自助注册被后端关掉时翻成 true：那时「注册」这条路不存在，
@@ -73,58 +87,9 @@ function buildCard() {
   const lede = el('p', { class: 'login-card-lede' });
   const switcher = el('div', { class: 'seg' });
   const submit = el('button', { class: 'btn btn--primary btn--wide', type: 'submit' });
-  const note = el('div', {});
+  const footer = el('div', {});
 
-  function paint() {
-    const isLogin = mode === 'login';
-    title.textContent = isLogin ? '登录' : '注册';
-    lede.textContent = isLogin
-      ? '用你的候选人账号登录。'
-      : '注册一个账号就能开始刷题；收到邀请码的话，注册完再去激活面试。';
-    submit.textContent = isLogin ? '登录' : '注册并登录';
-    passwordNote.textContent = isLogin ? '' : `密码至少 ${PASSWORD_MIN} 位`;
-
-    // 这两个字段的内容在两种模式之间是共用的，不重画（重画会把已输入的内容清掉）。
-    // 只有密码的 `autocomplete` 跟着模式走：注册时不该让浏览器填一个旧密码进去
-    password.setAttribute('autocomplete', isLogin ? 'current-password' : 'new-password');
-
-    switcher.replaceChildren();
-    [['login', '登录'], ['register', '注册']].forEach(([key, label]) => {
-      switcher.append(el('button', {
-        class: `seg-btn${mode === key ? ' is-on' : ''}`,
-        type: 'button',
-        text: label,
-        onClick: () => { mode = key; errors.clear(); paint(); },
-      }));
-    });
-
-    note.replaceChildren();
-    if (registerClosed) {
-      note.append(
-        el('p', { class: 'note-box' }, '自助注册已关闭。拿到邀请码的话，凭邀请码就能进。'),
-        el('div', { class: 'login-alt-row' },
-          el('button', {
-            class: 'btn btn--primary btn--sm',
-            type: 'button',
-            text: '凭邀请码进入',
-            onClick: () => navigate('/candidate/activate'),
-          })),
-      );
-      return;
-    }
-    note.append(
-      el('div', { class: 'login-alt-row' },
-        el('span', { text: '拿到邀请码了？' }),
-        el('button', {
-          class: 'btn btn--quiet btn--sm',
-          type: 'button',
-          text: '去激活',
-          onClick: () => navigate('/candidate/activate'),
-        })),
-    );
-  }
-
-  const form = el(
+  const classicForm = el(
     'form',
     {
       class: 'login-form',
@@ -153,16 +118,7 @@ function buildCard() {
           }
 
           const result = await api.post('/auth/login', { username: name, password: password.value });
-
-          if (result.user?.role !== 'candidate') {
-            // HR / admin 账号走错了入口。不写登录态：写进 candidate.* 会让他在
-            // HR 页上变成「未登录」，而症状与原因离得很远
-            toast.error('这是候选人端，HR 账号请从 HR 工作台登录。');
-            return;
-          }
-
-          auth.saveToken(result.token, result.user);
-          navigate(defaultRoute('candidate'));
+          enter(result);
         } catch (error) {
           // 自助注册被关闭：翻成「给出激活入口」那一版，而不是弹一句报错
           if (error.detail?.reason === 'self_register_disabled') {
@@ -183,7 +139,6 @@ function buildCard() {
     },
     title,
     lede,
-    switcher,
     el('div', { class: 'field' },
       el('label', { class: 'field-label', for: 'cand-username', text: '用户名' }),
       username,
@@ -194,11 +149,85 @@ function buildCard() {
       passwordNote,
       passwordError),
     submit,
-    note,
   );
 
+  // 手机模式是**独立的一个 form**（HTML 不允许 form 嵌套）。
+  // 它与 classicForm 同时存在于 DOM，靠 `hidden` 互斥 —— 这样切模式时
+  // 用户名 / 密码框**不会被重建**，已输入的内容不丢（module-22 的既有结论：
+  // 这两个字段在「登录 / 注册」两个模式之间是共用的，重画会把内容清掉）。
+  const phoneForm = buildPhoneLoginForm({
+    onSubmit: enter,
+    title: '登录',
+    lede: '用手机号接收验证码登录 —— 第一次用会自动为你创建账号，不用先注册。',
+  });
+  phoneForm.hidden = true;
+
+  function paintClassic() {
+    const isLogin = mode === 'login';
+    title.textContent = isLogin ? '登录' : '注册';
+    lede.textContent = isLogin
+      ? '用你的候选人账号登录。'
+      : '注册一个账号就能开始刷题；收到邀请码的话，注册完再去激活面试。';
+    submit.textContent = isLogin ? '登录' : '注册并登录';
+    passwordNote.textContent = isLogin ? '' : `密码至少 ${PASSWORD_MIN} 位`;
+
+    // 只有密码的 `autocomplete` 跟着模式走：注册时不该让浏览器填一个旧密码进去
+    password.setAttribute('autocomplete', isLogin ? 'current-password' : 'new-password');
+  }
+
+  function paintFooter() {
+    footer.replaceChildren();
+    // ⚠️ `registerClosed` 只作用于**注册**模式：手机号登录建号走的是另一条路径，
+    // 不受 `CANDIDATE_SELF_REGISTER` 控制（PRD §4.16），因此手机模式下必须显示
+    // 正常的「去激活」入口，而不是「自助注册已关闭」。
+    if (registerClosed && mode === 'register') {
+      footer.append(
+        el('p', { class: 'note-box' }, '自助注册已关闭。拿到邀请码的话，凭邀请码就能进。'),
+        el('div', { class: 'login-alt-row' },
+          el('button', {
+            class: 'btn btn--primary btn--sm',
+            type: 'button',
+            text: '凭邀请码进入',
+            onClick: () => navigate('/candidate/activate'),
+          })),
+      );
+      return;
+    }
+    footer.append(
+      el('div', { class: 'login-alt-row' },
+        el('span', { text: '拿到邀请码了？' }),
+        el('button', {
+          class: 'btn btn--quiet btn--sm',
+          type: 'button',
+          text: '去激活',
+          onClick: () => navigate('/candidate/activate'),
+        })),
+    );
+  }
+
+  function paint() {
+    switcher.replaceChildren();
+    [['login', '登录'], ['register', '注册'], ['phone', '手机号登录']].forEach(([key, label]) => {
+      switcher.append(el('button', {
+        class: `seg-btn${mode === key ? ' is-on' : ''}`,
+        type: 'button',
+        text: label,
+        onClick: () => { mode = key; errors.clear(); paint(); },
+      }));
+    });
+
+    const isPhone = mode === 'phone';
+    classicForm.hidden = isPhone;
+    phoneForm.hidden = !isPhone;
+    if (!isPhone) paintClassic();
+    paintFooter();
+  }
+
   paint();
-  return form;
+
+  // 切换器与页脚都在两个 form **之外**（切换器在外的理由是 form 不能嵌套；
+  // 页脚在外的理由是它要跟着模式变，而它不属于任何一个 form 的字段区）
+  return el('div', {}, switcher, classicForm, phoneForm, footer);
 }
 
 export function render(container) {
